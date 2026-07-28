@@ -51,18 +51,20 @@
           <td>
             {{name}}
             {{#if effectLabel}}<div class="upg-effect-label"><i class="fa-solid fa-bolt"></i> {{effectLabel}}</div>{{/if}}
+            {{#if ownedNames}}<div class="upg-effect-label"><i class="fa-solid fa-user-check"></i> {{ownedNames}}</div>{{/if}}
           </td>
           <td class="upg-target">{{targetLabel}}</td>
           <td>{{cost}}</td>
           <td>
-            {{#if purchased}}<span class="tag owned">Owned ({{purchasedBy}})</span>
+            {{#if isRepeatable}}<span class="tag owned">Bought ×{{ownedCount}}</span>
+            {{else if purchased}}<span class="tag owned">Owned ({{purchasedBy}})</span>
             {{else if hidden}}<span class="tag hidden">Hidden</span>
             {{else}}<span class="tag">Available</span>{{/if}}
           </td>
           <td class="upg-actions">
             <a data-action="editUpgrade" data-id="{{id}}" title="Edit"><i class="fa-solid fa-pen"></i></a>
             <a data-action="toggleHidden" data-id="{{id}}" title="Toggle hidden"><i class="fa-solid {{#if hidden}}fa-eye{{else}}fa-eye-slash{{/if}}"></i></a>
-            {{#if purchased}}<a data-action="refund" data-id="{{id}}" title="Refund"><i class="fa-solid fa-rotate-left"></i></a>{{/if}}
+            {{#if ownedCount}}<a data-action="refund" data-id="{{id}}" title="Refund the most recent"><i class="fa-solid fa-rotate-left"></i></a>{{/if}}
             <a data-action="deleteUpgrade" data-id="{{id}}" title="Delete"><i class="fa-solid fa-trash"></i></a>
           </td>
         </tr>

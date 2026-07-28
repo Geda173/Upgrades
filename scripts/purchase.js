@@ -2,16 +2,21 @@
  * Purchase pipeline: player request → GM approval → commit (deduct, mark, announce).
  * Everything in this file runs on the GM client only (dispatched via sockets.js).
  */
-import { MODULE_ID, SETTINGS, getUpgrade, getBalance, adjustBalance, upsertUpgrade, addHistory, getVocabulary } from "./data.js";
+import {
+  MODULE_ID, SETTINGS, TARGET, getUpgrade, getBalance, adjustBalance,
+  addHistory, getVocabulary, isAvailable, addPurchase
+} from "./data.js";
 import { emit, refreshOpenApps } from "./sockets.js";
-import { applyUpgradeEffect, describeTarget } from "./systems/adapter.js";
+import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
 
 /** Entry point for a player's purchase request (or a GM's direct purchase). */
 export async function handlePurchaseRequest({ upgradeId, userId }) {
   const upgrade = getUpgrade(upgradeId);
   const user = game.users.get(userId);
   const vocab = getVocabulary();
-  if (!upgrade || upgrade.purchased || upgrade.hidden) return notifyUser(userId, "That upgrade is no longer available.");
+  if (!upgrade || upgrade.hidden || !isAvailable(upgrade)) {
+    return notifyUser(userId, "That upgrade is no longer available.");
+  }
 
   const balance = getBalance();
   if (balance < upgrade.cost) {
@@ -38,26 +43,65 @@ export async function handlePurchaseRequest({ upgradeId, userId }) {
     }
   }
 
-  await commitPurchase(upgrade, user);
+  // Resolve who it lands on before spending anything, so a failure here costs nothing.
+  let buyerActor = null;
+  if (upgrade.target === TARGET.BUYER) {
+    buyerActor = await resolveBuyer(user);
+    if (!buyerActor) {
+      return notifyUser(userId, user?.isGM
+        ? "No character chosen — nothing was purchased."
+        : "You have no assigned character, so this cannot be granted. Ask your GM.");
+    }
+  }
+
+  await commitPurchase(upgrade, user, buyerActor);
 }
 
-async function commitPurchase(upgrade, user) {
+/**
+ * Which character is buying.
+ *
+ * A player's assigned character is the obvious answer. A GM usually has none, so rather than
+ * failing we ask — that is also how a GM buys something on a player's behalf.
+ */
+async function resolveBuyer(user) {
+  if (user?.character) return user.character;
+  if (!user?.isGM) return null;
+
+  const candidates = getPartyActors();
+  if (!candidates.length) {
+    ui.notifications.warn("Upgrades: no party members to grant this to — set a Party actor in Setup.");
+    return null;
+  }
+  const options = candidates
+    .map(a => `<option value="${a.id}">${foundry.utils.escapeHTML(a.name)}</option>`).join("");
+  const chosen = await foundry.applications.api.DialogV2.prompt({
+    window: { title: "Who is this for?" },
+    content: `<div class="form-group"><label>Character</label>
+      <select name="actorId" autofocus>${options}</select></div>`,
+    ok: { label: "Grant", callback: (_e, button) => button.form.elements.actorId.value }
+  }).catch(() => null);
+  return chosen ? game.actors.get(chosen) : null;
+}
+
+async function commitPurchase(upgrade, user, buyerActor = null) {
   const vocab = getVocabulary();
   const after = await adjustBalance(-upgrade.cost, `Acquired: ${upgrade.name}`);
 
-  await upsertUpgrade({
-    id: upgrade.id,
-    purchased: true,
-    purchasedBy: user?.name ?? "GM",
-    purchasedAt: Date.now()
+  const purchase = await addPurchase(upgrade.id, {
+    actorId: buyerActor?.id ?? (upgrade.target === TARGET.ACTOR ? upgrade.targetActorId : null),
+    actorName: buyerActor?.name ?? null,
+    by: user?.name ?? "GM"
   });
 
-  await addHistory({ type: "purchase", upgradeId: upgrade.id, name: upgrade.name, cost: upgrade.cost, by: user?.name ?? "GM" });
+  await addHistory({
+    type: "purchase", upgradeId: upgrade.id, name: upgrade.name, cost: upgrade.cost,
+    by: user?.name ?? "GM", forActor: buyerActor?.name ?? null
+  });
 
   // Apply the mechanical payload, if the upgrade has one (cosmetic upgrades no-op silently).
   let effectNote = "";
   try {
-    const applied = await applyUpgradeEffect(upgrade);
+    const applied = await applyUpgradeEffect(upgrade, { buyerActor, purchaseId: purchase?.id });
     if (applied?.count) {
       effectNote = `<p class="upg-effect-note">✦ Effect applied to ${foundry.utils.escapeHTML(applied.names.join(", "))}.</p>`;
     }

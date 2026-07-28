@@ -67,6 +67,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       description: u.description ?? "",
       hidden: !!u.hidden,
       hideEffect: !!u.hideEffect,
+      repeatable: !!u.repeatable,
       categoryId: u.categoryId ?? "",
       purchased: !!u.purchased,
       target: u.target ?? TARGET.PARTY,
@@ -97,8 +98,10 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
       targetOptions: [
         { value: TARGET.PARTY, label: "The whole party", isSelected: draft.target === TARGET.PARTY },
+        { value: TARGET.BUYER, label: "Whoever buys it", isSelected: draft.target === TARGET.BUYER },
         { value: TARGET.ACTOR, label: "One specific character", isSelected: draft.target === TARGET.ACTOR }
       ],
+      isBuyerTarget: draft.target === TARGET.BUYER,
       isActorTarget: draft.target === TARGET.ACTOR,
       hasTargetActor: !!draft.targetActorId,
       actorGroups: this.#actorGroups(),
@@ -204,6 +207,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.description = val("description");
     this.draft.hidden = !!get("hidden")?.checked;
     this.draft.hideEffect = !!get("hideEffect")?.checked;
+    this.draft.repeatable = !!get("repeatable")?.checked;
     this.draft.categoryId = val("categoryId");
     this.draft.target = val("target") || TARGET.PARTY;
     this.draft.targetActorId = val("targetActorId");
@@ -335,6 +339,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       description: d.description,
       hidden: d.hidden,
       hideEffect: d.hideEffect,
+      repeatable: d.repeatable,
       categoryId: d.categoryId || null,
       target: d.target,
       targetActorId: d.target === TARGET.ACTOR ? d.targetActorId : null,

@@ -4,7 +4,7 @@
 import {
   MODULE_ID, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
   getBalance, adjustBalance, getHistory, getVocabulary,
-  getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory
+  getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory, removePurchase
 } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
@@ -63,7 +63,10 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
           .map(u => ({
             ...u,
             targetLabel: describeTarget(u),
-            effectLabel: EditorApp.#effectLabel(u)
+            effectLabel: EditorApp.#effectLabel(u),
+            ownedCount: u.purchases?.length ?? 0,
+            isRepeatable: !!u.repeatable,
+            ownedNames: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", ")
           }))
       ),
       history: getHistory().slice(-25).reverse().map(h => ({
@@ -142,20 +145,28 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     EditorApp.#afterMutation();
   }
 
+  /** Refunds one acquisition — the most recent — so a repeatable upgrade can be unwound stepwise. */
   static async #onRefund(_event, target) {
     const u = getUpgrade(target.dataset.id);
-    if (!u?.purchased) return;
+    if (!u?.purchases?.length) return;
     const vocab = getVocabulary();
+    const last = u.purchases[u.purchases.length - 1];
+    const who = last.actorName ?? describeTarget(u).toLowerCase();
+    const remaining = u.purchases.length - 1;
+
     const ok = await DialogV2.confirm({
       window: { title: "Refund upgrade" },
       content: `<p>Refund <strong>${foundry.utils.escapeHTML(u.name)}</strong> — ${u.cost}
         ${foundry.utils.escapeHTML(vocab.currencyName)} back, and its effect removed from
-        ${foundry.utils.escapeHTML(describeTarget(u).toLowerCase())}?</p>`
+        ${foundry.utils.escapeHTML(who)}?</p>`
+        + (remaining ? `<p>${remaining} other acquisition(s) of this upgrade are left untouched.</p>` : "")
     });
     if (!ok) return;
+
     await adjustBalance(u.cost, `Refund: ${u.name}`);
-    await upsertUpgrade({ id: u.id, purchased: false, purchasedBy: null, purchasedAt: null });
-    await removeUpgradeEffect(u.id);
+    await removePurchase(u.id, last.id);
+    // Repeatable grants carry a purchase id, so only this one is removed.
+    await removeUpgradeEffect(u.id, u.repeatable ? last.id : null);
     EditorApp.#afterMutation();
   }
 

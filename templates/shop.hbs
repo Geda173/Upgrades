@@ -29,9 +29,10 @@
   {{#if name}}<h2 class="upg-section-head"><i class="{{icon}}"></i> {{name}}</h2>{{/if}}
   <section class="upg-grid">
     {{#each upgrades}}
-    <div class="upg-card {{#if purchased}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless purchased}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
+    <div class="upg-card {{#if soldOut}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless soldOut}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
          data-action="selectCard" data-upgrade-id="{{id}}">
-      {{#if purchased}}<div class="upg-stamp">Owned</div>{{/if}}
+      {{#if soldOut}}<div class="upg-stamp">Owned</div>{{/if}}
+      {{#if ownedCount}}<div class="upg-tally">×{{ownedCount}}</div>{{/if}}
       <div class="upg-art">
         {{#if displayImg}}<img src="{{displayImg}}" alt="">{{else}}<i class="fa-solid {{#if mystery}}fa-question{{else}}fa-wand-sparkles{{/if}}"></i>{{/if}}
       </div>
@@ -39,6 +40,8 @@
         <h3>{{displayName}}</h3>
         {{#if targetLabel}}<div class="upg-for"><i class="fa-solid fa-user"></i> {{targetLabel}}</div>{{/if}}
         <div class="upg-flavor"><em>{{displayFlavor}}</em></div>
+        {{#if excerpt}}<div class="upg-excerpt">{{excerpt}}</div>{{/if}}
+        {{#if ownedBy}}<div class="upg-owned-by"><i class="fa-solid fa-user-check"></i> {{ownedBy}}</div>{{/if}}
         {{#if effectLines}}
         <ul class="upg-effects">
           {{#each effectLines}}<li>{{this}}</li>{{/each}}
@@ -52,7 +55,7 @@
             {{else}}<i class="{{../../vocab.currencyIcon}}"></i>{{/if}}
             {{cost}}
           {{else}}—{{/unless}}
-          {{#unless purchased}}{{#unless mystery}}
+          {{#unless soldOut}}{{#unless mystery}}
             {{#if affordable}}
               <button type="button" class="upg-buy" data-action="buy" data-upgrade-id="{{id}}">{{../../vocab.actionVerb}}</button>
             {{else}}

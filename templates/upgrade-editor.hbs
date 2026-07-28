@@ -61,6 +61,21 @@
       </select>
     </div>
 
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="repeatable" {{#if upgrade.repeatable}}checked{{/if}}>
+        Can be bought more than once
+      </label>
+    </div>
+
+    {{#if isBuyerTarget}}
+    <p class="upg-hint">
+      Resolved when it is bought: a player's assigned character, or — if a GM buys it — whoever
+      the GM picks. Combine with “can be bought more than once” for something each character
+      acquires separately, like a tangible item.
+    </p>
+    {{/if}}
+
     {{#if isActorTarget}}
     <div class="form-group">
       <label>Character</label>

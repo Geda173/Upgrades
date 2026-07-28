@@ -56,7 +56,11 @@ function groupMembers(actor) {
  * The actors an upgrade's effect should land on.
  * "actor" upgrades resolve to exactly one actor; "party" upgrades to the whole party.
  */
-export function getTargetActors(upgrade) {
+export function getTargetActors(upgrade, { buyerActor = null } = {}) {
+  if (upgrade.target === TARGET.BUYER) {
+    // Resolved at purchase time; nothing to resolve from the upgrade alone.
+    return buyerActor ? [buyerActor] : [];
+  }
   if (upgrade.target === TARGET.ACTOR) {
     const actor = upgrade.targetActorId ? game.actors.get(upgrade.targetActorId) : null;
     if (!actor) {
@@ -70,6 +74,7 @@ export function getTargetActors(upgrade) {
 
 /** Human-readable description of who an upgrade applies to. */
 export function describeTarget(upgrade) {
+  if (upgrade.target === TARGET.BUYER) return "Whoever buys it";
   if (upgrade.target !== TARGET.ACTOR) return "The party";
   const actor = upgrade.targetActorId ? game.actors.get(upgrade.targetActorId) : null;
   return actor?.name ?? "Unknown actor";
@@ -146,9 +151,10 @@ export async function resolveEffectPayload(upgrade) {
  * wrapped in a dnd5e feat item so it shows up in Features rather than hiding on the Effects tab.
  * Deleting that one item takes the bonus with it, which is what makes refund/undo clean.
  */
-async function createFromPayload(actor, payload, upgrade) {
+async function createFromPayload(actor, payload, upgrade, purchaseId = null) {
   const data = foundry.utils.deepClone(payload.data);
   foundry.utils.setProperty(data, `flags.${MODULE_ID}.upgradeId`, upgrade.id);
+  if (purchaseId) foundry.utils.setProperty(data, `flags.${MODULE_ID}.purchaseId`, purchaseId);
 
   const grantAs = game.settings.get(MODULE_ID, SETTINGS.GRANT_AS);
   const wrap = payload.documentName === "ActiveEffect" && grantAs === "feature" && game.system.id === "dnd5e";
@@ -160,7 +166,7 @@ async function createFromPayload(actor, payload, upgrade) {
       img: upgrade.img || data.img || "icons/svg/upgrade.svg",
       system: { description: { value: upgrade.description || upgrade.flavor || "" } },
       effects: [{ ...data, transfer: true, disabled: false }],
-      flags: { [MODULE_ID]: { upgradeId: upgrade.id } }
+      flags: { [MODULE_ID]: { upgradeId: upgrade.id, ...(purchaseId ? { purchaseId } : {}) } }
     };
     return actor.createEmbeddedDocuments("Item", [item]);
   }
@@ -168,14 +174,21 @@ async function createFromPayload(actor, payload, upgrade) {
   return actor.createEmbeddedDocuments(payload.documentName, [data]);
 }
 
-function hasUpgrade(actor, upgradeId) {
-  const inItems = actor.items?.some(i => i.getFlag(MODULE_ID, "upgradeId") === upgradeId);
-  const inEffects = actor.effects?.some(e => e.getFlag(MODULE_ID, "upgradeId") === upgradeId);
-  return inItems || inEffects;
+/**
+ * Already granted?
+ *
+ * A repeatable upgrade is matched on the purchase id, not the upgrade id — buying the same
+ * thing twice is meant to produce two copies, so matching on upgrade id would block the second.
+ */
+function hasUpgrade(actor, upgradeId, purchaseId = null) {
+  const matches = doc => purchaseId
+    ? doc.getFlag(MODULE_ID, "purchaseId") === purchaseId
+    : doc.getFlag(MODULE_ID, "upgradeId") === upgradeId;
+  return !!actor.items?.some(matches) || !!actor.effects?.some(matches);
 }
 
 /** Apply the upgrade's effect (if any) to its target actors. GM-side only. */
-export async function applyUpgradeEffect(upgrade) {
+export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseId = null } = {}) {
   const payload = await resolveEffectPayload(upgrade);
   if (!payload) {
     // A cosmetic upgrade is a normal, silent case; a broken link is not.
@@ -185,7 +198,7 @@ export async function applyUpgradeEffect(upgrade) {
     return { count: 0, names: [] };
   }
 
-  const targets = getTargetActors(upgrade);
+  const targets = getTargetActors(upgrade, { buyerActor });
   if (!targets.length) {
     ui.notifications.warn(`Upgrades: “${upgrade.name}” has no valid target to apply its effect to.`);
     return { count: 0, names: [] };
@@ -194,8 +207,8 @@ export async function applyUpgradeEffect(upgrade) {
   const names = [];
   for (const actor of targets) {
     try {
-      if (hasUpgrade(actor, upgrade.id)) continue;
-      await createFromPayload(actor, payload, upgrade);
+      if (hasUpgrade(actor, upgrade.id, upgrade.repeatable ? purchaseId : null)) continue;
+      await createFromPayload(actor, payload, upgrade, purchaseId);
       names.push(actor.name);
     } catch (err) {
       console.error(`${MODULE_ID} | Could not apply effect to ${actor.name}`, err);
@@ -206,15 +219,18 @@ export async function applyUpgradeEffect(upgrade) {
 }
 
 /** Remove everything this module created for a given upgrade (refund/undo). GM-side only. */
-export async function removeUpgradeEffect(upgradeId) {
+export async function removeUpgradeEffect(upgradeId, purchaseId = null) {
+  const matches = doc => purchaseId
+    ? doc.getFlag(MODULE_ID, "purchaseId") === purchaseId
+    : doc.getFlag(MODULE_ID, "upgradeId") === upgradeId;
   let count = 0;
   for (const actor of game.actors) {
-    const items = actor.items?.filter(i => i.getFlag(MODULE_ID, "upgradeId") === upgradeId) ?? [];
+    const items = actor.items?.filter(matches) ?? [];
     if (items.length) {
       await actor.deleteEmbeddedDocuments("Item", items.map(i => i.id));
       count += items.length;
     }
-    const effects = actor.effects?.filter(e => e.getFlag(MODULE_ID, "upgradeId") === upgradeId) ?? [];
+    const effects = actor.effects?.filter(matches) ?? [];
     if (effects.length) {
       await actor.deleteEmbeddedDocuments("ActiveEffect", effects.map(e => e.id));
       count += effects.length;
@@ -231,13 +247,18 @@ export async function removeUpgradeEffect(upgradeId) {
 export async function resyncUpgrades() {
   const { getUpgrades } = await import("../data.js");
   let created = 0;
-  for (const upgrade of getUpgrades().filter(u => u.purchased)) {
+  for (const upgrade of getUpgrades().filter(u => u.purchases?.length)) {
     const payload = await resolveEffectPayload(upgrade);
     if (!payload) continue;
-    for (const actor of getTargetActors(upgrade)) {
-      if (hasUpgrade(actor, upgrade.id)) continue;
-      await createFromPayload(actor, payload, upgrade);
-      created++;
+    for (const purchase of upgrade.purchases) {
+      // A purchase remembers which actor it landed on, which is the only way a buyer-targeted
+      // or repeatable grant can be rebuilt on the right sheet.
+      const buyerActor = purchase.actorId ? game.actors.get(purchase.actorId) : null;
+      for (const actor of getTargetActors(upgrade, { buyerActor })) {
+        if (hasUpgrade(actor, upgrade.id, upgrade.repeatable ? purchase.id : null)) continue;
+        await createFromPayload(actor, payload, upgrade, purchase.id);
+        created++;
+      }
     }
   }
   return { created };
@@ -250,5 +271,11 @@ export async function resyncUpgrades() {
  */
 export async function reapplyUpgradeEffect(upgrade) {
   await removeUpgradeEffect(upgrade.id);
-  return applyUpgradeEffect(upgrade);
+  let count = 0;
+  for (const purchase of upgrade.purchases ?? []) {
+    const buyerActor = purchase.actorId ? game.actors.get(purchase.actorId) : null;
+    const result = await applyUpgradeEffect(upgrade, { buyerActor, purchaseId: purchase.id });
+    count += result.count;
+  }
+  return { count, names: [] };
 }

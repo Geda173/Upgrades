@@ -42,14 +42,18 @@ const vocab = {
 const shopCards = [
     { id: 'a', displayName: 'Nightbloom', displayFlavor: 'Planted in memory.', displayImg: '',
       cost: 3, purchased: false, mystery: false, affordable: true, selected: true,
-      targetLabel: 'Galadon Stormwhisper',
+      targetLabel: 'Galadon Stormwhisper', excerpt: 'Planted at the north wall; it flowers in winter.',
       effectLines: ['All weapon damage +1d4 cold', 'Armor Class +1'] },
     { id: 'b', displayName: '???', displayFlavor: '…', displayImg: '', cost: 9,
       purchased: false, mystery: true, affordable: false, selected: false,
       targetLabel: null, effectLines: [] },
     { id: 'c', displayName: 'Ashen Fern', displayFlavor: 'Owned.', displayImg: '', cost: 2,
-      purchased: true, mystery: false, affordable: false, selected: false,
-      targetLabel: null, effectLines: [] },
+      purchased: true, soldOut: true, available: false, mystery: false, affordable: false,
+      selected: false, targetLabel: null, effectLines: [], ownedCount: 0 },
+    { id: 'e', displayName: 'Healing Draught', displayFlavor: 'Bought again and again.', displayImg: '',
+      cost: 1, purchased: true, soldOut: false, available: true, mystery: false, affordable: true,
+      selected: false, targetLabel: 'Whoever buys it', effectLines: [],
+      ownedCount: 3, ownedBy: 'Ander Raventail, Syllith Azmarun' },
     { id: 'd', displayName: 'Secret Bloom', displayFlavor: 'Sealed.', displayImg: '', cost: 4,
       purchased: false, mystery: false, affordable: true, selected: false,
       targetLabel: null, effectLines: [], effectSecret: true }
@@ -75,8 +79,11 @@ const editor = Handlebars.compile(tpl('editor.hbs'))({
   hasCategories: true,
   groups: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation', upgrades: [
     { id: 'a', name: 'Nightbloom', img: '', cost: 3, purchased: true, purchasedBy: 'Pat',
-      hidden: false, targetLabel: 'Galadon Stormwhisper',
-      effectLabel: '1d8[cold] all weapon damage' }] }],
+      hidden: false, targetLabel: 'Galadon Stormwhisper', ownedCount: 1,
+      effectLabel: '1d8[cold] all weapon damage' },
+    { id: 'e', name: 'Healing Draught', img: '', cost: 1, purchased: true, isRepeatable: true,
+      ownedCount: 3, ownedNames: 'Ander Raventail', hidden: false,
+      targetLabel: 'Whoever buys it', effectLabel: '' }] }],
   history: [{ when: 'today', isPurchase: true, name: 'Nightbloom', cost: 3, by: 'Pat' },
             { when: 'today', isPurchase: false, deltaStr: '+5', before: 2, after: 7,
               reason: 'Cleared the grove' }]
@@ -84,12 +91,15 @@ const editor = Handlebars.compile(tpl('editor.hbs'))({
 
 const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   upgrade: { name: 'Nightbloom', cost: 3, img: '', flavor: '', description: '', hidden: false,
-             target: 'actor', effectMode: 'build', effectUuid: '', purchased: true, hideEffect: true },
+             target: 'actor', effectMode: 'build', effectUuid: '', purchased: true, hideEffect: true,
+             repeatable: true },
   vocab, saveLabel: 'Save', systemId: 'dnd5e', builderSupported: true, isPf2e: false,
   hasCategories: true,
   categories: [{ id: 'c1', name: 'Lighthouse', isSelected: true }],
   targetOptions: [{ value: 'party', label: 'The whole party', isSelected: false },
+                  { value: 'buyer', label: 'Whoever buys it', isSelected: false },
                   { value: 'actor', label: 'One specific character', isSelected: true }],
+  isBuyerTarget: false,
   isActorTarget: true, hasTargetActor: true,
   actorGroups: [{ label: 'Party', actors: [{ id: 'x', name: 'Galadon Stormwhisper', isSelected: true }] }],
   partyNote: '…',
@@ -123,7 +133,10 @@ t('shop: currency icon resolves inside the card loop', shop.includes('fa-seedlin
 t('shop: action verb comes from vocab', shop.includes('>Plant<'));
 t('shop: per-actor target badge', shop.includes('Galadon Stormwhisper'));
 t('shop: host name', /Elara(&#x27;|')s Respite/.test(shop));
-t('shop: owned stamp', shop.includes('upg-stamp'));
+
+t('shop: a card previews the description without expanding',
+  !!normal && normal.includes('upg-excerpt') && normal.includes('flowers in winter'));
+t('shop: a teaser card has no excerpt', !!teaser && !teaser.includes('upg-excerpt'));
 t('shop: a normal card lists what it grants', !!normal && normal.includes('All weapon damage +1d4 cold'));
 t('shop: detail pane has a "What it grants" heading', shop.includes('What it grants'));
 t('shop: a teaser card leaks nothing', !!teaser && !teaser.includes('upg-effects') && teaser.includes('???'));
@@ -131,8 +144,18 @@ t('shop: a secret card says so instead of looking cosmetic',
   !!secret && secret.includes('upg-effect-secret') && !secret.includes('upg-effects'));
 
 t('shop: section heading rendered', shop.includes('upg-section-head') && shop.includes('Lighthouse'));
-t('shop: every card still rendered across sections', cards.length === 4);
+t('shop: every card still rendered across sections', cards.length === 5);
+t('shop: a sold-out card is stamped Owned', shop.includes('upg-stamp'));
+(() => {
+  const repeat = cards.find(c => c.includes('Healing Draught'));
+  t('shop: a repeatable card shows a tally, not an Owned stamp',
+    !!repeat && repeat.includes('upg-tally') && repeat.includes('\u00d73') && !repeat.includes('upg-stamp'));
+  t('shop: a repeatable card can still be bought', !!repeat && repeat.includes('upg-buy') && !repeat.includes('disabled'));
+  t('shop: a repeatable card lists who owns it', !!repeat && repeat.includes('Ander Raventail'));
+})();
 
+t('editor: repeatable upgrade shows a purchase tally', editor.includes('Bought \u00d73'));
+t('editor: repeatable upgrade lists its owners', editor.includes('Ander Raventail'));
 t('editor: section heading row rendered', editor.includes('upg-group-row') && editor.includes('Lighthouse'));
 t('editor: section management list rendered', editor.includes('upg-category-list'));
 t('editor: currency name reaches the history loop', editor.includes('Sprigs +5'));
@@ -149,6 +172,9 @@ t('upgrade-editor: cost label uses the configured currency',
   upgradeEditor.includes('Cost (Sprigs)'));
 t('upgrade-editor: section dropdown marks the current section',
   /name="categoryId"[\s\S]*?value="c1" selected/.test(upgradeEditor));
+t('upgrade-editor: offers the buyer target', upgradeEditor.includes('Whoever buys it'));
+t('upgrade-editor: repeatable checkbox is checked when set',
+  /name="repeatable"[^>]*checked/.test(upgradeEditor));
 t('upgrade-editor: hide-mechanics checkbox is checked when set',
   /name="hideEffect"[^>]*checked/.test(upgradeEditor));
 

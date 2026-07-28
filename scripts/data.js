@@ -26,7 +26,9 @@ export const SETTINGS = {
 /** Upgrade target modes. */
 export const TARGET = {
   PARTY: "party",
-  ACTOR: "actor"
+  ACTOR: "actor",
+  /** Whoever buys it — resolved at purchase time, so the GM need not know in advance. */
+  BUYER: "buyer"
 };
 
 /**
@@ -225,7 +227,11 @@ export function getVocabulary() {
  * { id, name, cost, img, flavor, description (HTML), hidden, purchased,
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
- *   hideEffect, categoryId }
+ *   hideEffect, categoryId, repeatable,
+ *   purchases: [{ id, actorId, actorName, by, at }] }
+ *
+ * `purchases` is the record of every acquisition. `purchased` is derived from it and kept
+ * because the templates and availability checks read it.
  *
  * target: "party" → effect applies to every member of the party actor
  *         "actor" → effect applies only to targetActorId
@@ -243,8 +249,21 @@ function normalizeUpgrade(upgrade) {
     effectBuild: { rows: [] },
     hideEffect: false,
     categoryId: null,
+    repeatable: false,
     ...upgrade
   };
+
+  // Upgrades authored before repeat-buying existed recorded a single boolean.
+  if (!Array.isArray(normalized.purchases)) {
+    normalized.purchases = upgrade.purchased
+      ? [{
+          id: "legacy", actorId: upgrade.targetActorId ?? null, actorName: null,
+          by: upgrade.purchasedBy ?? "GM", at: upgrade.purchasedAt ?? null
+        }]
+      : [];
+  }
+  normalized.purchased = normalized.purchases.length > 0;
+  normalized.purchaseCount = normalized.purchases.length;
   // Upgrades authored before effect modes existed only ever had a UUID.
   normalized.effectMode ??= upgrade.effectUuid ? "link" : "none";
   normalized.effectBuild.rows ??= [];
@@ -268,7 +287,7 @@ export async function upsertUpgrade(data) {
     name: "New Upgrade", cost: 1, img: "", flavor: "", description: "",
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
-    categoryId: null,
+    categoryId: null, repeatable: false, purchases: [],
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
   });
@@ -277,6 +296,41 @@ export async function upsertUpgrade(data) {
 
 export async function deleteUpgrade(id) {
   return setUpgrades(getUpgrades().filter(u => u.id !== id));
+}
+
+/** Can this still be bought? Repeatable upgrades never run out. */
+export function isAvailable(upgrade) {
+  return !!upgrade.repeatable || !upgrade.purchases?.length;
+}
+
+/** Record an acquisition. Returns the new purchase record. */
+export async function addPurchase(upgradeId, { actorId = null, actorName = null, by = "GM" } = {}) {
+  const upgrades = getUpgrades();
+  const upgrade = upgrades.find(u => u.id === upgradeId);
+  if (!upgrade) return null;
+  const record = { id: foundry.utils.randomID(), actorId, actorName, by, at: Date.now() };
+  upgrade.purchases = [...(upgrade.purchases ?? []), record];
+  upgrade.purchased = true;
+  upgrade.purchasedBy = by;
+  upgrade.purchasedAt = record.at;
+  await setUpgrades(upgrades);
+  return record;
+}
+
+/** Undo one acquisition (the most recent unless a specific one is named). */
+export async function removePurchase(upgradeId, purchaseId = null) {
+  const upgrades = getUpgrades();
+  const upgrade = upgrades.find(u => u.id === upgradeId);
+  if (!upgrade?.purchases?.length) return null;
+  const idx = purchaseId
+    ? upgrade.purchases.findIndex(p => p.id === purchaseId)
+    : upgrade.purchases.length - 1;
+  if (idx < 0) return null;
+  const [removed] = upgrade.purchases.splice(idx, 1);
+  upgrade.purchased = upgrade.purchases.length > 0;
+  if (!upgrade.purchased) { upgrade.purchasedBy = null; upgrade.purchasedAt = null; }
+  await setUpgrades(upgrades);
+  return removed;
 }
 
 /* ---------- Categories ---------- */

@@ -1,7 +1,7 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import { MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory } from "../data.js";
+import { MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory, isAvailable } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
@@ -69,11 +69,17 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
           displayName: mystery ? "???" : u.name,
           displayFlavor: mystery ? "“Prove yourselves further, and I may show you more…”" : u.flavor,
           displayImg: mystery ? "" : u.img,
-          affordable: !u.purchased && balance >= u.cost,
+          available: isAvailable(u),
+          soldOut: !isAvailable(u),
+          affordable: isAvailable(u) && balance >= u.cost,
+          ownedCount: u.repeatable ? (u.purchases?.length ?? 0) : 0,
+          ownedBy: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", "),
           selected: u.id === this.#selectedId,
           // Only worth showing when it isn't the default "everyone" case.
           targetLabel: (!mystery && u.target === "actor") ? describeTarget(u) : null,
           effectLines: mystery ? [] : (effectLines.get(u.id) ?? []),
+          // A short plain-text taste of the description, so a card can be read without expanding it.
+          excerpt: mystery ? "" : ShopApp.#excerpt(u.description),
           // Distinguish "kept secret" from "does nothing" — otherwise a secret upgrade
           // looks identical to a purely cosmetic one.
           effectSecret: !mystery && u.hideEffect && !u.purchased && !isGM,
@@ -108,6 +114,20 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
   _onRender(context, options) {
     super._onRender(context, options);
     applyTheme(this);
+  }
+
+  /** Strip the GM's HTML down to a short line for the card face. */
+  static #excerpt(html, limit = 130) {
+    if (!html) return "";
+    const text = String(html)
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text.length <= limit) return text;
+    // cut on a word boundary rather than mid-word
+    const cut = text.slice(0, limit);
+    return cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : limit) + "…";
   }
 
   static #onBuy(_event, target) {
