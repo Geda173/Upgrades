@@ -88,6 +88,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       pickHostImg: SettingsApp.#onPickHostImg,
       clearHostImg: SettingsApp.#onClearHostImg,
       clearCurrencyItem: SettingsApp.#onClearCurrencyItem,
+      clearHostActor: SettingsApp.#onClearHostActor,
       cancel: SettingsApp.#onCancel
     }
   };
@@ -115,6 +116,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       theme: g(SETTINGS.THEME),
       windowTitle: g(SETTINGS.WINDOW_TITLE),
+      hostActor: g(SETTINGS.HOST_ACTOR),
       hostName: g(SETTINGS.HOST_NAME),
       hostImg: g(SETTINGS.HOST_IMG),
       greeting: g(SETTINGS.GREETING),
@@ -161,6 +163,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       })),
 
       currencyItemName: this.currencyItemName ?? null,
+      hostActorName: d.hostActor ? (game.actors.get(d.hostActor)?.name ?? "missing actor") : null,
 
       hostIconGroups: HOST_ICON_GROUPS.map(g => ({
         label: g.label,
@@ -334,6 +337,14 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }).browse();
   }
 
+  static #onClearHostActor() {
+    this.#syncAll();
+    this.#draft.hostActor = "";
+    const field = this.element.querySelector('[name="hostActor"]');
+    if (field) field.value = "";
+    this.render();
+  }
+
   static #onClearCurrencyItem() {
     this.#syncAll();
     this.#draft.currencyItem = "";
@@ -355,6 +366,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const writes = [
       [SETTINGS.THEME, d.theme],
       [SETTINGS.WINDOW_TITLE, d.windowTitle],
+      [SETTINGS.HOST_ACTOR, d.hostActor],
       [SETTINGS.HOST_NAME, d.hostName],
       [SETTINGS.HOST_IMG, d.hostImg],
       [SETTINGS.GREETING, d.greeting],

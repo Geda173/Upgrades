@@ -28,10 +28,10 @@ const regs = registrations(data);
 const STORES = ['UPGRADES', 'CATEGORIES', 'BALANCE', 'HISTORY'];  // hidden data, not user-facing
 t('every SETTINGS key is registered exactly once',
   new Set(regs.map(r => r.key)).size === regs.length);
-t('all 17 settings registered', regs.length === 17);
+t('all 18 settings registered', regs.length === 18);
 
 const userFacing = regs.filter(r => !STORES.includes(r.key));
-t('13 user-facing settings', userFacing.length === 13);
+t('14 user-facing settings', userFacing.length === 14);
 t('none still appear in Foundry\'s own list',
   userFacing.every(r => /config:\s*false/.test(r.body)));
 t('every user-facing setting is reachable in the setup window',

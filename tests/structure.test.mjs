@@ -95,6 +95,11 @@ t('a repeatable upgrade does not declare itself take-once',
 t('the bonus type is hidden on a dice row, where it would be discarded',
   /bonusType\.classList\.toggle\("hidden", isDice\)/.test(read('scripts/apps/upgrade-editor.js')));
 
+t('the merchant token wrap falls through for every other token',
+  /return original\.call\(this, event\)/.test(read('scripts/main.js')));
+t('the merchant token wrap is applied only once',
+  /_upgradesMerchantBound/.test(read('scripts/main.js')));
+
 /* ---------- effect visibility rules ---------- */
 const shopJs = read('scripts/apps/shop-app.js');
 t('teasers never compute effect lines', /u\.hidden && !isGM\) return;/.test(shopJs));

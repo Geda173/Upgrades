@@ -1,7 +1,7 @@
 /**
  * Upgrades — entry point.
  */
-import { MODULE_ID, SETTINGS, registerSettings, getVocabulary, warnIfNoPartyActor } from "./data.js";
+import { MODULE_ID, SETTINGS, registerSettings, getVocabulary, warnIfNoPartyActor, isHostToken } from "./data.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
@@ -42,8 +42,40 @@ Hooks.once("ready", () => {
     await autoDepositOnPickup(item);
   });
 
+  bindMerchantToken();
+
   console.log(`${MODULE_ID} | Ready. Open via the token controls button or game.modules.get("${MODULE_ID}").api.openShop()`);
 });
+
+/**
+ * Double-clicking the merchant's token opens the window.
+ *
+ * Foundry has no hook for this, so the placeable's handler is wrapped. Everything that is not
+ * the merchant falls straight through to the original, and the wrap is skipped entirely when no
+ * merchant is bound — a token that is not the merchant must behave exactly as it always did.
+ *
+ * This deliberately ignores "players can open the window freely": binding a merchant and then
+ * turning that setting off is how a GM makes the window reachable only by visiting them.
+ */
+function bindMerchantToken() {
+  const TokenClass = foundry.canvas?.placeables?.Token ?? globalThis.Token;
+  const proto = TokenClass?.prototype;
+  if (!proto?._onClickLeft2 || proto._upgradesMerchantBound) return;
+
+  const original = proto._onClickLeft2;
+  proto._onClickLeft2 = function (event) {
+    try {
+      if (isHostToken(this)) {
+        ShopApp.show();
+        return;
+      }
+    } catch (err) {
+      console.error(`${MODULE_ID} | Merchant token check failed`, err);
+    }
+    return original.call(this, event);
+  };
+  proto._upgradesMerchantBound = true;
+}
 
 /**
  * Scene controls button (token controls group).

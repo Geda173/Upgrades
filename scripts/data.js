@@ -19,6 +19,7 @@ export const SETTINGS = {
   CURRENCY_ICON: "currencyIcon",
   WINDOW_TITLE: "windowTitle",
   ACTION_VERB: "actionVerb",
+  HOST_ACTOR: "hostActor",
   HOST_NAME: "hostName",
   HOST_IMG: "hostImg",
   GREETING: "greeting"
@@ -155,6 +156,12 @@ export function registerSettings() {
     scope: "world", config: false, type: String, default: "Request",
     onChange: () => refreshWindows()
   });
+  S.register(MODULE_ID, SETTINGS.HOST_ACTOR, {
+    name: "Merchant actor",
+    hint: "Double-clicking this actor's token opens the window, so the party has somewhere to go.",
+    scope: "world", config: false, type: String, default: "",
+    onChange: () => refreshWindows()
+  });
   S.register(MODULE_ID, SETTINGS.HOST_NAME, {
     name: "Host name",
     hint: "The NPC or place presenting the upgrades. E.g. “Elara’s Respite”.",
@@ -205,7 +212,10 @@ function isImagePath(value) {
 
 export function getVocabulary() {
   const icon = game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ICON) ?? "";
-  const hostImg = game.settings.get(MODULE_ID, SETTINGS.HOST_IMG) || "";
+  // A bound merchant actor supplies its own name and portrait, so the same thing is not
+  // configured twice; either field still wins if the GM has filled it in.
+  const hostActor = getHostActor();
+  const hostImg = game.settings.get(MODULE_ID, SETTINGS.HOST_IMG) || hostActor?.img || "";
   return {
     windowTitle: game.settings.get(MODULE_ID, SETTINGS.WINDOW_TITLE) || "Upgrades",
     currencyName: game.settings.get(MODULE_ID, SETTINGS.CURRENCY_NAME) || "Points",
@@ -213,7 +223,7 @@ export function getVocabulary() {
     // Treat the icon as an image if it looks like a path; otherwise it's Font Awesome classes.
     currencyIconIsImg: isImagePath(icon),
     actionVerb: game.settings.get(MODULE_ID, SETTINGS.ACTION_VERB) || "Request",
-    hostName: game.settings.get(MODULE_ID, SETTINGS.HOST_NAME) || "",
+    hostName: game.settings.get(MODULE_ID, SETTINGS.HOST_NAME) || hostActor?.name || "",
     hostImg: hostImg,
     // The portrait may be artwork or a Font Awesome class; the template branches on this.
     hostIsImage: !!hostImg && isImagePath(hostImg),
@@ -300,6 +310,18 @@ export async function upsertUpgrade(data) {
 
 export async function deleteUpgrade(id) {
   return setUpgrades(getUpgrades().filter(u => u.id !== id));
+}
+
+/** The actor standing in for the merchant, if one is bound. */
+export function getHostActor() {
+  const id = game.settings.get(MODULE_ID, SETTINGS.HOST_ACTOR);
+  return id ? (game.actors?.get(id) ?? null) : null;
+}
+
+/** Is this token the merchant? */
+export function isHostToken(token) {
+  const id = game.settings.get(MODULE_ID, SETTINGS.HOST_ACTOR);
+  return !!id && token?.actor?.id === id;
 }
 
 /* ---------- Upgrade paths ---------- */
