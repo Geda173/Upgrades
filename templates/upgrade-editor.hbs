@@ -78,6 +78,31 @@
   {{/if}}
 
   <section class="upg-fieldset">
+    <h3>Mutually exclusive with</h3>
+    {{#if hasExclusiveGroups}}
+    <p class="upg-hint">
+      Put this in a set the party may only take one of. Buying any member rules out the others —
+      refunding it opens them again.
+    </p>
+    <div class="form-group">
+      <label>Exclusive choice</label>
+      <select name="exclusiveGroupId" data-action="rerender">
+        <option value="">— None, this competes with nothing —</option>
+        {{#each exclusiveGroups}}
+        <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    {{#if exclusiveNote}}<p class="upg-hint">{{exclusiveNote}}</p>{{/if}}
+    {{else}}
+    <p class="upg-hint">
+      No exclusive choices defined yet. Add one in the GM console — “Exclusive choices”, next to
+      Sections — and it becomes selectable here.
+    </p>
+    {{/if}}
+  </section>
+
+  <section class="upg-fieldset">
     <h3>Who does this apply to?</h3>
 
     <div class="form-group">

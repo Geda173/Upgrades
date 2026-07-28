@@ -122,6 +122,72 @@ t('a cycle does not hang pathDepth', typeof D.pathDepth(looped[0], looped) === '
 t('a cycle does not hang dependsOn', D.dependsOn(looped[0], 'X', looped) === true);
 t('a cycle does not hang isUnlocked', D.isUnlocked(looped[0], looped) === false);
 
+/* ---------- mutually exclusive choices ---------- */
+// Exclusion is derived from the purchase record, never written down, so a refund has to reopen
+// the alternatives without anything having been told to undo itself.
+const oaths = [
+  { id: 'O1', name: 'Oath of Ash', exclusiveGroupId: 'g1', requires: [], purchases: [] },
+  { id: 'O2', name: 'Oath of Salt', exclusiveGroupId: 'g1', requires: [], purchases: [] },
+  { id: 'O3', name: 'Oath of Bone', exclusiveGroupId: 'g1', requires: [], purchases: [] },
+  { id: 'F1', name: 'Fair Winds', exclusiveGroupId: null, requires: [], purchases: [] }
+];
+reset(oaths);
+store.set('exclusions', [{ id: 'g1', name: 'The Three Oaths', sort: 0 }]);
+
+t('an upgrade in no group has no rivals', D.exclusiveSiblings(oaths[3], oaths).length === 0);
+t('a group member competes with the rest of its group',
+  D.exclusiveSiblings(oaths[0], oaths).map(u => u.id).join() === 'O2,O3');
+t('a member never counts as its own rival',
+  !D.exclusiveSiblings(oaths[0], oaths).some(u => u.id === 'O1'));
+t('nothing is ruled out while the choice is open', oaths.every(u => !D.isExcluded(u, oaths)));
+
+const chosen = oaths.map(u => u.id === 'O2' ? { ...u, purchases: [{ id: 'p' }] } : u);
+t('taking one rules out the others', D.isExcluded(chosen[0], chosen) && D.isExcluded(chosen[2], chosen));
+t('the taken one is not ruled out by itself', !D.isExcluded(chosen[1], chosen));
+t('the rival is named, so a card can say why', D.exclusiveClaim(chosen[0], chosen).name === 'Oath of Salt');
+t('an upgrade outside the group is untouched', !D.isExcluded(chosen[3], chosen));
+t('a claim on an unrelated group does not leak', D.exclusiveClaim(chosen[3], chosen) === null);
+
+// a repeatable member must not rule itself out on its second purchase
+const twice = oaths.map(u => u.id === 'O2'
+  ? { ...u, repeatable: true, purchases: [{ id: 'p1' }, { id: 'p2' }] } : u);
+t('buying a repeatable member again does not rule itself out', !D.isExcluded(twice[1], twice));
+
+// refunding the choice must reopen the rest, with nothing having recorded that it should
+reset(oaths.map(u => u.id === 'O2' ? { ...u, purchases: [] } : u));
+t('refunding the taken one reopens its rivals',
+  D.getUpgrades().every(u => !D.isExcluded(u, D.getUpgrades())));
+
+// a prerequisite inside your own group can never be met — taking it is what closes you off
+reset(oaths);
+t('a same-group upgrade is not offered as a prerequisite',
+  !D.eligiblePrerequisites(oaths[0], oaths).some(u => u.exclusiveGroupId === 'g1'));
+t('an upgrade outside the group is still offered',
+  D.eligiblePrerequisites(oaths[0], oaths).some(u => u.id === 'F1'));
+t('an ungrouped upgrade may still require a grouped one',
+  D.eligiblePrerequisites(oaths[3], oaths).some(u => u.id === 'O1'));
+
+/* the group registry */
+t('groups come back in sort order',
+  (store.set('exclusions', [{ id: 'b', name: 'Second', sort: 1 }, { id: 'a', name: 'First', sort: 0 }]),
+   D.getExclusiveGroups().map(g => g.name).join() === 'First,Second'));
+t('a group can be looked up by id', D.getExclusiveGroup('a').name === 'First');
+t('an unknown group id resolves to nothing', D.getExclusiveGroup('gone') === null);
+t('no id at all resolves to nothing', D.getExclusiveGroup(null) === null);
+
+reset(oaths);   // reset clears the whole store, so the registry is seeded after it
+store.set('exclusions', [{ id: 'g1', name: 'The Three Oaths', sort: 0 }]);
+await D.upsertExclusiveGroup({ id: 'g1', name: 'The Oaths' });
+t('renaming a group keeps its id', D.getExclusiveGroups()[0].id === 'g1' && D.getExclusiveGroups()[0].name === 'The Oaths');
+await D.upsertExclusiveGroup({ name: 'Patrons' });
+t('a new group is appended', D.getExclusiveGroups().length === 2);
+
+await D.deleteExclusiveGroup('g1');
+t('deleting a group removes it', !D.getExclusiveGroups().some(g => g.id === 'g1'));
+t('its upgrades survive', D.getUpgrades().length === 4);
+t('and stop ruling each other out',
+  D.getUpgrades().every(u => u.exclusiveGroupId === null));
+
 /* ---------- resources ---------- */
 // A world that predates multiple resources must keep working with nothing configured.
 store.clear();

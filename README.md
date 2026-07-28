@@ -23,6 +23,11 @@ Supports **PF2e** and **dnd5e** for mechanical effects. The cosmetic layer works
 - **Upgrade paths** — an upgrade can require others. Until they are owned it stays visible but locked,
   *naming what unlocks it* rather than merely refusing. Cards on a path are ordered so a prerequisite
   always appears before what needs it, and are marked as linked. Cycles cannot be authored.
+- **Mutually exclusive choices** — name a set ("The Three Oaths") and assign upgrades to it; the party
+  may take only one. Every card in an open set says so *before* anyone commits, and the ones passed over
+  say which rival closed them. Refunding the choice reopens the rest, because exclusion is read from the
+  purchase record rather than written down. Buying one is checked on the GM's client, so two players
+  cannot take opposite sides of the same choice at once.
 - **Sixteen themes.** *Fantasy:* Abyss, Grove, Ember, Arcane, Frost, Ossuary, Bloodmoon, Golden Hall,
   Mycelium, Tempest, Parchment. *Sci-fi:* Holo, Neon, Starship, Rust, Phosphor. A theme is a palette
   swap, not a layout fork; Parchment and Starship are light, the rest dark.

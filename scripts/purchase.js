@@ -2,7 +2,7 @@
  * Purchase pipeline: player request → GM approval → commit (deduct, mark, announce).
  * Everything in this file runs on the GM client only (dispatched via sockets.js).
  */
-import { TARGET, addPurchase, getUpgrade, isAvailable, unmetRequirements } from "./catalog.js";
+import { TARGET, addPurchase, exclusiveClaim, getUpgrade, isAvailable, unmetRequirements } from "./catalog.js";
 import { addHistory, adjustBalance, canAfford, describeCosts, getBalance, getCosts } from "./economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary } from "./settings.js";
 import { emit, refreshOpenApps } from "./sockets.js";
@@ -21,6 +21,13 @@ export async function handlePurchaseRequest({ upgradeId, userId, choice = null }
   const unmet = unmetRequirements(upgrade);
   if (unmet.length) {
     return notifyUser(userId, `“${upgrade.name}” needs ${unmet.map(u => u.name).join(" and ")} first.`);
+  }
+
+  // Two clients can request opposite sides of the same choice at once, so this is decided here —
+  // on the one client that commits — rather than trusted from whatever the shop last rendered.
+  const claim = exclusiveClaim(upgrade);
+  if (claim) {
+    return notifyUser(userId, `“${upgrade.name}” is ruled out — “${claim.name}” was chosen instead.`);
   }
 
   if (!canAfford(upgrade)) {

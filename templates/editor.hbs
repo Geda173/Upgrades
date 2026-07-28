@@ -38,6 +38,32 @@
     {{/if}}
   </section>
 
+  <section class="upg-categories upg-exclusive-groups">
+    <header>
+      <h3>Exclusive choices</h3>
+      <button type="button" data-action="addExclusiveGroup"><i class="fa-solid fa-plus"></i> New choice</button>
+    </header>
+    {{#if hasExclusiveGroups}}
+    <ul class="upg-category-list">
+      {{#each exclusiveGroups}}
+      <li>
+        <i class="fa-solid fa-code-branch"></i>
+        <span class="upg-category-name">{{name}}</span>
+        {{#if members}}<span class="upg-group-members">{{members}}</span>
+        {{else}}<span class="upg-group-members empty">no upgrades assigned yet</span>{{/if}}
+        <a data-action="editExclusiveGroup" data-id="{{id}}" title="Rename"><i class="fa-solid fa-pen"></i></a>
+        <a data-action="removeExclusiveGroup" data-id="{{id}}" title="Delete"><i class="fa-solid fa-trash"></i></a>
+      </li>
+      {{/each}}
+    </ul>
+    {{else}}
+    <p class="upg-hint">
+      None yet. Make a set of upgrades mutually exclusive — buying one rules out the rest —
+      by adding a choice here, then picking it on each upgrade.
+    </p>
+    {{/if}}
+  </section>
+
   <section class="upg-list">
     <header>
       <h3>Upgrades</h3>
@@ -57,6 +83,7 @@
             {{name}}
             {{#if effectLabel}}<div class="upg-effect-label"><i class="fa-solid fa-bolt"></i> {{effectLabel}}</div>{{/if}}
             {{#if ownedNames}}<div class="upg-effect-label"><i class="fa-solid fa-user-check"></i> {{ownedNames}}</div>{{/if}}
+            {{#if exclusiveLabel}}<div class="upg-effect-label"><i class="fa-solid fa-code-branch"></i> {{exclusiveLabel}}</div>{{/if}}
           </td>
           <td class="upg-target">{{targetLabel}}</td>
           <td>{{cost}}</td>

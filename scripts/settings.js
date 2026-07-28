@@ -14,6 +14,7 @@ export const MODULE_ID = "upgrades";
 export const SETTINGS = {
   UPGRADES: "upgrades",
   CATEGORIES: "categories",
+  EXCLUSIONS: "exclusions",
   BALANCE: "balance",
   BALANCES: "balances",
   CURRENCIES: "currencies",
@@ -84,6 +85,7 @@ export function registerSettings() {
   // Hidden data stores
   S.register(MODULE_ID, SETTINGS.UPGRADES, { scope: "world", config: false, type: Array, default: [] });
   S.register(MODULE_ID, SETTINGS.CATEGORIES, { scope: "world", config: false, type: Array, default: [] });
+  S.register(MODULE_ID, SETTINGS.EXCLUSIONS, { scope: "world", config: false, type: Array, default: [] });
   S.register(MODULE_ID, SETTINGS.BALANCE, { scope: "world", config: false, type: Number, default: 0 });
   S.register(MODULE_ID, SETTINGS.BALANCES, { scope: "world", config: false, type: Object, default: {} });
   S.register(MODULE_ID, SETTINGS.CURRENCIES, { scope: "world", config: false, type: Array, default: [] });

@@ -102,6 +102,31 @@ t('a locked upgrade is refused at the socket entry point, not just in the UI',
 t('locked cards are visually distinct', /\.upg-card\.locked \{/.test(css));
 t('cards on a path carry a rail', /\.upg-card\.on-path \{[^}]*border-left/.test(css));
 
+/* ---------- mutually exclusive choices ---------- */
+// The rival that closed a card off may be bought on another client between render and click,
+// so the decision belongs on the client that commits, not in whatever the shop last drew.
+t('a ruled-out upgrade is refused at the socket entry point, not just in the UI',
+  /exclusiveClaim\(upgrade\)/.test(read('scripts/purchase.js')));
+t('a ruled-out card is visually distinct from a merely locked one',
+  /\.upg-card\.excluded \{/.test(css) && /\.upg-card\.excluded \.upg-art \{/.test(css));
+t('a ruled-out card says which rival closed it',
+  /\{\{#if excludedBy\}\}/.test(read('templates/shop.hbs')));
+// A "???" teaser that wins the choice must not be named by the card it closed.
+t('a hidden rival is not named to players',
+  /claim\.hidden && !isGM\) \? "a choice already made"/.test(read('scripts/apps/shop-app.js')));
+t('an open choice announces itself before anyone commits',
+  /\{\{#if exclusiveLabel\}\}/.test(read('templates/shop.hbs'))
+  && /exclusiveLabel: \(!mystery && group && !claim\)/.test(read('scripts/apps/shop-app.js')));
+t('being ruled out also withdraws the buy button',
+  /affordable: isAvailable\(u\) && isUnlocked\(u, all\) && !claim/.test(read('scripts/apps/shop-app.js')));
+// Buying the prerequisite is exactly what rules the dependant out, so the pair would sit
+// locked forever; the picker must never offer it.
+t('a prerequisite from the same exclusive group cannot be authored',
+  /upgrade\?\.exclusiveGroupId && u\.exclusiveGroupId === upgrade\.exclusiveGroupId/
+    .test(read('scripts/catalog.js')));
+t('the exclusive group is part of the upgrade editor draft',
+  /this\.draft\.exclusiveGroupId = val\("exclusiveGroupId"\)/.test(read('scripts/apps/upgrade-editor.js')));
+
 t('a repeatable upgrade does not declare itself take-once',
   /maxTakable: upgrade\.repeatable/.test(read('scripts/systems/adapter.js')));
 t('the bonus type is hidden on a dice row, where it would be discarded',

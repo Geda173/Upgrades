@@ -26,10 +26,10 @@ function registrations(src) {
 
 const regs = registrations(data);
 // hidden data stores, not user-facing settings
-const STORES = ['UPGRADES', 'CATEGORIES', 'BALANCE', 'BALANCES', 'CURRENCIES', 'HISTORY'];
+const STORES = ['UPGRADES', 'CATEGORIES', 'EXCLUSIONS', 'BALANCE', 'BALANCES', 'CURRENCIES', 'HISTORY'];
 t('every SETTINGS key is registered exactly once',
   new Set(regs.map(r => r.key)).size === regs.length);
-t('all 20 settings registered', regs.length === 20);
+t('all 21 settings registered', regs.length === 21);
 
 const userFacing = regs.filter(r => !STORES.includes(r.key));
 t('14 user-facing settings', userFacing.length === 14);

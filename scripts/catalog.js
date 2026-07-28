@@ -22,6 +22,7 @@ export const TARGET = {
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
  *   hideEffect, categoryId, repeatable, showInEffectsBar, requires: [upgradeId],
+ *   exclusiveGroupId,
  *   choice: { enabled, label, hint },
  *   purchases: [{ id, actorId, actorName, by, at }] }
  *
@@ -47,6 +48,7 @@ function normalizeUpgrade(upgrade) {
     repeatable: false,
     showInEffectsBar: false,
     requires: [],
+    exclusiveGroupId: null,
     choice: { enabled: false, label: "", hint: "" },
     ...upgrade
   };
@@ -86,6 +88,7 @@ export async function upsertUpgrade(data) {
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
     categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false, requires: [],
+    exclusiveGroupId: null,
     choice: { enabled: false, label: "", hint: "" },
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
@@ -127,7 +130,12 @@ export function dependsOn(upgrade, targetId, all = getUpgrades(), seen = new Set
 
 /** Which upgrades may safely be offered as prerequisites of this one. */
 export function eligiblePrerequisites(upgrade, all = getUpgrades()) {
-  return all.filter(u => u.id !== upgrade?.id && !dependsOn(u, upgrade?.id, all));
+  return all.filter(u =>
+    u.id !== upgrade?.id
+    && !dependsOn(u, upgrade?.id, all)
+    // A prerequisite from this upgrade's own exclusive group can never be met: buying it is
+    // exactly what rules this one out, so the pair would sit locked forever.
+    && !(upgrade?.exclusiveGroupId && u.exclusiveGroupId === upgrade.exclusiveGroupId));
 }
 
 /** How deep into a path an upgrade sits; roots are 0. Cycles are clamped rather than hung on. */
@@ -181,6 +189,70 @@ export async function removePurchase(upgradeId, purchaseId = null) {
   if (!upgrade.purchased) { upgrade.purchasedBy = null; upgrade.purchasedAt = null; }
   await setUpgrades(upgrades);
   return removed;
+}
+
+/* ---------- Exclusive groups ---------- */
+
+/**
+ * Sets the party may only ever take one of — "The Three Oaths", "Choose a patron".
+ * Shape: { id, name, sort }. An upgrade names one by id, or null to compete with nothing.
+ *
+ * Exclusion is *derived* from the purchase record rather than written down when the choice is
+ * made. Refunding the taken one therefore reopens the rest with nothing having to remember that
+ * it should — the same reason `purchased` is derived from `purchases`.
+ */
+export function getExclusiveGroups() {
+  const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.EXCLUSIONS)) ?? [];
+  return stored.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+}
+
+export async function setExclusiveGroups(groups) {
+  return game.settings.set(MODULE_ID, SETTINGS.EXCLUSIONS, groups);
+}
+
+export function getExclusiveGroup(id) {
+  return id ? (getExclusiveGroups().find(g => g.id === id) ?? null) : null;
+}
+
+export async function upsertExclusiveGroup(data) {
+  const groups = getExclusiveGroups();
+  const idx = groups.findIndex(g => g.id === data.id);
+  if (idx >= 0) groups[idx] = { ...groups[idx], ...data };
+  else groups.push({
+    id: data.id ?? foundry.utils.randomID(),
+    name: "New choice", sort: groups.length,
+    ...data
+  });
+  return setExclusiveGroups(groups);
+}
+
+/** Deleting a group keeps its upgrades — they simply stop ruling each other out. */
+export async function deleteExclusiveGroup(id) {
+  await setExclusiveGroups(getExclusiveGroups().filter(g => g.id !== id));
+  const upgrades = getUpgrades();
+  let touched = false;
+  for (const u of upgrades) {
+    if (u.exclusiveGroupId === id) { u.exclusiveGroupId = null; touched = true; }
+  }
+  if (touched) await setUpgrades(upgrades);
+}
+
+/** The other upgrades competing for the same slot. */
+export function exclusiveSiblings(upgrade, all = getUpgrades()) {
+  if (!upgrade?.exclusiveGroupId) return [];
+  return all.filter(u => u.id !== upgrade.id && u.exclusiveGroupId === upgrade.exclusiveGroupId);
+}
+
+/**
+ * The sibling that has already been taken, if any — the reason this one is ruled out.
+ * Only siblings count, so buying a repeatable upgrade a second time never rules itself out.
+ */
+export function exclusiveClaim(upgrade, all = getUpgrades()) {
+  return exclusiveSiblings(upgrade, all).find(u => u.purchases?.length) ?? null;
+}
+
+export function isExcluded(upgrade, all = getUpgrades()) {
+  return exclusiveClaim(upgrade, all) !== null;
 }
 
 /* ---------- Categories ---------- */

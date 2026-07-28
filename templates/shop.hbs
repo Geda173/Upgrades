@@ -38,7 +38,7 @@
   {{#if name}}<h2 class="upg-section-head"><i class="{{icon}}"></i> {{name}}</h2>{{/if}}
   <section class="upg-grid">
     {{#each upgrades}}
-    <div class="upg-card {{#if soldOut}}owned{{/if}} {{#if locked}}locked{{/if}} {{#if onPath}}on-path{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless soldOut}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
+    <div class="upg-card {{#if soldOut}}owned{{/if}} {{#if locked}}locked{{/if}} {{#if excluded}}excluded{{/if}} {{#if onPath}}on-path{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless soldOut}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
          data-action="selectCard" data-upgrade-id="{{id}}">
       {{#if soldOut}}<div class="upg-stamp">Owned</div>{{/if}}
       {{#if ownedCount}}<div class="upg-tally">×{{ownedCount}}</div>{{/if}}
@@ -58,6 +58,8 @@
         </ul>
         {{/if}}
         {{#if requiresLabel}}<div class="upg-requires"><i class="fa-solid fa-lock"></i> Requires {{requiresLabel}}</div>{{/if}}
+        {{#if exclusiveLabel}}<div class="upg-exclusive"><i class="fa-solid fa-code-branch"></i> {{exclusiveLabel}} — only one</div>{{/if}}
+        {{#if excludedBy}}<div class="upg-excluded"><i class="fa-solid fa-ban"></i> Ruled out by {{excludedBy}}</div>{{/if}}
         {{#if effectSecret}}<div class="upg-effect-secret">Its gift is not yet known</div>{{/if}}
         {{#if effectSecretForGM}}<div class="upg-effect-secret gm">Hidden from players until owned</div>{{/if}}
         <div class="upg-cost">
@@ -73,6 +75,8 @@
           {{#unless soldOut}}{{#unless mystery}}
             {{#if affordable}}
               <button type="button" class="upg-buy" data-action="buy" data-upgrade-id="{{id}}">{{../../vocab.actionVerb}}</button>
+            {{else if excluded}}
+              <button type="button" class="upg-buy disabled" disabled>Ruled out</button>
             {{else if locked}}
               <button type="button" class="upg-buy disabled" disabled>Locked</button>
             {{else}}

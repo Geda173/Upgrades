@@ -1,7 +1,8 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import { getUpgrades, groupByCategory, isAvailable, isUnlocked, pathDepth, sortByPath, unmetRequirements } from "../catalog.js";
+import { exclusiveClaim, getExclusiveGroup, getUpgrades, groupByCategory, isAvailable, isUnlocked,
+         pathDepth, sortByPath, unmetRequirements } from "../catalog.js";
 import { canAfford, describeCosts, getBalance, getBalances, getCurrencies, hasMultipleCurrencies } from "../economy.js";
 import { MODULE_ID, getVocabulary, isImagePath } from "../settings.js";
 import { requestPurchase } from "../purchase.js";
@@ -68,6 +69,10 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
     const upgrades = visible
       .map(u => {
         const mystery = u.hidden && !isGM;
+        // A mutually exclusive set has to announce itself *before* anyone commits, or the
+        // exclusivity is only ever discovered by the player who finds their card closed.
+        const claim = exclusiveClaim(u, all);
+        const group = getExclusiveGroup(u.exclusiveGroupId);
         return {
           ...u,
           mystery,
@@ -76,11 +81,19 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
           displayImg: mystery ? "" : u.img,
           available: isAvailable(u),
           soldOut: !isAvailable(u),
-          locked: !isUnlocked(u, all),
+          locked: !isUnlocked(u, all) || !!claim,
           // Named so a player can see what to buy first rather than just that they cannot buy this.
           requiresLabel: mystery ? "" : unmetRequirements(u, all).map(r => r.name).join(", "),
           onPath: !mystery && pathDepth(u, all) > 0,
-          affordable: isAvailable(u) && isUnlocked(u, all) && canAfford(u),
+          excluded: !!claim,
+          // The rival may itself be a "???" teaser, and a card that closes off must not be the
+          // thing that names it. Players are told the choice is spent, not what spent it.
+          excludedBy: (!mystery && claim)
+            ? ((claim.hidden && !isGM) ? "a choice already made" : claim.name)
+            : "",
+          // Shown while the choice is still open, so the cost of taking one is visible up front.
+          exclusiveLabel: (!mystery && group && !claim) ? group.name : "",
+          affordable: isAvailable(u) && isUnlocked(u, all) && !claim && canAfford(u),
           // One entry per resource the upgrade is priced in; with a single resource this is
           // exactly the one icon-and-number the card always showed.
           costs: mystery ? [] : describeCosts(u).map(c => ({

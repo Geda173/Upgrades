@@ -1,7 +1,9 @@
 /**
  * GM console: upgrade CRUD, currency ledger, history. (ApplicationV2 + Handlebars)
  */
-import { deleteCategory, deleteUpgrade, getCategories, getUpgrade, getUpgrades, groupByCategory, moveCategory, removePurchase, upsertCategory, upsertUpgrade } from "../catalog.js";
+import { deleteCategory, deleteExclusiveGroup, deleteUpgrade, getCategories, getExclusiveGroups,
+         getUpgrade, getUpgrades, groupByCategory, moveCategory, removePurchase, upsertCategory,
+         upsertExclusiveGroup, upsertUpgrade } from "../catalog.js";
 import { adjustBalance, describeCosts, getBalance, getBalances, getCosts, getCurrencies, getCurrency, getHistory, hasMultipleCurrencies } from "../economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary, isImagePath } from "../settings.js";
 import { emit, refreshOpenApps } from "../sockets.js";
@@ -34,7 +36,10 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
       editCategory: EditorApp.#onEditCategory,
       removeCategory: EditorApp.#onRemoveCategory,
       moveCategoryUp: EditorApp.#onMoveCategoryUp,
-      moveCategoryDown: EditorApp.#onMoveCategoryDown
+      moveCategoryDown: EditorApp.#onMoveCategoryDown,
+      addExclusiveGroup: EditorApp.#onAddExclusiveGroup,
+      editExclusiveGroup: EditorApp.#onEditExclusiveGroup,
+      removeExclusiveGroup: EditorApp.#onRemoveExclusiveGroup
     }
   };
 
@@ -51,6 +56,9 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
 
   async _prepareContext(_options) {
     const vocab = getVocabulary();
+    const upgrades = getUpgrades();
+    const exclusiveGroups = getExclusiveGroups();
+    const groupNames = new Map(exclusiveGroups.map(g => [g.id, g.name]));
     return {
       vocab,
       balance: getBalance(),
@@ -61,13 +69,21 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
       hasCurrencyItem: !!game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ITEM),
       categories: getCategories(),
       hasCategories: getCategories().length > 0,
+      // Each group carries its members, so the GM can see what actually competes before
+      // deleting the thing that makes them compete.
+      exclusiveGroups: exclusiveGroups.map(g => ({
+        ...g,
+        members: upgrades.filter(u => u.exclusiveGroupId === g.id).map(u => u.name).join(", ")
+      })),
+      hasExclusiveGroups: exclusiveGroups.length > 0,
       groups: groupByCategory(
-        getUpgrades()
+        upgrades
           .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
           .map(u => ({
             ...u,
             targetLabel: describeTarget(u),
             effectLabel: EditorApp.#effectLabel(u),
+            exclusiveLabel: groupNames.get(u.exclusiveGroupId) ?? "",
             ownedCount: u.purchases?.length ?? 0,
             isRepeatable: !!u.repeatable,
             ownedNames: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", ")
@@ -275,12 +291,50 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     EditorApp.#afterMutation();
   }
 
-  static async #promptName(title, initial) {
+  static async #onAddExclusiveGroup() {
+    const name = await EditorApp.#promptName("New exclusive choice", "", "The Three Oaths");
+    if (!name) return;
+    await upsertExclusiveGroup({ name });
+    EditorApp.#afterMutation();
+  }
+
+  static async #onEditExclusiveGroup(_event, target) {
+    const group = getExclusiveGroups().find(g => g.id === target.dataset.id);
+    if (!group) return;
+    const name = await EditorApp.#promptName("Rename exclusive choice", group.name);
+    if (!name) return;
+    await upsertExclusiveGroup({ id: group.id, name });
+    EditorApp.#afterMutation();
+  }
+
+  static async #onRemoveExclusiveGroup(_event, target) {
+    const group = getExclusiveGroups().find(g => g.id === target.dataset.id);
+    if (!group) return;
+    const inside = getUpgrades().filter(u => u.exclusiveGroupId === group.id);
+    const taken = inside.filter(u => u.purchases?.length).map(u => u.name);
+    const ok = await DialogV2.confirm({
+      window: { title: "Delete exclusive choice" },
+      content: `<p>Delete <strong>${foundry.utils.escapeHTML(group.name)}</strong>?</p>`
+        + (inside.length
+            ? `<p>Its ${inside.length} upgrade(s) are kept — they simply stop ruling each other out`
+              + (taken.length
+                  ? `, so the ones passed over become buyable again alongside `
+                    + `${foundry.utils.escapeHTML(taken.join(", "))}.`
+                  : `.`)
+              + `</p>`
+            : "")
+    });
+    if (!ok) return;
+    await deleteExclusiveGroup(group.id);
+    EditorApp.#afterMutation();
+  }
+
+  static async #promptName(title, initial, placeholder = "Lighthouse") {
     const result = await DialogV2.prompt({
       window: { title },
       content: `<div class="form-group"><label>Name</label>
         <input type="text" name="name" value="${foundry.utils.escapeHTML(initial ?? "")}"
-               placeholder="Lighthouse" autofocus></div>`,
+               placeholder="${foundry.utils.escapeHTML(placeholder)}" autofocus></div>`,
       ok: { label: "Save", callback: (_e, button) => button.form.elements.name.value.trim() }
     });
     return result || null;

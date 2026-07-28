@@ -62,7 +62,15 @@ const shopCards = [
       ownedCount: 3, ownedBy: 'Ander Raventail, Syllith Azmarun' },
     { id: 'd', displayName: 'Secret Bloom', displayFlavor: 'Sealed.', displayImg: '', cost: 4,
       purchased: false, mystery: false, affordable: true, selected: false,
-      targetLabel: null, effectLines: [], effectSecret: true }
+      targetLabel: null, effectLines: [], effectSecret: true },
+    { id: 'g', displayName: 'Oath of Ash', displayFlavor: 'The first vow.', displayImg: '', cost: 5,
+      purchased: false, soldOut: false, available: true, mystery: false, affordable: false,
+      locked: true, excluded: true, excludedBy: 'Oath of Salt', exclusiveLabel: '',
+      selected: false, targetLabel: null, effectLines: [], ownedCount: 0 },
+    { id: 'h', displayName: 'Oath of Bone', displayFlavor: 'Still open.', displayImg: '', cost: 5,
+      purchased: false, soldOut: false, available: true, mystery: false, affordable: true,
+      locked: false, excluded: false, excludedBy: '', exclusiveLabel: 'The Three Oaths',
+      selected: false, targetLabel: null, effectLines: [], ownedCount: 0 }
 ];
 
 const shop = Handlebars.compile(tpl('shop.hbs'))({
@@ -86,9 +94,13 @@ const editor = Handlebars.compile(tpl('editor.hbs'))({
   vocab, balance: 7,
   categories: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation' }],
   hasCategories: true,
+  exclusiveGroups: [{ id: 'g1', name: 'The Three Oaths', members: 'Oath of Ash, Oath of Salt' },
+                    { id: 'g2', name: 'Patrons', members: '' }],
+  hasExclusiveGroups: true,
   groups: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation', upgrades: [
     { id: 'a', name: 'Nightbloom', img: '', cost: 3, purchased: true, purchasedBy: 'Pat',
       hidden: false, targetLabel: 'Galadon Stormwhisper', ownedCount: 1,
+      exclusiveLabel: 'The Three Oaths',
       effectLabel: '1d8[cold] all weapon damage' },
     { id: 'e', name: 'Healing Draught', img: '', cost: 1, purchased: true, isRepeatable: true,
       ownedCount: 3, ownedNames: 'Ander Raventail', hidden: false,
@@ -112,6 +124,10 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   hasPrerequisiteCandidates: true,
   prerequisites: [{ id: 'p1', name: 'Activate Magelight', isSelected: true },
                   { id: 'p2', name: 'Talisman Permanency', isSelected: false }],
+  hasExclusiveGroups: true,
+  exclusiveGroups: [{ id: 'g1', name: 'The Three Oaths', isSelected: true },
+                    { id: 'g2', name: 'Patrons', isSelected: false }],
+  exclusiveNote: 'Buying this rules out Oath of Salt — and any of them rules out this one.',
   targetOptions: [{ value: 'party', label: 'The whole party', isSelected: false },
                   { value: 'buyer', label: 'Whoever buys it', isSelected: false },
                   { value: 'actor', label: 'One specific character', isSelected: true }],
@@ -167,7 +183,23 @@ t('shop: a multi-resource price shows every component',
   (() => { const c = cards.find(x => x.includes('Nightbloom'));
            return !!c && (c.match(/upg-price/g) || []).length === 2; })());
 t('shop: section heading rendered', shop.includes('upg-section-head') && shop.includes('Lighthouse'));
-t('shop: every card still rendered across sections', cards.length === 6);
+t('shop: every card still rendered across sections', cards.length === 8);
+(() => {
+  const ruled = cards.find(c => c.includes('Oath of Ash'));
+  const open = cards.find(c => c.includes('Oath of Bone'));
+  t('shop: a ruled-out card is marked as such, not merely locked',
+    !!ruled && ruled.includes('excluded'));
+  t('shop: a ruled-out card names the rival that closed it',
+    !!ruled && ruled.includes('Ruled out by Oath of Salt'));
+  t('shop: a ruled-out card offers no purchase button',
+    !!ruled && ruled.includes('>Ruled out<') && !/data-action="buy"/.test(ruled));
+  // The exclusivity has to be visible while the choice is still open, or the only player who
+  // learns about it is the one who finds their card closed.
+  t('shop: an open choice announces the set it belongs to',
+    !!open && open.includes('The Three Oaths — only one'));
+  t('shop: an open choice can still be bought',
+    !!open && /data-action="buy"/.test(open) && !open.includes('Ruled out'));
+})();
 (() => {
   const lockedCard = cards.find(c => c.includes('Connect to Lighthouse'));
   t('shop: a locked card is marked locked', !!lockedCard && lockedCard.includes('locked'));
@@ -191,6 +223,13 @@ t('editor: repeatable upgrade shows a purchase tally', editor.includes('Bought \
 t('editor: repeatable upgrade lists its owners', editor.includes('Ander Raventail'));
 t('editor: section heading row rendered', editor.includes('upg-group-row') && editor.includes('Lighthouse'));
 t('editor: section management list rendered', editor.includes('upg-category-list'));
+t('editor: exclusive choices are managed alongside sections',
+  editor.includes('upg-exclusive-groups') && editor.includes('The Three Oaths'));
+t('editor: a choice lists what is competing in it', editor.includes('Oath of Ash, Oath of Salt'));
+t('editor: an empty choice says so rather than looking configured',
+  /upg-group-members empty/.test(editor));
+t('editor: the upgrade table shows which choice an upgrade belongs to',
+  /fa-code-branch[\s\S]{0,40}The Three Oaths/.test(editor));
 t('editor: currency name reaches the history loop', editor.includes('Sprigs +5'));
 t('editor: target column', editor.includes('Galadon Stormwhisper'));
 t('editor: effect label', editor.includes('1d8[cold] all weapon damage'));
@@ -213,6 +252,14 @@ t('upgrade-editor: prerequisite picker lists candidates',
   upgradeEditor.includes('name="requires"') && upgradeEditor.includes('Talisman Permanency'));
 t('upgrade-editor: an existing prerequisite is ticked',
   /value="p1"[^>]*checked/.test(upgradeEditor));
+t('upgrade-editor: offers an exclusive-choice picker',
+  upgradeEditor.includes('name="exclusiveGroupId"') && upgradeEditor.includes('Patrons'));
+t('upgrade-editor: the current exclusive choice is marked selected',
+  /name="exclusiveGroupId"[\s\S]*?value="g1" selected/.test(upgradeEditor));
+t('upgrade-editor: opting out of every choice stays available',
+  /<option value="">— None/.test(upgradeEditor));
+t('upgrade-editor: names what the choice would rule out',
+  upgradeEditor.includes('rules out Oath of Salt'));
 t('upgrade-editor: offers the buyer-choice prompt', upgradeEditor.includes('name="choiceEnabled"'));
 t('upgrade-editor: the prompt question is editable when enabled',
   upgradeEditor.includes('value="Which spell?"'));
