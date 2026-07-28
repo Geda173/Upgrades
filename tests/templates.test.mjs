@@ -39,9 +39,7 @@ const vocab = {
   hostIconClass: 'fa-solid fa-seedling', greeting: 'The soil remembers.'
 };
 
-const shop = Handlebars.compile(tpl('shop.hbs'))({
-  isGM: true, balance: 7, vocab,
-  upgrades: [
+const shopCards = [
     { id: 'a', displayName: 'Nightbloom', displayFlavor: 'Planted in memory.', displayImg: '',
       cost: 3, purchased: false, mystery: false, affordable: true, selected: true,
       targetLabel: 'Galadon Stormwhisper',
@@ -55,7 +53,16 @@ const shop = Handlebars.compile(tpl('shop.hbs'))({
     { id: 'd', displayName: 'Secret Bloom', displayFlavor: 'Sealed.', displayImg: '', cost: 4,
       purchased: false, mystery: false, affordable: true, selected: false,
       targetLabel: null, effectLines: [], effectSecret: true }
+];
+
+const shop = Handlebars.compile(tpl('shop.hbs'))({
+  isGM: true, balance: 7, vocab,
+  upgrades: shopCards,
+  groups: [
+    { id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation', upgrades: shopCards.slice(0, 2) },
+    { id: null, name: 'Other', icon: 'fa-solid fa-folder-open', upgrades: shopCards.slice(2) }
   ],
+  hasSections: true,
   selected: { name: 'Nightbloom', img: '', flavor: 'Planted in memory.',
               targetLabel: 'Galadon Stormwhisper',
               effectLines: ['All weapon damage +1d4 cold', 'Armor Class +1'] },
@@ -64,9 +71,12 @@ const shop = Handlebars.compile(tpl('shop.hbs'))({
 
 const editor = Handlebars.compile(tpl('editor.hbs'))({
   vocab, balance: 7,
-  upgrades: [{ id: 'a', name: 'Nightbloom', img: '', cost: 3, purchased: true, purchasedBy: 'Pat',
-               hidden: false, targetLabel: 'Galadon Stormwhisper',
-               effectLabel: '1d8[cold] all weapon damage' }],
+  categories: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation' }],
+  hasCategories: true,
+  groups: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation', upgrades: [
+    { id: 'a', name: 'Nightbloom', img: '', cost: 3, purchased: true, purchasedBy: 'Pat',
+      hidden: false, targetLabel: 'Galadon Stormwhisper',
+      effectLabel: '1d8[cold] all weapon damage' }] }],
   history: [{ when: 'today', isPurchase: true, name: 'Nightbloom', cost: 3, by: 'Pat' },
             { when: 'today', isPurchase: false, deltaStr: '+5', before: 2, after: 7,
               reason: 'Cleared the grove' }]
@@ -76,6 +86,8 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   upgrade: { name: 'Nightbloom', cost: 3, img: '', flavor: '', description: '', hidden: false,
              target: 'actor', effectMode: 'build', effectUuid: '', purchased: true, hideEffect: true },
   vocab, saveLabel: 'Save', systemId: 'dnd5e', builderSupported: true, isPf2e: false,
+  hasCategories: true,
+  categories: [{ id: 'c1', name: 'Lighthouse', isSelected: true }],
   targetOptions: [{ value: 'party', label: 'The whole party', isSelected: false },
                   { value: 'actor', label: 'One specific character', isSelected: true }],
   isActorTarget: true, hasTargetActor: true,
@@ -100,8 +112,9 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
 /* ---------- assertions: these catch ../ depth mistakes, which fail silently ---------- */
 // Bound the split to the card grid first. Splitting the whole document leaves the LAST card's
 // chunk running on into the detail pane, which made a correct template look like a leak.
-const grid = shop.slice(shop.indexOf('<section class="upg-grid">'), shop.indexOf('</section>'));
-const cards = grid.split('<div class="upg-card').slice(1);
+// Cards now live in one grid per section; collect across all of them, each bounded to its own grid.
+const cards = [...shop.matchAll(/<section class="upg-grid">([\s\S]*?)<\/section>/g)]
+  .flatMap(m => m[1].split('<div class="upg-card').slice(1));
 const teaser = cards.find(c => c.includes('mystery'));
 const normal = cards.find(c => c.includes('Nightbloom'));
 const secret = cards.find(c => c.includes('Secret Bloom'));
@@ -117,6 +130,11 @@ t('shop: a teaser card leaks nothing', !!teaser && !teaser.includes('upg-effects
 t('shop: a secret card says so instead of looking cosmetic',
   !!secret && secret.includes('upg-effect-secret') && !secret.includes('upg-effects'));
 
+t('shop: section heading rendered', shop.includes('upg-section-head') && shop.includes('Lighthouse'));
+t('shop: every card still rendered across sections', cards.length === 4);
+
+t('editor: section heading row rendered', editor.includes('upg-group-row') && editor.includes('Lighthouse'));
+t('editor: section management list rendered', editor.includes('upg-category-list'));
 t('editor: currency name reaches the history loop', editor.includes('Sprigs +5'));
 t('editor: target column', editor.includes('Galadon Stormwhisper'));
 t('editor: effect label', editor.includes('1d8[cold] all weapon damage'));
@@ -129,6 +147,8 @@ t('upgrade-editor: dnd5e does NOT get the pf2e bonus-type dropdown',
 t('upgrade-editor: target actor marked selected', upgradeEditor.includes('Galadon Stormwhisper'));
 t('upgrade-editor: cost label uses the configured currency',
   upgradeEditor.includes('Cost (Sprigs)'));
+t('upgrade-editor: section dropdown marks the current section',
+  /name="categoryId"[\s\S]*?value="c1" selected/.test(upgradeEditor));
 t('upgrade-editor: hide-mechanics checkbox is checked when set',
   /name="hideEffect"[^>]*checked/.test(upgradeEditor));
 

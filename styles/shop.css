@@ -634,3 +634,28 @@
 }
 .upg-effect-secret.gm { color: var(--upg-warn); font-style: normal; }
 .upg-row .upg-bonus-type { flex: 0 0 150px; }
+
+/* ---------- sections ---------- */
+.upg-section-head {
+  margin: 18px 26px 0; padding-bottom: 6px; border: none;
+  border-bottom: 1px solid var(--upg-line-soft);
+  color: var(--upg-gold-bright); font-variant: small-caps; letter-spacing: 0.07em;
+  font-size: 16px; display: flex; align-items: center; gap: 9px;
+}
+.upg-section-head + .upg-grid { padding-top: 12px; }
+.upg-categories header { display: flex; align-items: center; justify-content: space-between; }
+.upg-categories h3 { border-bottom: 1px solid var(--upg-line); color: var(--upg-gold-bright); font-variant: small-caps; }
+.upg-category-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.upg-category-list li {
+  display: flex; align-items: center; gap: 9px; padding: 4px 8px;
+  border: 1px solid var(--upg-line-soft); border-radius: 5px; font-size: 13px;
+}
+.upg-category-list li > i { color: var(--upg-accent); }
+.upg-category-name { flex: 1; }
+.upg-category-list a { color: var(--upg-ink-dim); }
+.upg-category-list a:hover { color: var(--upg-gold-bright); }
+.upg-group-row td {
+  padding-top: 12px !important; color: var(--upg-gold-bright);
+  font-variant: small-caps; letter-spacing: 0.06em; font-size: 13px;
+  border-bottom: 1px solid var(--upg-line-soft);
+}

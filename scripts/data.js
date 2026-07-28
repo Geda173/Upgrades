@@ -6,6 +6,7 @@ export const MODULE_ID = "upgrades";
 
 export const SETTINGS = {
   UPGRADES: "upgrades",
+  CATEGORIES: "categories",
   BALANCE: "balance",
   HISTORY: "history",
   REQUIRE_APPROVAL: "requireApproval",
@@ -75,6 +76,7 @@ export function registerSettings() {
 
   // Hidden data stores
   S.register(MODULE_ID, SETTINGS.UPGRADES, { scope: "world", config: false, type: Array, default: [] });
+  S.register(MODULE_ID, SETTINGS.CATEGORIES, { scope: "world", config: false, type: Array, default: [] });
   S.register(MODULE_ID, SETTINGS.BALANCE, { scope: "world", config: false, type: Number, default: 0 });
   S.register(MODULE_ID, SETTINGS.HISTORY, { scope: "world", config: false, type: Array, default: [] });
 
@@ -223,7 +225,7 @@ export function getVocabulary() {
  * { id, name, cost, img, flavor, description (HTML), hidden, purchased,
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
- *   hideEffect }
+ *   hideEffect, categoryId }
  *
  * target: "party" → effect applies to every member of the party actor
  *         "actor" → effect applies only to targetActorId
@@ -240,6 +242,7 @@ function normalizeUpgrade(upgrade) {
     targetActorId: null,
     effectBuild: { rows: [] },
     hideEffect: false,
+    categoryId: null,
     ...upgrade
   };
   // Upgrades authored before effect modes existed only ever had a UUID.
@@ -265,6 +268,7 @@ export async function upsertUpgrade(data) {
     name: "New Upgrade", cost: 1, img: "", flavor: "", description: "",
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
+    categoryId: null,
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
   });
@@ -273,6 +277,71 @@ export async function upsertUpgrade(data) {
 
 export async function deleteUpgrade(id) {
   return setUpgrades(getUpgrades().filter(u => u.id !== id));
+}
+
+/* ---------- Categories ---------- */
+
+/**
+ * Sections the GM groups upgrades into ("Lighthouse", "Runes and Enchanting").
+ * Shape: { id, name, icon, sort }. Upgrades reference one by id, or null for uncategorised.
+ */
+export function getCategories() {
+  const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.CATEGORIES)) ?? [];
+  return stored.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+}
+
+export async function setCategories(categories) {
+  return game.settings.set(MODULE_ID, SETTINGS.CATEGORIES, categories);
+}
+
+export async function upsertCategory(data) {
+  const categories = getCategories();
+  const idx = categories.findIndex(c => c.id === data.id);
+  if (idx >= 0) categories[idx] = { ...categories[idx], ...data };
+  else categories.push({
+    id: data.id ?? foundry.utils.randomID(),
+    name: "New section", icon: "fa-solid fa-folder", sort: categories.length,
+    ...data
+  });
+  return setCategories(categories);
+}
+
+/** Deleting a section keeps its upgrades — they fall back to uncategorised. */
+export async function deleteCategory(id) {
+  await setCategories(getCategories().filter(c => c.id !== id));
+  const upgrades = getUpgrades();
+  let touched = false;
+  for (const u of upgrades) {
+    if (u.categoryId === id) { u.categoryId = null; touched = true; }
+  }
+  if (touched) await setUpgrades(upgrades);
+}
+
+/** Swap a section with its neighbour. */
+export async function moveCategory(id, delta) {
+  const categories = getCategories();
+  const i = categories.findIndex(c => c.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= categories.length) return;
+  [categories[i], categories[j]] = [categories[j], categories[i]];
+  categories.forEach((c, n) => { c.sort = n; });
+  return setCategories(categories);
+}
+
+/**
+ * Upgrades arranged into their sections, for display.
+ * Uncategorised upgrades come last, and only carry a heading when sections exist at all —
+ * a world that never defines one should look exactly as it did before.
+ */
+export function groupByCategory(upgrades) {
+  const categories = getCategories();
+  if (!categories.length) return [{ id: null, name: null, icon: null, upgrades }];
+
+  const groups = categories.map(c => ({ ...c, upgrades: upgrades.filter(u => u.categoryId === c.id) }));
+  const known = new Set(categories.map(c => c.id));
+  const loose = upgrades.filter(u => !u.categoryId || !known.has(u.categoryId));
+  if (loose.length) groups.push({ id: null, name: "Other", icon: "fa-solid fa-folder-open", upgrades: loose });
+  return groups.filter(g => g.upgrades.length);
 }
 
 /* ---------- Currency pool ---------- */

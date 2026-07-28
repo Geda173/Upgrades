@@ -1,7 +1,7 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import { MODULE_ID, getUpgrades, getBalance, getVocabulary } from "../data.js";
+import { MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
@@ -84,10 +84,16 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const selected = upgrades.find(u => u.selected && !u.mystery) ?? null;
 
+    // Sections are only rendered as headings once the GM defines some; a world with none
+    // still gets exactly the flat grid it had before.
+    const groups = groupByCategory(upgrades);
+
     return {
       isGM,
       balance,
       upgrades,
+      groups,
+      hasSections: groups.some(g => g.name),
       selected,
       selectedDescription: selected ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(selected.description ?? "") : null,
       vocab: getVocabulary()

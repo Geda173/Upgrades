@@ -10,6 +10,29 @@
     <button type="button" data-action="openSettings"><i class="fa-solid fa-sliders"></i> Setup</button>
   </section>
 
+  <section class="upg-categories">
+    <header>
+      <h3>Sections</h3>
+      <button type="button" data-action="addCategory"><i class="fa-solid fa-plus"></i> New section</button>
+    </header>
+    {{#if hasCategories}}
+    <ul class="upg-category-list">
+      {{#each categories}}
+      <li>
+        <i class="{{icon}}"></i>
+        <span class="upg-category-name">{{name}}</span>
+        <a data-action="moveCategoryUp" data-id="{{id}}" title="Move up"><i class="fa-solid fa-chevron-up"></i></a>
+        <a data-action="moveCategoryDown" data-id="{{id}}" title="Move down"><i class="fa-solid fa-chevron-down"></i></a>
+        <a data-action="editCategory" data-id="{{id}}" title="Rename"><i class="fa-solid fa-pen"></i></a>
+        <a data-action="removeCategory" data-id="{{id}}" title="Delete"><i class="fa-solid fa-trash"></i></a>
+      </li>
+      {{/each}}
+    </ul>
+    {{else}}
+    <p class="upg-hint">No sections yet. Upgrades show as one flat list until you add some.</p>
+    {{/if}}
+  </section>
+
   <section class="upg-list">
     <header>
       <h3>Upgrades</h3>
@@ -18,6 +41,10 @@
     <table>
       <thead><tr><th></th><th>Name</th><th>Applies to</th><th>Cost</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
+        {{#each groups}}
+        {{#if name}}
+        <tr class="upg-group-row"><td colspan="6"><i class="{{icon}}"></i> {{name}}</td></tr>
+        {{/if}}
         {{#each upgrades}}
         <tr class="{{#if purchased}}owned{{/if}} {{#if hidden}}hidden-row{{/if}}">
           <td class="upg-thumb">{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fa-solid fa-wand-sparkles"></i>{{/if}}</td>
@@ -39,6 +66,7 @@
             <a data-action="deleteUpgrade" data-id="{{id}}" title="Delete"><i class="fa-solid fa-trash"></i></a>
           </td>
         </tr>
+        {{/each}}
         {{else}}
         <tr><td colspan="6" class="upg-empty">No upgrades yet — create your first one.</td></tr>
         {{/each}}

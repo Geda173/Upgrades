@@ -25,6 +25,8 @@
   </nav>
   {{/if}}
 
+  {{#each groups}}
+  {{#if name}}<h2 class="upg-section-head"><i class="{{icon}}"></i> {{name}}</h2>{{/if}}
   <section class="upg-grid">
     {{#each upgrades}}
     <div class="upg-card {{#if purchased}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless purchased}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
@@ -46,13 +48,13 @@
         {{#if effectSecretForGM}}<div class="upg-effect-secret gm">Hidden from players until owned</div>{{/if}}
         <div class="upg-cost">
           {{#unless mystery}}
-            {{#if ../vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{../vocab.currencyIcon}}" alt="">
-            {{else}}<i class="{{../vocab.currencyIcon}}"></i>{{/if}}
+            {{#if ../../vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{../../vocab.currencyIcon}}" alt="">
+            {{else}}<i class="{{../../vocab.currencyIcon}}"></i>{{/if}}
             {{cost}}
           {{else}}—{{/unless}}
           {{#unless purchased}}{{#unless mystery}}
             {{#if affordable}}
-              <button type="button" class="upg-buy" data-action="buy" data-upgrade-id="{{id}}">{{../vocab.actionVerb}}</button>
+              <button type="button" class="upg-buy" data-action="buy" data-upgrade-id="{{id}}">{{../../vocab.actionVerb}}</button>
             {{else}}
               <button type="button" class="upg-buy disabled" disabled>Too costly</button>
             {{/if}}
@@ -60,10 +62,12 @@
         </div>
       </div>
     </div>
-    {{else}}
-    <p class="upg-empty">Nothing on offer yet… (GM: add upgrades via “Manage”.)</p>
     {{/each}}
   </section>
+  {{/each}}
+  {{#unless groups.length}}
+  <p class="upg-empty">Nothing on offer yet… (GM: add upgrades via “Manage”.)</p>
+  {{/unless}}
 
   {{#if selected}}
   <section class="upg-detail">

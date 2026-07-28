@@ -4,7 +4,7 @@
  * Deliberately not a DialogV2: it needs drag & drop, a variable number of bonus rows,
  * and a form that reshapes itself as the GM picks a target or an effect mode.
  */
-import { MODULE_ID, SETTINGS, TARGET, getVocabulary } from "../data.js";
+import { MODULE_ID, SETTINGS, TARGET, getVocabulary, getCategories } from "../data.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
@@ -67,6 +67,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       description: u.description ?? "",
       hidden: !!u.hidden,
       hideEffect: !!u.hideEffect,
+      categoryId: u.categoryId ?? "",
       purchased: !!u.purchased,
       target: u.target ?? TARGET.PARTY,
       targetActorId: u.targetActorId ?? "",
@@ -88,6 +89,8 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       upgrade: draft,
       vocab,
       saveLabel: this.isNew ? "Create" : "Save",
+      categories: getCategories().map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
+      hasCategories: getCategories().length > 0,
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
       isPf2e: isPf2e(),
@@ -201,6 +204,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.description = val("description");
     this.draft.hidden = !!get("hidden")?.checked;
     this.draft.hideEffect = !!get("hideEffect")?.checked;
+    this.draft.categoryId = val("categoryId");
     this.draft.target = val("target") || TARGET.PARTY;
     this.draft.targetActorId = val("targetActorId");
     this.draft.effectUuid = val("effectUuid").trim();
@@ -331,6 +335,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       description: d.description,
       hidden: d.hidden,
       hideEffect: d.hideEffect,
+      categoryId: d.categoryId || null,
       target: d.target,
       targetActorId: d.target === TARGET.ACTOR ? d.targetActorId : null,
       effectMode: d.effectMode,

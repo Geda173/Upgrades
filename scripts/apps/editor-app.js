@@ -3,7 +3,8 @@
  */
 import {
   MODULE_ID, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
-  getBalance, adjustBalance, getHistory, getVocabulary
+  getBalance, adjustBalance, getHistory, getVocabulary,
+  getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory
 } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
@@ -29,7 +30,12 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       refund: EditorApp.#onRefund,
       adjustBalance: EditorApp.#onAdjustBalance,
       resync: EditorApp.#onResync,
-      openSettings: EditorApp.#onOpenSettings
+      openSettings: EditorApp.#onOpenSettings,
+      addCategory: EditorApp.#onAddCategory,
+      editCategory: EditorApp.#onEditCategory,
+      removeCategory: EditorApp.#onRemoveCategory,
+      moveCategoryUp: EditorApp.#onMoveCategoryUp,
+      moveCategoryDown: EditorApp.#onMoveCategoryDown
     }
   };
 
@@ -49,13 +55,17 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       vocab,
       balance: getBalance(),
-      upgrades: getUpgrades()
-        .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
-        .map(u => ({
-          ...u,
-          targetLabel: describeTarget(u),
-          effectLabel: EditorApp.#effectLabel(u)
-        })),
+      categories: getCategories(),
+      hasCategories: getCategories().length > 0,
+      groups: groupByCategory(
+        getUpgrades()
+          .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+          .map(u => ({
+            ...u,
+            targetLabel: describeTarget(u),
+            effectLabel: EditorApp.#effectLabel(u)
+          }))
+      ),
       history: getHistory().slice(-25).reverse().map(h => ({
         ...h,
         when: new Date(h.ts).toLocaleString(),
@@ -174,6 +184,57 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onOpenSettings() {
     const { SettingsApp } = await import("./settings-app.js");
     SettingsApp.show();
+  }
+
+  static async #onAddCategory() {
+    const name = await EditorApp.#promptName("New section", "");
+    if (!name) return;
+    await upsertCategory({ name });
+    EditorApp.#afterMutation();
+  }
+
+  static async #onEditCategory(_event, target) {
+    const category = getCategories().find(c => c.id === target.dataset.id);
+    if (!category) return;
+    const name = await EditorApp.#promptName("Rename section", category.name);
+    if (!name) return;
+    await upsertCategory({ id: category.id, name });
+    EditorApp.#afterMutation();
+  }
+
+  static async #onRemoveCategory(_event, target) {
+    const category = getCategories().find(c => c.id === target.dataset.id);
+    if (!category) return;
+    const inside = getUpgrades().filter(u => u.categoryId === category.id).length;
+    const ok = await DialogV2.confirm({
+      window: { title: "Delete section" },
+      content: `<p>Delete the section <strong>${foundry.utils.escapeHTML(category.name)}</strong>?</p>`
+        + (inside ? `<p>Its ${inside} upgrade(s) are kept — they simply become uncategorised.</p>` : "")
+    });
+    if (!ok) return;
+    await deleteCategory(category.id);
+    EditorApp.#afterMutation();
+  }
+
+  static async #onMoveCategoryUp(_event, target) {
+    await moveCategory(target.dataset.id, -1);
+    EditorApp.#afterMutation();
+  }
+
+  static async #onMoveCategoryDown(_event, target) {
+    await moveCategory(target.dataset.id, 1);
+    EditorApp.#afterMutation();
+  }
+
+  static async #promptName(title, initial) {
+    const result = await DialogV2.prompt({
+      window: { title },
+      content: `<div class="form-group"><label>Name</label>
+        <input type="text" name="name" value="${foundry.utils.escapeHTML(initial ?? "")}"
+               placeholder="Lighthouse" autofocus></div>`,
+      ok: { label: "Save", callback: (_e, button) => button.form.elements.name.value.trim() }
+    });
+    return result || null;
   }
 
   static async #onResync() {
