@@ -67,9 +67,11 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** Short "what does it do" cell for the upgrade table. */
   static #effectLabel(upgrade) {
-    if (upgrade.effectMode === EFFECT_MODE.BUILD) return describeBuild(upgrade.effectBuild?.rows) || "empty bonus";
-    if (upgrade.effectMode === EFFECT_MODE.LINK) return upgrade.effectUuid ? "linked effect" : "link not set";
-    return "";
+    let label = "";
+    if (upgrade.effectMode === EFFECT_MODE.BUILD) label = describeBuild(upgrade.effectBuild?.rows) || "empty bonus";
+    else if (upgrade.effectMode === EFFECT_MODE.LINK) label = upgrade.effectUuid ? "linked effect" : "link not set";
+    if (label && upgrade.hideEffect && !upgrade.purchased) label += " · hidden from players";
+    return label;
   }
 
   _onFirstRender(context, options) {

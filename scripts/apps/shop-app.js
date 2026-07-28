@@ -55,7 +55,8 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
     // Teasers stay blank — the whole point of a "???" card is that it gives nothing away.
     const effectLines = new Map();
     await Promise.all(visible.map(async u => {
-      if (u.hidden && !isGM) return;
+      if (u.hidden && !isGM) return;                       // teasers give nothing away
+      if (u.hideEffect && !u.purchased && !isGM) return;   // deliberately kept secret until owned
       effectLines.set(u.id, await describeUpgradeEffect(u));
     }));
 
@@ -72,7 +73,12 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
           selected: u.id === this.#selectedId,
           // Only worth showing when it isn't the default "everyone" case.
           targetLabel: (!mystery && u.target === "actor") ? describeTarget(u) : null,
-          effectLines: mystery ? [] : (effectLines.get(u.id) ?? [])
+          effectLines: mystery ? [] : (effectLines.get(u.id) ?? []),
+          // Distinguish "kept secret" from "does nothing" — otherwise a secret upgrade
+          // looks identical to a purely cosmetic one.
+          effectSecret: !mystery && u.hideEffect && !u.purchased && !isGM,
+          // The GM needs to see at a glance that players are not seeing this.
+          effectSecretForGM: isGM && u.hideEffect && !u.purchased
         };
       });
 

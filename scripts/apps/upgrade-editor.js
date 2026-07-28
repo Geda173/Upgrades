@@ -66,6 +66,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       flavor: u.flavor ?? "",
       description: u.description ?? "",
       hidden: !!u.hidden,
+      hideEffect: !!u.hideEffect,
       purchased: !!u.purchased,
       target: u.target ?? TARGET.PARTY,
       targetActorId: u.targetActorId ?? "",
@@ -194,6 +195,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.flavor = val("flavor");
     this.draft.description = val("description");
     this.draft.hidden = !!get("hidden")?.checked;
+    this.draft.hideEffect = !!get("hideEffect")?.checked;
     this.draft.target = val("target") || TARGET.PARTY;
     this.draft.targetActorId = val("targetActorId");
     this.draft.effectUuid = val("effectUuid").trim();
@@ -319,6 +321,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       flavor: d.flavor,
       description: d.description,
       hidden: d.hidden,
+      hideEffect: d.hideEffect,
       target: d.target,
       targetActorId: d.target === TARGET.ACTOR ? d.targetActorId : null,
       effectMode: d.effectMode,

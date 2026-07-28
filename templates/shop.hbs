@@ -42,6 +42,8 @@
           {{#each effectLines}}<li>{{this}}</li>{{/each}}
         </ul>
         {{/if}}
+        {{#if effectSecret}}<div class="upg-effect-secret">Its gift is not yet known</div>{{/if}}
+        {{#if effectSecretForGM}}<div class="upg-effect-secret gm">Hidden from players until owned</div>{{/if}}
         <div class="upg-cost">
           {{#unless mystery}}
             {{#if ../vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{../vocab.currencyIcon}}" alt="">
@@ -78,6 +80,12 @@
         <ul class="upg-effects">
           {{#each selected.effectLines}}<li>{{this}}</li>{{/each}}
         </ul>
+      </div>
+      {{/if}}
+      {{#if selected.effectSecret}}
+      <div class="upg-detail-effects">
+        <span class="upg-effects-label">What it grants</span>
+        <div class="upg-effect-secret">Its gift is not yet known — it will reveal itself once taken.</div>
       </div>
       {{/if}}
       {{#if selectedDescription}}<div class="upg-desc">{{{selectedDescription}}}</div>{{/if}}

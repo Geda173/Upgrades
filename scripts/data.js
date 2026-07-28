@@ -222,7 +222,8 @@ export function getVocabulary() {
  * Upgrade shape:
  * { id, name, cost, img, flavor, description (HTML), hidden, purchased,
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
- *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, key?, mode?}] } }
+ *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
+ *   hideEffect }
  *
  * target: "party" → effect applies to every member of the party actor
  *         "actor" → effect applies only to targetActorId
@@ -238,6 +239,7 @@ function normalizeUpgrade(upgrade) {
     target: TARGET.PARTY,
     targetActorId: null,
     effectBuild: { rows: [] },
+    hideEffect: false,
     ...upgrade
   };
   // Upgrades authored before effect modes existed only ever had a UUID.
@@ -262,7 +264,7 @@ export async function upsertUpgrade(data) {
     id: data.id ?? foundry.utils.randomID(),
     name: "New Upgrade", cost: 1, img: "", flavor: "", description: "",
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
-    effectMode: "none", effectUuid: null, effectBuild: { rows: [] },
+    effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
   });

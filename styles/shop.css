@@ -628,3 +628,8 @@
   font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--upg-ink-faint);
 }
 .upg-detail-effects .upg-effects li { font-size: 12px; }
+.upg-effect-secret {
+  font-size: 11px; line-height: 1.35; margin-top: 6px;
+  color: var(--upg-ink-faint); font-style: italic;
+}
+.upg-effect-secret.gm { color: var(--upg-warn); font-style: normal; }
