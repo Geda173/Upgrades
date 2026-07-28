@@ -38,8 +38,8 @@ Hooks.on("getSceneControlButtons", (controls) => {
     // Reuse the currency icon when it's a Font Awesome class; an image path can't go here.
     icon: vocab.currencyIconIsImg ? "fa-solid fa-gem" : (vocab.currencyIcon || "fa-solid fa-gem"),
     button: true,
-    onChange: () => ShopApp.show(),
-    onClick: () => ShopApp.show()
+    // onChange only — supplying the old onClick alongside it makes v13+ log a deprecation warning.
+    onChange: () => ShopApp.show()
   };
 
   const tokens = Array.isArray(controls)

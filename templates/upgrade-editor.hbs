@@ -31,7 +31,7 @@
 
     <div class="form-group">
       <label class="checkbox">
-        <input type="checkbox" name="hidden" {{checked upgrade.hidden}}> Hidden — shows as a “???” teaser
+        <input type="checkbox" name="hidden" {{#if upgrade.hidden}}checked{{/if}}> Hidden — shows as a “???” teaser
       </label>
     </div>
   </section>
@@ -43,7 +43,7 @@
       <label>Target</label>
       <select name="target" data-action="rerender">
         {{#each targetOptions}}
-        <option value="{{value}}" {{selected isSelected}}>{{label}}</option>
+        <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
         {{/each}}
       </select>
     </div>
@@ -56,7 +56,7 @@
         {{#each actorGroups}}
         <optgroup label="{{label}}">
           {{#each actors}}
-          <option value="{{id}}" {{selected isSelected}}>{{name}}</option>
+          <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{name}}</option>
           {{/each}}
         </optgroup>
         {{/each}}
@@ -76,7 +76,7 @@
     <div class="upg-modes">
       {{#each effectModeOptions}}
       <label class="checkbox">
-        <input type="radio" name="effectMode" value="{{value}}" data-action="rerender" {{checked isSelected}}> {{label}}
+        <input type="radio" name="effectMode" value="{{value}}" data-action="rerender" {{#if isSelected}}checked{{/if}}> {{label}}
       </label>
       {{/each}}
     </div>
@@ -97,7 +97,7 @@
             {{#each presetGroups}}
             <optgroup label="{{label}}">
               {{#each presets}}
-              <option value="{{id}}" {{selected isSelected}}>{{label}}</option>
+              <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
               {{/each}}
             </optgroup>
             {{/each}}
@@ -107,7 +107,7 @@
           <input type="text" name="rowKey" value="{{key}}" placeholder="system.attributes.ac.bonus" class="upg-key">
           <select name="rowMode" class="upg-mode">
             {{#each modeChoices}}
-            <option value="{{value}}" {{selected isSelected}}>{{label}}</option>
+            <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
           </select>
           {{/if}}
