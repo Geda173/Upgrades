@@ -633,3 +633,4 @@
   color: var(--upg-ink-faint); font-style: italic;
 }
 .upg-effect-secret.gm { color: var(--upg-warn); font-style: normal; }
+.upg-row .upg-bonus-type { flex: 0 0 150px; }

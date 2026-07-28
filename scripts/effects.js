@@ -93,10 +93,129 @@ const PRESETS_DND5E = [
   { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
 ];
 
-/** Systems other than dnd5e only get the custom row — their data paths differ. */
+/**
+ * PF2e presets. Verified against pf2e-8.3.0.
+ *
+ * PF2e is a much better fit for this module than dnd5e. Bonuses are structured rule elements
+ * rather than formula strings appended to a field, so the whole concatenation problem above
+ * simply does not exist. Targets are semantic selectors ("attack", "ac", "fortitude") taken from
+ * getStrikeAttackDomains/getAttackDamageDomains and the statistic domains, not data paths that
+ * can silently not exist. And PF2e enforces its own stacking rules — only the highest bonus of
+ * each type counts — so a +1 item bonus from an upgrade correctly refuses to stack with a
+ * magic weapon's, which dnd5e cannot express at all.
+ */
+const PRESETS_PF2E = [
+  { group: "Attack & damage", id: "attack", label: "Attack rolls", selectors: ["attack"], placeholder: "1" },
+  { group: "Attack & damage", id: "damage", label: "Damage", selectors: ["damage"], damage: true, placeholder: "1d6" },
+  { group: "Attack & damage", id: "melee.damage", label: "Melee damage", selectors: ["melee-damage"], damage: true, placeholder: "1d6" },
+  { group: "Attack & damage", id: "ranged.damage", label: "Ranged damage", selectors: ["ranged-damage"], damage: true, placeholder: "1d6" },
+
+  { group: "Defence", id: "ac", label: "Armor Class", selectors: ["ac"], placeholder: "1" },
+  { group: "Defence", id: "save.all", label: "All saving throws", selectors: ["saving-throw"], placeholder: "1" },
+  { group: "Defence", id: "save.fortitude", label: "Fortitude saves", selectors: ["fortitude"], placeholder: "1" },
+  { group: "Defence", id: "save.reflex", label: "Reflex saves", selectors: ["reflex"], placeholder: "1" },
+  { group: "Defence", id: "save.will", label: "Will saves", selectors: ["will"], placeholder: "1" },
+
+  { group: "Checks", id: "perception", label: "Perception", selectors: ["perception"], placeholder: "1" },
+  { group: "Checks", id: "skill.all", label: "All skill checks", selectors: ["skill-check"], placeholder: "1" },
+  ...["acrobatics","arcana","athletics","crafting","deception","diplomacy","intimidation","medicine",
+      "nature","occultism","performance","religion","society","stealth","survival","thievery"]
+    .map(slug => ({
+      group: "Skills", id: `skill.${slug}`,
+      label: slug.charAt(0).toUpperCase() + slug.slice(1),
+      selectors: [slug], placeholder: "1"
+    })),
+
+  { group: "Spellcasting", id: "spell.attack", label: "Spell attack rolls", selectors: ["spell-attack"], placeholder: "1" },
+  { group: "Spellcasting", id: "spell.dc", label: "Spell DC", selectors: ["spell-dc"], placeholder: "1" },
+  { group: "Spellcasting", id: "class.dc", label: "Class DC", selectors: ["class-dc"], placeholder: "1" },
+
+  { group: "Movement", id: "speed", label: "All speeds", selectors: ["all-speeds"], placeholder: "5" },
+
+  { group: "Advanced", id: "custom", label: "Custom selector…", placeholder: "1", custom: true, selectors: [] }
+];
+
+/** Systems we have no catalog for get the custom row only. */
 const PRESETS_GENERIC = [
   { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
 ];
+
+/**
+ * PF2e modifier types, from MODIFIER_TYPES in src/module/actor/modifiers.ts.
+ * The type is what drives stacking, so it is a first-class choice rather than a hidden default.
+ */
+export const PF2E_BONUS_TYPES = [
+  { id: "circumstance", label: "Circumstance — from the situation" },
+  { id: "item", label: "Item — from gear or an upgrade" },
+  { id: "status", label: "Status — from a spell or condition" },
+  { id: "proficiency", label: "Proficiency" },
+  { id: "ability", label: "Ability" },
+  { id: "untyped", label: "Untyped — always stacks" }
+];
+
+/** Dice sizes PF2e accepts for a DamageDice rule element. */
+export const PF2E_DIE_SIZES = ["d4", "d6", "d8", "d10", "d12"];
+
+export function isPf2e() {
+  return game.system.id === "pf2e";
+}
+
+/** "1d6" -> {diceNumber:1, dieSize:"d6"}; a flat number returns null. */
+export function parseDice(value) {
+  const m = String(value ?? "").trim().match(/^\+?\s*(\d*)\s*d\s*(\d+)$/i);
+  if (!m) return null;
+  const diceNumber = m[1] === "" ? 1 : Number(m[1]);
+  return { diceNumber, dieSize: `d${m[2]}` };
+}
+
+/**
+ * Assemble rows into PF2e rule elements.
+ *
+ * Flat bonuses are FlatModifier; extra dice must be DamageDice instead — FlatModifier's value
+ * is numeric, so "1d6" there would not do what a GM expects.
+ */
+export function buildRules(rows = [], { label = "Upgrade" } = {}) {
+  const rules = [];
+  for (const row of rows) {
+    const raw = String(row.value ?? "").trim();
+    if (!raw) continue;
+
+    const preset = getPreset(row.preset);
+    if (!preset) {
+      console.warn(`${MODULE_ID} | Unknown effect preset "${row.preset}" — row skipped.`);
+      continue;
+    }
+
+    const selectors = row.preset === "custom"
+      ? String(row.key ?? "").trim().split(/[\s,]+/).filter(Boolean)
+      : preset.selectors ?? [];
+    if (!selectors.length) continue;
+
+    const parsed = splitDamageValue(raw);
+    const damageType = preset.damage ? (row.damageType || parsed.damageType || null) : null;
+    const dice = preset.damage ? parseDice(parsed.amount) : null;
+
+    if (dice) {
+      rules.push({
+        key: "DamageDice", selector: selectors, label,
+        diceNumber: dice.diceNumber, dieSize: dice.dieSize,
+        ...(damageType ? { damageType } : {})
+      });
+    } else {
+      const value = Number(String(parsed.amount).replace(/^\+/, ""));
+      if (!Number.isFinite(value)) {
+        console.warn(`${MODULE_ID} | "${raw}" is not a number or dice expression — row skipped.`);
+        continue;
+      }
+      rules.push({
+        key: "FlatModifier", selector: selectors, label,
+        type: row.bonusType || "circumstance", value,
+        ...(damageType ? { damageType } : {})
+      });
+    }
+  }
+  return rules;
+}
 
 /**
  * dnd5e damage types, verified against CONFIG.DND5E.damageTypes in release-5.3.3.
@@ -120,16 +239,18 @@ export function splitDamageValue(value) {
 }
 
 export function getPresets() {
-  return game.system.id === "dnd5e" ? PRESETS_DND5E : PRESETS_GENERIC;
+  if (game.system.id === "dnd5e") return PRESETS_DND5E;
+  if (game.system.id === "pf2e") return PRESETS_PF2E;
+  return PRESETS_GENERIC;
 }
 
 export function getPreset(id) {
   return getPresets().find(p => p.id === id) ?? null;
 }
 
-/** True when the current system's effects are ActiveEffect-driven (so the builder is meaningful). */
+/** True when we ship a real preset catalogue for the current system. */
 export function systemSupportsBuilder() {
-  return game.system.id === "dnd5e";
+  return game.system.id === "dnd5e" || game.system.id === "pf2e";
 }
 
 /** Presets shaped for a <select> with <optgroup>s. */
@@ -215,6 +336,16 @@ export function describeRows(rows = []) {
 
     const preset = getPreset(row.preset);
     if (!preset) continue;
+
+    // PF2e names the bonus type, because the type is what decides whether it stacks.
+    if (isPf2e()) {
+      const parsed = splitDamageValue(raw);
+      const type = preset.damage ? (row.damageType || parsed.damageType || "") : "";
+      const amount = /^[+-]/.test(parsed.amount) ? parsed.amount : `+${parsed.amount}`;
+      const kind = parseDice(parsed.amount) ? "" : ` ${row.bonusType || "circumstance"}`;
+      out.push(`${preset.label} ${amount}${type ? ` ${type}` : ""}${kind}`);
+      continue;
+    }
 
     const parsed = splitDamageValue(raw);
     const amount = preset.damage ? parsed.amount : raw;

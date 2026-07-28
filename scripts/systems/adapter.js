@@ -7,7 +7,7 @@
  * Everything created is flagged with the upgrade id for clean refund/undo.
  */
 import { MODULE_ID, SETTINGS, TARGET } from "../data.js";
-import { EFFECT_MODE, buildChanges } from "../effects.js";
+import { EFFECT_MODE, buildChanges, buildRules, isPf2e } from "../effects.js";
 
 /**
  * The party: members of the configured Group/Party actor.
@@ -81,6 +81,30 @@ export function describeTarget(upgrade) {
  */
 export async function resolveEffectPayload(upgrade) {
   const mode = upgrade.effectMode ?? (upgrade.effectUuid ? EFFECT_MODE.LINK : EFFECT_MODE.NONE);
+
+  if (mode === EFFECT_MODE.BUILD && isPf2e()) {
+    // PF2e drives mechanics through rule elements on an Effect *item*, not ActiveEffect changes.
+    // Duration defaults to unlimited (value -1), which is what a permanent upgrade wants.
+    const rules = buildRules(upgrade.effectBuild?.rows ?? [], { label: upgrade.name || "Upgrade" });
+    if (!rules.length) return null;
+    return {
+      documentName: "Item",
+      data: {
+        name: upgrade.name || "Upgrade",
+        type: "effect",
+        img: upgrade.img || "icons/svg/upgrade.svg",
+        system: {
+          description: { value: upgrade.description || upgrade.flavor || "" },
+          rules,
+          duration: { value: -1, unit: "unlimited", expiry: null, sustained: false },
+          level: { value: 1 },
+          tokenIcon: { show: false },
+          start: { value: 0, initiative: null },
+          unidentified: false
+        }
+      }
+    };
+  }
 
   if (mode === EFFECT_MODE.BUILD) {
     const changes = buildChanges(upgrade.effectBuild?.rows ?? []);

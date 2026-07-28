@@ -6,7 +6,7 @@
  */
 import { MODULE_ID, SETTINGS, TARGET, getVocabulary } from "../data.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
-         getDamageTypes, splitDamageValue } from "../effects.js";
+         getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
 import { applyTheme, fitToViewport } from "./theme.js";
 
@@ -90,6 +90,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       saveLabel: this.isNew ? "Create" : "Save",
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
+      isPf2e: isPf2e(),
 
       targetOptions: [
         { value: TARGET.PARTY, label: "The whole party", isSelected: draft.target === TARGET.PARTY },
@@ -135,6 +136,10 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       key: row.key ?? "",
       mode: Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD),
       isCustom: row.preset === "custom",
+      isPf2e: isPf2e(),
+      bonusTypes: PF2E_BONUS_TYPES.map(b => ({
+        ...b, isSelected: b.id === (row.bonusType ?? "circumstance")
+      })),
       placeholder: preset?.placeholder ?? "+1",
       presetGroups: presetGroups.map(group => ({
         label: group.label,
@@ -207,6 +212,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       preset: el.querySelector('[name="rowPreset"]')?.value ?? "custom",
       value: el.querySelector('[name="rowValue"]')?.value ?? "",
       damageType: el.querySelector('[name="rowDamageType"]')?.value ?? "",
+      bonusType: el.querySelector('[name="rowBonusType"]')?.value ?? "",
       key: el.querySelector('[name="rowKey"]')?.value ?? "",
       mode: Number(el.querySelector('[name="rowMode"]')?.value ?? CONST.ACTIVE_EFFECT_MODES.ADD)
     }));
@@ -271,7 +277,10 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   static #onAddRow() {
     this.#syncDraft();
     const first = getPresetGroups()[0]?.presets[0]?.id ?? "custom";
-    this.draft.rows.push({ preset: first, value: "", damageType: "", key: "", mode: CONST.ACTIVE_EFFECT_MODES.ADD });
+    this.draft.rows.push({
+      preset: first, value: "", damageType: "", bonusType: "circumstance",
+      key: "", mode: CONST.ACTIVE_EFFECT_MODES.ADD
+    });
     this.render();
   }
 

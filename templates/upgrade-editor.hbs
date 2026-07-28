@@ -86,8 +86,8 @@
       {{#unless builderSupported}}
       <p class="upg-warn">
         <i class="fa-solid fa-triangle-exclamation"></i>
-        The bonus builder only ships presets for dnd5e. In {{systemId}} you can still add custom data paths below,
-        or link an existing effect instead.
+        The bonus builder ships presets for dnd5e and PF2e. In {{systemId}} you can still add custom
+        targets below, or link an existing effect instead.
       </p>
       {{/unless}}
 
@@ -105,15 +105,26 @@
           </select>
 
           {{#if isCustom}}
-          <input type="text" name="rowKey" value="{{key}}" placeholder="system.attributes.ac.bonus" class="upg-key">
+          <input type="text" name="rowKey" value="{{key}}"
+                 placeholder="{{#if isPf2e}}attack, damage{{else}}system.attributes.ac.bonus{{/if}}" class="upg-key">
+          {{#unless isPf2e}}
           <select name="rowMode" class="upg-mode">
             {{#each modeChoices}}
             <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
           </select>
+          {{/unless}}
           {{/if}}
 
           <input type="text" name="rowValue" value="{{value}}" placeholder="{{placeholder}}" class="upg-value">
+
+          {{#if isPf2e}}
+          <select name="rowBonusType" class="upg-bonus-type" title="PF2e counts only the highest bonus of each type">
+            {{#each bonusTypes}}
+            <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+          {{/if}}
 
           {{#if isDamage}}
           <select name="rowDamageType" class="upg-damage-type">
@@ -132,6 +143,13 @@
 
       <button type="button" class="upg-add-row" data-action="addRow"><i class="fa-solid fa-plus"></i> Add a bonus</button>
 
+      {{#if isPf2e}}
+      <p class="upg-hint">
+        Enter a flat number (<code>1</code>) or dice (<code>1d6</code>). The bonus type matters:
+        PF2e counts only the <em>highest</em> bonus of each type, so an <code>item</code> bonus from an
+        upgrade will not stack with a magic weapon's, while <code>untyped</code> always stacks.
+      </p>
+      {{else}}
       <p class="upg-hint">
         Values are dnd5e roll formulas, and they should carry a sign: <code>+2</code> for a flat bonus,
         <code>+1d8[cold]</code> for typed dice — that is how “every weapon swing deals an extra 1d8 cold”
@@ -139,6 +157,7 @@
         touching the same bonus are joined end to end, and <code>+2+3</code> works where <code>23</code> does not.
         Ability scores and darkvision are plain numbers, so those take <code>2</code> and <code>60</code>.
       </p>
+      {{/if}}
     {{/if}}
 
     {{#if isLink}}
