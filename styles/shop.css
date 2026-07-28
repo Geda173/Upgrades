@@ -389,7 +389,7 @@
   font-size: 11px; color: var(--upg-accent); margin-top: 3px;
   display: flex; align-items: center; gap: 5px; letter-spacing: 0.03em;
 }
-.upg-card .upg-flavor { font-size: 12px; color: var(--upg-ink-dim); margin-top: 4px; min-height: 30px; line-height: 1.4; }
+.upg-card .upg-flavor { font-size: 12px; color: var(--upg-ink-dim); margin-top: 4px; line-height: 1.4; }
 .upg-cost { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 14px; color: var(--upg-accent); }
 .upg-buy {
   margin-left: auto; width: auto; font-family: inherit; font-size: 11px; letter-spacing: 0.08em;

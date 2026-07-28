@@ -39,7 +39,7 @@
       <div class="upg-body">
         <h3>{{displayName}}</h3>
         {{#if targetLabel}}<div class="upg-for"><i class="fa-solid fa-user"></i> {{targetLabel}}</div>{{/if}}
-        <div class="upg-flavor"><em>{{displayFlavor}}</em></div>
+        {{#if displayFlavor}}<div class="upg-flavor"><em>{{displayFlavor}}</em></div>{{/if}}
         {{#if excerpt}}<div class="upg-excerpt">{{excerpt}}</div>{{/if}}
         {{#if ownedBy}}<div class="upg-owned-by"><i class="fa-solid fa-user-check"></i> {{ownedBy}}</div>{{/if}}
         {{#if effectLines}}

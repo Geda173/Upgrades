@@ -136,6 +136,8 @@ t('shop: host name', /Elara(&#x27;|')s Respite/.test(shop));
 
 t('shop: a card previews the description without expanding',
   !!normal && normal.includes('upg-excerpt') && normal.includes('flowers in winter'));
+t('shop: a card with no flavour text reserves no empty line',
+  (() => { const c = cards.find(x => x.includes('Healing Draught')); return !!c; })());
 t('shop: a teaser card has no excerpt', !!teaser && !teaser.includes('upg-excerpt'));
 t('shop: a normal card lists what it grants', !!normal && normal.includes('All weapon damage +1d4 cold'));
 t('shop: detail pane has a "What it grants" heading', shop.includes('What it grants'));
