@@ -2,7 +2,7 @@
   "id": "upgrades",
   "title": "Upgrades",
   "description": "A themeable upgrade board: the party spends a shared resource on GM-authored upgrades with art, tooltips, and real mechanical effects — granted to the whole party or to one named character.",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "authors": [{ "name": "Patrick" }],
   "compatibility": {
     "minimum": "13",
@@ -16,7 +16,7 @@
   "socket": true,
   "url": "https://github.com/Geda173/Upgrades",
   "manifest": "https://github.com/Geda173/Upgrades/releases/latest/download/module.json",
-  "download": "https://github.com/Geda173/Upgrades/releases/download/v0.7.1/upgrades.zip",
+  "download": "https://github.com/Geda173/Upgrades/releases/download/v0.7.2/upgrades.zip",
   "languages": [
     { "lang": "en", "name": "English", "path": "lang/en.json" }
   ]

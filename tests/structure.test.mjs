@@ -54,6 +54,18 @@ for (const app of ['shop-app', 'editor-app', 'settings-app', 'upgrade-editor']) 
   t(`${app} shrinks itself on first render`, /fitToViewport\(this\)/.test(read(`scripts/apps/${app}.js`)));
 }
 
+/* ---------- cards align across a row ---------- */
+t('cards are flex columns so their content can be distributed',
+  /\.upg-card \{[^}]*flex-direction: column/.test(css));
+t('the card body flexes to fill the card',
+  /\.upg-card \.upg-body \{[^}]*flex: 1/.test(css));
+t('the cost row is pushed to the bottom, so buttons line up across a row',
+  /\.upg-cost \{[^}]*margin-top: auto/.test(css));
+t('card art keeps its height when a neighbour is taller',
+  /\.upg-card \.upg-art \{[^}]*flex: none/.test(css));
+t('the description excerpt is clamped so one card cannot run away',
+  /\.upg-excerpt \{[^}]*-webkit-line-clamp: 3/.test(css));
+
 /* ---------- the setup window's live preview stays wired ---------- */
 const settingsHbs = read('templates/settings.hbs');
 const settingsJs = read('scripts/apps/settings-app.js');
