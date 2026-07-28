@@ -612,3 +612,4 @@
 .upg-preview .upg-art { height: 62px; font-size: 24px; }
 .upg-preview .upg-flavor { min-height: 0; }
 .upg-preview .upg-buy { cursor: default; }
+.upg-row .upg-damage-type { flex: 0 0 104px; }

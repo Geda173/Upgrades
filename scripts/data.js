@@ -193,17 +193,25 @@ export function warnIfNoPartyActor() {
 /* ---------- Vocabulary helpers ---------- */
 
 /** Everything the UI needs in order to call things by the GM's chosen names. */
+function isImagePath(value) {
+  return /[/\\]/.test(value ?? "") || /\.(webp|png|jpe?g|gif|svg)$/i.test(value ?? "");
+}
+
 export function getVocabulary() {
   const icon = game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ICON) ?? "";
+  const hostImg = game.settings.get(MODULE_ID, SETTINGS.HOST_IMG) || "";
   return {
     windowTitle: game.settings.get(MODULE_ID, SETTINGS.WINDOW_TITLE) || "Upgrades",
     currencyName: game.settings.get(MODULE_ID, SETTINGS.CURRENCY_NAME) || "Points",
     currencyIcon: icon,
     // Treat the icon as an image if it looks like a path; otherwise it's Font Awesome classes.
-    currencyIconIsImg: /[/\\]/.test(icon) || /\.(webp|png|jpe?g|gif|svg)$/i.test(icon),
+    currencyIconIsImg: isImagePath(icon),
     actionVerb: game.settings.get(MODULE_ID, SETTINGS.ACTION_VERB) || "Request",
     hostName: game.settings.get(MODULE_ID, SETTINGS.HOST_NAME) || "",
-    hostImg: game.settings.get(MODULE_ID, SETTINGS.HOST_IMG) || "",
+    hostImg: hostImg,
+    // The portrait may be artwork or a Font Awesome class; the template branches on this.
+    hostIsImage: !!hostImg && isImagePath(hostImg),
+    hostIconClass: (hostImg && !isImagePath(hostImg)) ? hostImg : (icon || "fa-solid fa-gem"),
     greeting: game.settings.get(MODULE_ID, SETTINGS.GREETING) || ""
   };
 }

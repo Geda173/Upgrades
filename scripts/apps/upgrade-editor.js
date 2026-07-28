@@ -5,7 +5,8 @@
  * and a form that reshapes itself as the GM picks a target or an effect mode.
  */
 import { MODULE_ID, SETTINGS, TARGET, getVocabulary } from "../data.js";
-import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder } from "../effects.js";
+import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
+         getDamageTypes, splitDamageValue } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
 import { applyTheme, fitToViewport } from "./theme.js";
 
@@ -120,10 +121,16 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
   #rowContext(row, index, presetGroups) {
     const preset = getPreset(row.preset);
+    // Damage rows edit the amount and the type separately, but older rows stored "1d8[cold]"
+    // in one field — split it so an upgrade authored before this still opens correctly.
+    const parsed = splitDamageValue(row.value);
+    const damageType = row.damageType ?? parsed.damageType ?? "";
     return {
       index,
       preset: row.preset,
-      value: row.value ?? "",
+      value: preset?.damage ? parsed.amount : (row.value ?? ""),
+      isDamage: !!preset?.damage,
+      damageTypes: getDamageTypes().map(t => ({ ...t, isSelected: t.id === damageType })),
       key: row.key ?? "",
       mode: Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD),
       isCustom: row.preset === "custom",
@@ -197,6 +204,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.rows = [...form.querySelectorAll(".upg-row")].map(el => ({
       preset: el.querySelector('[name="rowPreset"]')?.value ?? "custom",
       value: el.querySelector('[name="rowValue"]')?.value ?? "",
+      damageType: el.querySelector('[name="rowDamageType"]')?.value ?? "",
       key: el.querySelector('[name="rowKey"]')?.value ?? "",
       mode: Number(el.querySelector('[name="rowMode"]')?.value ?? CONST.ACTIVE_EFFECT_MODES.ADD)
     }));
@@ -261,7 +269,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   static #onAddRow() {
     this.#syncDraft();
     const first = getPresetGroups()[0]?.presets[0]?.id ?? "custom";
-    this.draft.rows.push({ preset: first, value: "", key: "", mode: CONST.ACTIVE_EFFECT_MODES.ADD });
+    this.draft.rows.push({ preset: first, value: "", damageType: "", key: "", mode: CONST.ACTIVE_EFFECT_MODES.ADD });
     this.render();
   }
 

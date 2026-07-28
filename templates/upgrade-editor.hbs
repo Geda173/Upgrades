@@ -114,6 +114,15 @@
           {{/if}}
 
           <input type="text" name="rowValue" value="{{value}}" placeholder="{{placeholder}}" class="upg-value">
+
+          {{#if isDamage}}
+          <select name="rowDamageType" class="upg-damage-type">
+            <option value="">untyped</option>
+            {{#each damageTypes}}
+            <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+          {{/if}}
           <button type="button" data-action="removeRow" data-index="{{index}}" title="Remove"><i class="fa-solid fa-xmark"></i></button>
         </div>
         {{else}}

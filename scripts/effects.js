@@ -33,15 +33,15 @@ const MODES = CONST.ACTIVE_EFFECT_MODES;
 const PRESETS_DND5E = [
   { group: "Attack & damage", id: "weapon.attack", label: "All weapon attack rolls", placeholder: "+1",
     keys: ["system.bonuses.mwak.attack", "system.bonuses.rwak.attack"] },
-  { group: "Attack & damage", id: "weapon.damage", label: "All weapon damage", placeholder: "+1d8[cold]",
+  { group: "Attack & damage", id: "weapon.damage", damage: true, label: "All weapon damage", placeholder: "+1d8",
     keys: ["system.bonuses.mwak.damage", "system.bonuses.rwak.damage"] },
   { group: "Attack & damage", id: "melee.attack", label: "Melee weapon attack rolls", placeholder: "+1",
     keys: ["system.bonuses.mwak.attack"] },
-  { group: "Attack & damage", id: "melee.damage", label: "Melee weapon damage", placeholder: "+1d8[cold]",
+  { group: "Attack & damage", id: "melee.damage", damage: true, label: "Melee weapon damage", placeholder: "+1d8",
     keys: ["system.bonuses.mwak.damage"] },
   { group: "Attack & damage", id: "ranged.attack", label: "Ranged weapon attack rolls", placeholder: "+1",
     keys: ["system.bonuses.rwak.attack"] },
-  { group: "Attack & damage", id: "ranged.damage", label: "Ranged weapon damage", placeholder: "+1d6[fire]",
+  { group: "Attack & damage", id: "ranged.damage", damage: true, label: "Ranged weapon damage", placeholder: "+1d6",
     keys: ["system.bonuses.rwak.damage"] },
 
   // dnd5e has no `bonuses.spell.attack`; spell attacks are the melee/ranged spell-attack pair.
@@ -49,7 +49,7 @@ const PRESETS_DND5E = [
     keys: ["system.bonuses.msak.attack", "system.bonuses.rsak.attack"] },
   { group: "Spellcasting", id: "spell.dc", label: "Spell save DC", placeholder: "+1",
     keys: ["system.bonuses.spell.dc"] },
-  { group: "Spellcasting", id: "spell.damage", label: "Spell damage", placeholder: "+1d4[radiant]",
+  { group: "Spellcasting", id: "spell.damage", damage: true, label: "Spell damage", placeholder: "+1d4",
     keys: ["system.bonuses.msak.damage", "system.bonuses.rsak.damage"] },
 
   { group: "Defence", id: "ac", label: "Armor Class", placeholder: "+1",
@@ -97,6 +97,27 @@ const PRESETS_DND5E = [
 const PRESETS_GENERIC = [
   { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
 ];
+
+/**
+ * dnd5e damage types, verified against CONFIG.DND5E.damageTypes in release-5.3.3.
+ * Read from the live config when it exists so a system update can't leave this stale.
+ */
+export function getDamageTypes() {
+  const live = CONFIG?.DND5E?.damageTypes;
+  if (live && Object.keys(live).length) {
+    return Object.entries(live).map(([id, v]) => ({ id, label: v?.label ?? id }));
+  }
+  return ["acid","bludgeoning","cold","fire","force","lightning","necrotic",
+          "piercing","poison","psychic","radiant","slashing","thunder"]
+    .map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }));
+}
+
+/** Split "1d8[cold]" into its amount and type; tolerates a plain "1d8". */
+export function splitDamageValue(value) {
+  const m = String(value ?? "").match(/^(.*?)\s*\[([^\]]+)\]\s*$/);
+  if (m) return { amount: m[1].trim(), damageType: m[2].trim() };
+  return { amount: String(value ?? "").trim(), damageType: "" };
+}
 
 export function getPresets() {
   return game.system.id === "dnd5e" ? PRESETS_DND5E : PRESETS_GENERIC;
@@ -159,8 +180,16 @@ export function buildChanges(rows = []) {
       continue;
     }
     const mode = preset.mode ?? MODES.ADD;
-    // Only formula targets need signing; numeric fields add arithmetically already.
-    const value = (preset.type === "number" || mode !== MODES.ADD) ? raw : signFormula(raw);
+    let value;
+    if (preset.damage) {
+      // The amount and the type are edited separately; older rows kept "1d8[cold]" in one field.
+      const parsed = splitDamageValue(raw);
+      const type = (row.damageType ?? parsed.damageType ?? "").trim();
+      value = signFormula(parsed.amount) + (type ? `[${type}]` : "");
+    } else {
+      // Only formula targets need signing; numeric fields add arithmetically already.
+      value = (preset.type === "number" || mode !== MODES.ADD) ? raw : signFormula(raw);
+    }
     for (const key of preset.keys) {
       changes.push({ key, mode, value, priority: null });
     }
@@ -172,11 +201,13 @@ export function buildChanges(rows = []) {
 export function describeBuild(rows = []) {
   const parts = [];
   for (const row of rows) {
-    const value = String(row.value ?? "").trim();
-    if (!value) continue;
+    const raw = String(row.value ?? "").trim();
+    if (!raw) continue;
     const preset = getPreset(row.preset);
     const label = row.preset === "custom" ? (row.key || "custom") : (preset?.label ?? row.preset);
-    parts.push(`${value} ${label.toLowerCase()}`);
+    const parsed = splitDamageValue(raw);
+    const type = preset?.damage ? ((row.damageType ?? parsed.damageType ?? "").trim()) : "";
+    parts.push(`${parsed.amount || raw}${type ? `[${type}]` : ""} ${label.toLowerCase()}`);
   }
   return parts.join(", ");
 }

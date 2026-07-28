@@ -42,6 +42,25 @@ const ICON_GROUPS = [
   ]}
 ];
 
+/** Portrait icons — people, places and creatures rather than currency symbols. */
+const HOST_ICON_GROUPS = [
+  { label: "People", icons: [
+    ["fa-solid fa-user", "Figure"], ["fa-solid fa-user-tie", "Merchant"], ["fa-solid fa-hat-wizard", "Wizard"],
+    ["fa-solid fa-crown", "Monarch"], ["fa-solid fa-mask", "Masked"], ["fa-solid fa-skull", "Skull"],
+    ["fa-solid fa-ghost", "Ghost"], ["fa-solid fa-robot", "Android"]
+  ]},
+  { label: "Places", icons: [
+    ["fa-solid fa-tree", "Grove"], ["fa-solid fa-seedling", "Garden"], ["fa-solid fa-mountain", "Mountain"],
+    ["fa-solid fa-tent", "Camp"], ["fa-solid fa-dungeon", "Dungeon"], ["fa-solid fa-torii-gate", "Gate"],
+    ["fa-solid fa-anchor", "Harbour"], ["fa-solid fa-satellite-dish", "Station"]
+  ]},
+  { label: "Signs", icons: [
+    ["fa-solid fa-gem", "Gem"], ["fa-solid fa-scroll", "Scroll"], ["fa-solid fa-book", "Tome"],
+    ["fa-solid fa-fire", "Flame"], ["fa-solid fa-moon", "Moon"], ["fa-solid fa-sun", "Sun"],
+    ["fa-solid fa-dragon", "Dragon"], ["fa-solid fa-atom", "Atom"]
+  ]}
+];
+
 const GRANT_AS_CHOICES = [
   { id: "feature", name: "A feature on the character sheet (recommended)" },
   { id: "effect", name: "An Active Effect only" }
@@ -64,6 +83,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       pickTheme: SettingsApp.#onPickTheme,
       pickIcon: SettingsApp.#onPickIcon,
       pickIconImage: SettingsApp.#onPickIconImage,
+      pickHostIcon: SettingsApp.#onPickHostIcon,
       pickHostImg: SettingsApp.#onPickHostImg,
       clearHostImg: SettingsApp.#onClearHostImg,
       cancel: SettingsApp.#onCancel
@@ -115,6 +135,11 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       draft: d,
       currencyIconIsImg: isImg,
+      // The portrait accepts an image path or an icon class, so the template needs both forms.
+      hostIsImage: !!d.hostImg && SettingsApp.#iconIsImage(d.hostImg),
+      hostIconClass: (d.hostImg && !SettingsApp.#iconIsImage(d.hostImg))
+        ? d.hostImg
+        : (isImg ? "fa-solid fa-gem" : (d.currencyIcon || "fa-solid fa-gem")),
       iconClassOrDefault: isImg ? "fa-solid fa-gem" : (d.currencyIcon || "fa-solid fa-gem"),
 
       themeGroups: [...new Set(THEMES.map(t => t.group))].map(group => ({
@@ -126,6 +151,11 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       iconGroups: ICON_GROUPS.map(g => ({
         label: g.label,
         icons: g.icons.map(([cls, name]) => ({ cls, name, isSelected: cls === d.currencyIcon }))
+      })),
+
+      hostIconGroups: HOST_ICON_GROUPS.map(g => ({
+        label: g.label,
+        icons: g.icons.map(([cls, name]) => ({ cls, name, isSelected: cls === d.hostImg }))
       })),
 
       partyActorChoices: SettingsApp.#partyActorChoices(d.partyActor),
@@ -219,9 +249,16 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const portrait = root.querySelector('[data-bind="host-portrait"]');
     if (portrait) {
-      portrait.innerHTML = d.hostImg
-        ? `<img src="${foundry.utils.escapeHTML(d.hostImg)}" alt="">`
-        : iconHtml;
+      if (!d.hostImg) portrait.innerHTML = iconHtml;
+      else if (SettingsApp.#iconIsImage(d.hostImg)) {
+        portrait.innerHTML = `<img src="${foundry.utils.escapeHTML(d.hostImg)}" alt="">`;
+      } else {
+        portrait.innerHTML = `<i class="${foundry.utils.escapeHTML(d.hostImg)}"></i>`;
+      }
+    }
+
+    for (const el of this.element.querySelectorAll("[data-action='pickHostIcon']")) {
+      el.classList.toggle("active", el.dataset.icon === d.hostImg);
     }
 
     // keep the swatch and icon selections in step with the draft
@@ -252,6 +289,14 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onPickIconImage() {
     this.#syncAll();
     await this.#browse("currencyIcon");
+  }
+
+  static #onPickHostIcon(_event, target) {
+    this.#syncAll();
+    this.#draft.hostImg = target.dataset.icon;
+    const field = this.element.querySelector('[name="hostImg"]');
+    if (field) field.value = this.#draft.hostImg;
+    this.#patchPreview();
   }
 
   static async #onPickHostImg() {
