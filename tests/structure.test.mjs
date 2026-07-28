@@ -107,6 +107,23 @@ t('the choice is remembered on the purchase so re-sync can rebuild it',
   /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
 t('re-renders restore scroll position', /restoreViewState\(this/.test(read('scripts/apps/upgrade-editor.js')));
 
+/* ---------- nothing should ask the user to know an icon name ---------- */
+// This was fixed three separate times: the currency icon, the host portrait, and the resource
+// dialog. Each surface that takes an icon must offer a way to choose one.
+const settingsApp = read('scripts/apps/settings-app.js');
+t('the setup form offers a picker for the currency icon',
+  /iconGroups/.test(settingsHbs) && /name="currencyIcon"/.test(settingsHbs));
+t('the setup form offers a picker for the host portrait',
+  /hostIconGroups/.test(settingsHbs) && /name="hostImg"/.test(settingsHbs));
+t('the resource dialog offers a picker rather than a bare field',
+  /iconPickerHtml\(ICON_GROUPS/.test(settingsApp));
+t('the resource dialog wires the picker up to its field',
+  /wireIconPicker\((?:dialog|root)[^)]*, "icon"\)/.test(settingsApp));
+t('every icon surface also allows browsing for an image',
+  (settingsApp.match(/data-browse-icon|pickIconImage|pickHostImg/g) || []).length >= 2);
+t('the picker writes into the field, keeping one source of truth',
+  /input\.value = b\.dataset\.pickIcon/.test(settingsApp));
+
 /* ---------- effect visibility rules ---------- */
 const shopJs = read('scripts/apps/shop-app.js');
 t('teasers never compute effect lines', /u\.hidden && !isGM\) return;/.test(shopJs));

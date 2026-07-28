@@ -363,9 +363,17 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       content: `
         <div class="form-group"><label>Name</label>
           <input type="text" name="name" value="${foundry.utils.escapeHTML(c.name)}" placeholder="Sprigs" autofocus></div>
-        <div class="form-group"><label>Icon</label>
-          <input type="text" name="icon" value="${foundry.utils.escapeHTML(c.icon ?? "")}" placeholder="fa-solid fa-seedling"></div>
-        <p class="upg-hint">Use a Font Awesome class, or a path to your own image.</p>`,
+        <div class="form-group">
+          <label>Icon</label>
+          <span class="upg-icon-preview" data-icon-preview></span>
+        </div>
+        ${iconPickerHtml(ICON_GROUPS, c.icon)}
+        <div class="upg-file upg-icon-custom">
+          <input type="text" name="icon" value="${foundry.utils.escapeHTML(c.icon ?? "")}" placeholder="fa-solid fa-seedling">
+          <button type="button" data-browse-icon title="Use your own image"><i class="fa-solid fa-folder-open"></i></button>
+        </div>
+        <p class="upg-hint">Pick one above, or browse for your own image.</p>`,
+      render: (_event, dialog) => wireIconPicker(dialog.element ?? dialog, "icon"),
       ok: {
         label: existing ? "Save" : "Create",
         callback: (_e, button) => ({
