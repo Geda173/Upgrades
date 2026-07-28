@@ -107,6 +107,33 @@ t('the choice is remembered on the purchase so re-sync can rebuild it',
   /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
 t('re-renders restore scroll position', /restoreViewState\(this/.test(read('scripts/apps/upgrade-editor.js')));
 
+/* ---------- no dead interactive surfaces ---------- */
+// A drop zone in a template with no listener behind it looks completely normal and does nothing
+// at all. Both zones in the setup window shipped that way, unnoticed, because the edit that was
+// supposed to add their listeners anchored on text that lived in a different file.
+const APP_FOR_TEMPLATE = {
+  'settings.hbs': 'scripts/apps/settings-app.js',
+  'upgrade-editor.hbs': 'scripts/apps/upgrade-editor.js',
+  'shop.hbs': 'scripts/apps/shop-app.js',
+  'editor.hbs': 'scripts/apps/editor-app.js'
+};
+for (const [template, app] of Object.entries(APP_FOR_TEMPLATE)) {
+  const tplSrc = read(`templates/${template}`);
+  const appSrc = read(app);
+  const zones = [...new Set([...tplSrc.matchAll(/data-drop="([\w-]+)"/g)].map(m => m[1]))];
+  for (const zone of zones) {
+    // either named directly, or reached through a loop over zone names
+    const wired = appSrc.includes(`data-drop="${zone}"`) || appSrc.includes(`"${zone}"`);
+    t(`${template}: drop zone "${zone}" has a listener behind it`, wired);
+  }
+  // every data-action in a template must be a registered action
+  const actions = [...new Set([...tplSrc.matchAll(/data-action="([\w-]+)"/g)].map(m => m[1]))];
+  const registered = new Set([...appSrc.matchAll(/^\s{6}(\w+):/gm)].map(m => m[1]));
+  for (const action of actions) {
+    t(`${template}: action "${action}" is registered`, registered.has(action));
+  }
+}
+
 /* ---------- nothing should ask the user to know an icon name ---------- */
 // This was fixed three separate times: the currency icon, the host portrait, and the resource
 // dialog. Each surface that takes an icon must offer a way to choose one.

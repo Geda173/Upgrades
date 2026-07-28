@@ -274,6 +274,36 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     applyTheme(this);
     restoreViewState(this, ".upg-settings-form", this.viewState);
 
+    // Both drop zones in this window: an Item to use as physical currency, and the Actor whose
+    // token opens the board. Stored differently on purpose — an item is referenced by uuid, an
+    // actor by id, because that is what a token resolves to.
+    for (const [zone, expects, field] of [["currency-item", "Item", "currencyItem"],
+                                          ["host-actor", "Actor", "hostActor"]]) {
+      const el = this.element.querySelector(`[data-drop="${zone}"]`);
+      if (!el) continue;
+      el.addEventListener("dragover", event => { event.preventDefault(); el.classList.add("hover"); });
+      el.addEventListener("dragleave", () => el.classList.remove("hover"));
+      el.addEventListener("drop", async event => {
+        event.preventDefault();
+        el.classList.remove("hover");
+
+        let data = null;
+        try { data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event); }
+        catch { try { data = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { data = null; } }
+
+        const doc = data?.uuid ? await fromUuid(data.uuid).catch(() => null) : null;
+        if (!doc) return ui.notifications.warn("Upgrades: that drop had nothing in it.");
+        if (doc.documentName !== expects) {
+          return ui.notifications.warn(
+            `Upgrades: drop ${expects === "Actor" ? "an Actor" : "an Item"} here — that was ${doc.documentName}.`);
+        }
+
+        this.#syncAll();
+        this.#draft[field] = expects === "Actor" ? doc.id : data.uuid;
+        this.render();
+      });
+    }
+
     for (const el of this.element.querySelectorAll("input, select")) {
       const event = (el.type === "checkbox" || el.tagName === "SELECT") ? "change" : "input";
       el.addEventListener(event, () => {
