@@ -43,6 +43,8 @@ const shopCards = [
     { id: 'a', displayName: 'Nightbloom', displayFlavor: 'Planted in memory.', displayImg: '',
       cost: 3, purchased: false, mystery: false, affordable: true, selected: true,
       targetLabel: 'Galadon Stormwhisper', excerpt: 'Planted at the north wall; it flowers in winter.',
+      costs: [{ amount: 3, name: 'Sprigs', icon: 'fa-solid fa-seedling', isImage: false },
+              { amount: 1, name: 'Pearls of Power', icon: 'fa-solid fa-circle', isImage: false }],
       effectLines: ['All weapon damage +1d4 cold', 'Armor Class +1'] },
     { id: 'b', displayName: '???', displayFlavor: '…', displayImg: '', cost: 9,
       purchased: false, mystery: true, affordable: false, selected: false,
@@ -65,6 +67,9 @@ const shopCards = [
 
 const shop = Handlebars.compile(tpl('shop.hbs'))({
   isGM: true, balance: 7, vocab,
+  currencies: [{ id: 'sprigs', name: 'Sprigs', icon: 'fa-solid fa-seedling', isImage: false, balance: 7 },
+               { id: 'pearls', name: 'Pearls of Power', icon: 'fa-solid fa-circle', isImage: false, balance: 2 }],
+  hasMultipleCurrencies: true,
   upgrades: shopCards,
   groups: [
     { id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation', upgrades: shopCards.slice(0, 2) },
@@ -100,6 +105,8 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   vocab, saveLabel: 'Save', systemId: 'dnd5e', builderSupported: true, isPf2e: false,
   hasCategories: true,
   categories: [{ id: 'c1', name: 'Lighthouse', isSelected: true }],
+  costRows: [{ id: 'sprigs', name: 'Sprigs', icon: 'fa-solid fa-seedling', isImage: false, amount: 3 },
+             { id: 'pearls', name: 'Pearls of Power', icon: 'fa-solid fa-circle', isImage: false, amount: 1 }],
   bonusTypeLegend: [],
   choiceEnabled: true,
   hasPrerequisiteCandidates: true,
@@ -154,6 +161,11 @@ t('shop: a teaser card leaks nothing', !!teaser && !teaser.includes('upg-effects
 t('shop: a secret card says so instead of looking cosmetic',
   !!secret && secret.includes('upg-effect-secret') && !secret.includes('upg-effects'));
 
+t('shop: every resource has its own purse in the header',
+  (shop.match(/upg-purse/g) || []).length >= 2);
+t('shop: a multi-resource price shows every component',
+  (() => { const c = cards.find(x => x.includes('Nightbloom'));
+           return !!c && (c.match(/upg-price/g) || []).length === 2; })());
 t('shop: section heading rendered', shop.includes('upg-section-head') && shop.includes('Lighthouse'));
 t('shop: every card still rendered across sections', cards.length === 6);
 (() => {
@@ -189,8 +201,12 @@ t('upgrade-editor: damage type dropdown appears', upgradeEditor.includes('rowDam
 t('upgrade-editor: dnd5e does NOT get the pf2e bonus-type dropdown',
   !upgradeEditor.includes('rowBonusType'));
 t('upgrade-editor: target actor marked selected', upgradeEditor.includes('Galadon Stormwhisper'));
-t('upgrade-editor: cost label uses the configured currency',
-  upgradeEditor.includes('Cost (Sprigs)'));
+t('upgrade-editor: one cost field per resource',
+  upgradeEditor.includes('name="cost:sprigs"') && upgradeEditor.includes('name="cost:pearls"'));
+t('upgrade-editor: cost fields are labelled with the resource',
+  upgradeEditor.includes('Sprigs') && upgradeEditor.includes('Pearls of Power'));
+t('upgrade-editor: existing amounts are filled in',
+  /name="cost:sprigs" value="3"/.test(upgradeEditor));
 t('upgrade-editor: section dropdown marks the current section',
   /name="categoryId"[\s\S]*?value="c1" selected/.test(upgradeEditor));
 t('upgrade-editor: prerequisite picker lists candidates',

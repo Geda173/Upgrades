@@ -7,9 +7,20 @@
       <input type="text" name="name" value="{{upgrade.name}}" placeholder="Nightbloom Sapling" autofocus>
     </div>
 
-    <div class="form-group">
-      <label>Cost ({{vocab.currencyName}})</label>
-      <input type="number" name="cost" value="{{upgrade.cost}}" min="0" step="1">
+    <div class="form-group stacked">
+      <label>Cost</label>
+      <div class="upg-cost-rows">
+        {{#each costRows}}
+        <div class="upg-cost-row">
+          <label>
+            {{#if isImage}}<img class="upg-currency-img" src="{{icon}}" alt="">
+            {{else}}<i class="{{icon}}"></i>{{/if}}
+            {{name}}
+          </label>
+          <input type="number" name="cost:{{id}}" value="{{amount}}" min="0" step="1">
+        </div>
+        {{/each}}
+      </div>
     </div>
 
     <div class="form-group">

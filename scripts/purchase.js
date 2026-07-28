@@ -4,7 +4,8 @@
  */
 import {
   MODULE_ID, SETTINGS, TARGET, getUpgrade, getBalance, adjustBalance,
-  addHistory, getVocabulary, isAvailable, addPurchase, unmetRequirements
+  addHistory, getVocabulary, isAvailable, addPurchase, unmetRequirements,
+  getCosts, describeCosts, canAfford
 } from "./data.js";
 import { emit, refreshOpenApps } from "./sockets.js";
 import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
@@ -24,9 +25,12 @@ export async function handlePurchaseRequest({ upgradeId, userId, choice = null }
     return notifyUser(userId, `“${upgrade.name}” needs ${unmet.map(u => u.name).join(" and ")} first.`);
   }
 
-  const balance = getBalance();
-  if (balance < upgrade.cost) {
-    return notifyUser(userId, `Not enough ${vocab.currencyName} for that (${balance}/${upgrade.cost}).`);
+  if (!canAfford(upgrade)) {
+    const short = describeCosts(upgrade)
+      .filter(c => getBalance(c.currencyId) < c.amount)
+      .map(c => `${getBalance(c.currencyId)}/${c.amount} ${c.currency.name}`)
+      .join(", ");
+    return notifyUser(userId, `Not enough for that (${short}).`);
   }
 
   const requireApproval = game.settings.get(MODULE_ID, SETTINGS.REQUIRE_APPROVAL);
@@ -37,8 +41,7 @@ export async function handlePurchaseRequest({ upgradeId, userId, choice = null }
       window: { title: `${vocab.windowTitle} — Request` },
       content: `<p><strong>${foundry.utils.escapeHTML(user?.name ?? "A player")}</strong> requests
         <strong>${foundry.utils.escapeHTML(upgrade.name)}</strong>
-        for <strong>${upgrade.cost}</strong> ${foundry.utils.escapeHTML(vocab.currencyName)}
-        (pool: ${balance}).</p>
+        for <strong>${foundry.utils.escapeHTML(priceLabel(upgrade))}</strong>.</p>
         <p>Applies to: <strong>${foundry.utils.escapeHTML(describeTarget(upgrade))}</strong>.</p>
         <p>Approve?</p>`,
       modal: false
@@ -89,9 +92,17 @@ async function resolveBuyer(user) {
   return chosen ? game.actors.get(chosen) : null;
 }
 
+/** "3 Sprigs and 1 Pearl of Power" */
+function priceLabel(upgrade) {
+  const parts = describeCosts(upgrade).map(c => `${c.amount} ${c.currency.name}`);
+  if (parts.length <= 1) return parts[0] ?? "nothing";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
-  const vocab = getVocabulary();
-  const after = await adjustBalance(-upgrade.cost, `Acquired: ${upgrade.name}`);
+  for (const cost of getCosts(upgrade)) {
+    await adjustBalance(cost.currencyId, -cost.amount, `Acquired: ${upgrade.name}`);
+  }
 
   const purchase = await addPurchase(upgrade.id, {
     actorId: buyerActor?.id ?? (upgrade.target === TARGET.ACTOR ? upgrade.targetActorId : null),
@@ -101,7 +112,7 @@ async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
   });
 
   await addHistory({
-    type: "purchase", upgradeId: upgrade.id, name: upgrade.name, cost: upgrade.cost,
+    type: "purchase", upgradeId: upgrade.id, name: upgrade.name, price: priceLabel(upgrade),
     by: user?.name ?? "GM", forActor: buyerActor?.name ?? null
   });
 
@@ -123,8 +134,8 @@ async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
         ${upgrade.img ? `<img src="${foundry.utils.escapeHTML(upgrade.img)}" alt="">` : ""}
         <h3>${foundry.utils.escapeHTML(upgrade.name)}${choice ? ` (${foundry.utils.escapeHTML(choice.name)})` : ""}</h3>
         <p class="upg-flavor"><em>${foundry.utils.escapeHTML(upgrade.flavor ?? "")}</em></p>
-        <p>Acquired for <strong>${upgrade.cost}</strong> ${foundry.utils.escapeHTML(vocab.currencyName)}.
-           Remaining: <strong>${after}</strong>.</p>
+        <p>Acquired for <strong>${foundry.utils.escapeHTML(priceLabel(upgrade))}</strong>.
+           </p>
         ${effectNote}
       </div>`
   });

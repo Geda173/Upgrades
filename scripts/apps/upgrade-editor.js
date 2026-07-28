@@ -6,7 +6,7 @@
  */
 import {
   MODULE_ID, SETTINGS, TARGET, getVocabulary, getCategories,
-  getUpgrades, eligiblePrerequisites
+  getUpgrades, eligiblePrerequisites, getCurrencies, getCosts
 } from "../data.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
@@ -64,7 +64,9 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       id: u.id ?? null,
       name: u.name ?? "",
-      cost: u.cost ?? 1,
+      costs: Object.fromEntries(getCurrencies().map(c => [
+        c.id, getCosts(u).find(x => x.currencyId === c.id)?.amount ?? 0
+      ])),
       img: u.img ?? "",
       flavor: u.flavor ?? "",
       description: u.description ?? "",
@@ -98,6 +100,11 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       upgrade: draft,
       vocab,
       saveLabel: this.isNew ? "Create" : "Save",
+      costRows: getCurrencies().map(c => ({
+        id: c.id, name: c.name, icon: c.icon,
+        isImage: /[/\\]/.test(c.icon ?? ""),
+        amount: draft.costs[c.id] ?? 0
+      })),
       categories: getCategories().map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
       // Anything that already depends on this upgrade is withheld — picking it would close a loop
       // and leave every upgrade in that loop permanently unbuyable.
@@ -218,7 +225,9 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     const val = name => get(name)?.value ?? "";
 
     this.draft.name = val("name");
-    this.draft.cost = Math.max(0, Number(val("cost")) || 0);
+    for (const el of form.querySelectorAll('[name^="cost:"]')) {
+      this.draft.costs[el.name.slice(5)] = Math.max(0, Number(el.value) || 0);
+    }
     this.draft.img = val("img").trim();
     this.draft.flavor = val("flavor");
     this.draft.description = val("description");
@@ -376,7 +385,9 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     await this.onSave({
       ...(d.id ? { id: d.id } : {}),
       name: d.name || "Unnamed upgrade",
-      cost: d.cost,
+      costs: Object.entries(d.costs)
+        .filter(([, amount]) => amount > 0)
+        .map(([currencyId, amount]) => ({ currencyId, amount })),
       img: d.img,
       flavor: d.flavor,
       description: d.description,

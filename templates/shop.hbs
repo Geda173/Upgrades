@@ -8,12 +8,16 @@
       {{#if vocab.greeting}}<div class="upg-sub">“{{vocab.greeting}}”</div>{{/if}}
     </div>
     <div class="upg-balance">
-      <div class="upg-num">
-        {{#if vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{vocab.currencyIcon}}" alt="">
-        {{else}}<i class="{{vocab.currencyIcon}}"></i>{{/if}}
-        {{balance}}
+      {{#each currencies}}
+      <div class="upg-purse">
+        <div class="upg-num">
+          {{#if isImage}}<img class="upg-currency-img" src="{{icon}}" alt="">
+          {{else}}<i class="{{icon}}"></i>{{/if}}
+          {{balance}}
+        </div>
+        <div class="upg-lbl">{{name}}</div>
       </div>
-      <div class="upg-lbl">{{vocab.currencyName}}</div>
+      {{/each}}
       {{#if canDeposit}}
       <button type="button" class="upg-deposit" data-action="deposit" data-actor-id="{{depositActorId}}">
         Hand in {{depositAmount}}
@@ -58,9 +62,13 @@
         {{#if effectSecretForGM}}<div class="upg-effect-secret gm">Hidden from players until owned</div>{{/if}}
         <div class="upg-cost">
           {{#unless mystery}}
-            {{#if ../../vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{../../vocab.currencyIcon}}" alt="">
-            {{else}}<i class="{{../../vocab.currencyIcon}}"></i>{{/if}}
-            {{cost}}
+            {{#each costs}}
+            <span class="upg-price">
+              {{#if isImage}}<img class="upg-currency-img" src="{{icon}}" alt="">
+              {{else}}<i class="{{icon}}"></i>{{/if}}
+              {{amount}}
+            </span>
+            {{/each}}
           {{else}}—{{/unless}}
           {{#unless soldOut}}{{#unless mystery}}
             {{#if affordable}}

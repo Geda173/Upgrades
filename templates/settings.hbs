@@ -95,10 +95,26 @@
         <p class="upg-hint">Pick an icon, or browse for your own portrait art.</p>
       </div>
 
-      <h3>Currency</h3>
+      <h3>Resources</h3>
+
+      <ul class="upg-currency-list">
+        {{#each currencies}}
+        <li>
+          {{#if isImage}}<img class="upg-currency-img" src="{{icon}}" alt="">{{else}}<i class="{{icon}}"></i>{{/if}}
+          <span class="upg-currency-name">{{name}}</span>
+          <a data-action="editCurrency" data-id="{{id}}" title="Edit"><i class="fa-solid fa-pen"></i></a>
+          <a data-action="removeCurrency" data-id="{{id}}" title="Remove"><i class="fa-solid fa-trash"></i></a>
+        </li>
+        {{/each}}
+      </ul>
+      <button type="button" class="upg-add-row" data-action="addCurrency"><i class="fa-solid fa-plus"></i> Add a resource</button>
+      <p class="upg-hint">
+        One is plenty for most tables. Add more and every upgrade can be priced in any combination
+        of them — an upgrade might cost 3 Sprigs and 1 Pearl of Power.
+      </p>
 
       <div class="form-group">
-        <label>What is it called?</label>
+        <label>Primary name</label>
         <input type="text" name="currencyName" value="{{draft.currencyName}}" placeholder="Sprigs">
       </div>
 

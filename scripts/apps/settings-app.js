@@ -8,7 +8,10 @@
  * The preview is patched in place rather than re-rendered — a full render on every keystroke
  * would pull focus out of whatever field the GM is typing in.
  */
-import { MODULE_ID, SETTINGS, THEMES } from "../data.js";
+import {
+  MODULE_ID, SETTINGS, THEMES,
+  getCurrencies, upsertCurrency, deleteCurrency
+} from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { applyTheme, fitToViewport, captureViewState, restoreViewState } from "./theme.js";
 
@@ -89,6 +92,9 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       clearHostImg: SettingsApp.#onClearHostImg,
       clearCurrencyItem: SettingsApp.#onClearCurrencyItem,
       clearHostActor: SettingsApp.#onClearHostActor,
+      addCurrency: SettingsApp.#onAddCurrency,
+      editCurrency: SettingsApp.#onEditCurrency,
+      removeCurrency: SettingsApp.#onRemoveCurrency,
       cancel: SettingsApp.#onCancel
     }
   };
@@ -163,6 +169,8 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       })),
 
       currencyItemName: this.currencyItemName ?? null,
+      currencies: getCurrencies().map(c => ({ ...c, isImage: /[/\\]/.test(c.icon ?? "") })),
+      hasMultipleCurrencies: getCurrencies().length > 1,
       hostActorName: d.hostActor ? (game.actors.get(d.hostActor)?.name ?? "missing actor") : null,
 
       hostIconGroups: HOST_ICON_GROUPS.map(g => ({
@@ -341,6 +349,66 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.#patchPreview();
       }
     }).browse();
+  }
+
+  /**
+   * Resources are edited through a small dialog rather than inline, because the list has to stay
+   * legible when a GM defines six of them.
+   */
+  static async #currencyDialog(existing) {
+    const { DialogV2 } = foundry.applications.api;
+    const c = existing ?? { name: "", icon: "fa-solid fa-circle" };
+    return DialogV2.prompt({
+      window: { title: existing ? `Edit ${c.name}` : "New resource" },
+      content: `
+        <div class="form-group"><label>Name</label>
+          <input type="text" name="name" value="${foundry.utils.escapeHTML(c.name)}" placeholder="Sprigs" autofocus></div>
+        <div class="form-group"><label>Icon</label>
+          <input type="text" name="icon" value="${foundry.utils.escapeHTML(c.icon ?? "")}" placeholder="fa-solid fa-seedling"></div>
+        <p class="upg-hint">Use a Font Awesome class, or a path to your own image.</p>`,
+      ok: {
+        label: existing ? "Save" : "Create",
+        callback: (_e, button) => ({
+          name: button.form.elements.name.value.trim(),
+          icon: button.form.elements.icon.value.trim() || "fa-solid fa-circle"
+        })
+      }
+    }).catch(() => null);
+  }
+
+  static async #onAddCurrency() {
+    this.#syncAll();
+    const result = await SettingsApp.#currencyDialog(null);
+    if (!result?.name) return;
+    await upsertCurrency(result);
+    this.render();
+  }
+
+  static async #onEditCurrency(_event, target) {
+    this.#syncAll();
+    const current = getCurrencies().find(c => c.id === target.dataset.id);
+    const result = await SettingsApp.#currencyDialog(current);
+    if (!result?.name) return;
+    await upsertCurrency({ id: current.id, ...result });
+    this.render();
+  }
+
+  static async #onRemoveCurrency(_event, target) {
+    this.#syncAll();
+    const { DialogV2 } = foundry.applications.api;
+    const currencies = getCurrencies();
+    if (currencies.length <= 1) {
+      return ui.notifications.warn("Upgrades: there has to be at least one resource.");
+    }
+    const current = currencies.find(c => c.id === target.dataset.id);
+    const ok = await DialogV2.confirm({
+      window: { title: "Remove resource" },
+      content: `<p>Remove <strong>${foundry.utils.escapeHTML(current.name)}</strong>?</p>
+        <p>Its balance is discarded, and any upgrade priced in it stops costing it.</p>`
+    });
+    if (!ok) return;
+    await deleteCurrency(current.id);
+    this.render();
   }
 
   static #onClearHostActor() {

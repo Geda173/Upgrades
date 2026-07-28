@@ -1,11 +1,13 @@
 <div class="upg-editor-body">
   <section class="upg-ledger">
-    <div class="upg-balance inline">
-      {{#if vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{vocab.currencyIcon}}" alt="">
-      {{else}}<i class="{{vocab.currencyIcon}}"></i>{{/if}}
-      <strong>{{balance}}</strong> {{vocab.currencyName}}
+    {{#each currencies}}
+    <div class="upg-balance inline upg-purse">
+      {{#if isImage}}<img class="upg-currency-img" src="{{icon}}" alt="">
+      {{else}}<i class="{{icon}}"></i>{{/if}}
+      <strong>{{balance}}</strong> {{name}}
+      <a data-action="adjustBalance" data-currency-id="{{id}}" title="Adjust {{name}}"><i class="fa-solid fa-plus-minus"></i></a>
     </div>
-    <button type="button" data-action="adjustBalance"><i class="fa-solid fa-plus-minus"></i> Adjust {{vocab.currencyName}}</button>
+    {{/each}}
     <button type="button" data-action="resync" title="Re-create any missing granted effects on their current targets (late joiners, roster changes, hand-deleted effects)"><i class="fa-solid fa-rotate"></i> Re-sync effects</button>
     {{#if hasCurrencyItem}}
     <button type="button" data-action="placeCurrency" title="Put currency into a chest or an NPC for the party to find"><i class="fa-solid fa-hand-holding-dollar"></i> Place {{vocab.currencyName}}</button>

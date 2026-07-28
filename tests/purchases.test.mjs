@@ -117,6 +117,55 @@ t('a cycle does not hang pathDepth', typeof D.pathDepth(looped[0], looped) === '
 t('a cycle does not hang dependsOn', D.dependsOn(looped[0], 'X', looped) === true);
 t('a cycle does not hang isUnlocked', D.isUnlocked(looped[0], looped) === false);
 
+/* ---------- resources ---------- */
+// A world that predates multiple resources must keep working with nothing configured.
+store.clear();
+store.set('currencyName', 'Sprigs');
+store.set('currencyIcon', 'fa-solid fa-seedling');
+store.set('balance', 7);
+t('a world with no resource list still gets one', D.getCurrencies().length === 1);
+t('the synthesised resource takes the old name', D.getCurrencies()[0].name === 'Sprigs');
+t('the old single balance becomes its balance', D.getBalance() === 7);
+t('a single resource does not read as multiple', !D.hasMultipleCurrencies());
+
+// an upgrade priced with the old bare number still resolves
+t('a legacy cost migrates to the first resource',
+  JSON.stringify(D.getCosts({ cost: 3 })) === JSON.stringify([{ currencyId: 'default', amount: 3 }]));
+t('a costless upgrade has no price components', D.getCosts({ cost: 0 }).length === 0);
+t('a legacy cost is affordable against the migrated balance', D.canAfford({ cost: 7 }));
+t('and unaffordable above it', !D.canAfford({ cost: 8 }));
+
+// now define two
+store.set('currencies', [
+  { id: 'sprigs', name: 'Sprigs', icon: 'i', sort: 0 },
+  { id: 'pearls', name: 'Pearls', icon: 'i', sort: 1 }
+]);
+store.set('balances', { sprigs: 5, pearls: 2 });
+t('both resources are listed', D.getCurrencies().length === 2);
+t('now it reads as multiple', D.hasMultipleCurrencies());
+t('each balance is separate', D.getBalance('sprigs') === 5 && D.getBalance('pearls') === 2);
+t('an unknown resource reads as zero', D.getBalance('nope') === 0);
+t('getBalance with no argument uses the first resource', D.getBalance() === 5);
+
+const dual = { costs: [{ currencyId: 'sprigs', amount: 3 }, { currencyId: 'pearls', amount: 1 }] };
+t('a price in two resources is affordable when both cover it', D.canAfford(dual));
+t('a price is unaffordable when only one falls short',
+  !D.canAfford({ costs: [{ currencyId: 'sprigs', amount: 3 }, { currencyId: 'pearls', amount: 9 }] }));
+t('zero-amount components are dropped',
+  D.getCosts({ costs: [{ currencyId: 'sprigs', amount: 0 }, { currencyId: 'pearls', amount: 2 }] }).length === 1);
+t('describeCosts pairs each amount with its resource',
+  D.describeCosts(dual).map(c => c.currency.name).join() === 'Sprigs,Pearls');
+t('a component naming a deleted resource is dropped from display',
+  D.describeCosts({ costs: [{ currencyId: 'gone', amount: 1 }] }).length === 0);
+
+await D.adjustBalance('pearls', -1, 'test');
+t('adjusting one resource leaves the others alone',
+  D.getBalance('pearls') === 1 && D.getBalance('sprigs') === 5);
+await D.adjustBalance('pearls', -99, 'test');
+t('a balance cannot go negative', D.getBalance('pearls') === 0);
+await D.adjustBalance(3, 'legacy call');
+t('the old two-argument adjustBalance still targets the first resource', D.getBalance('sprigs') === 8);
+
 /* ---------- sections ---------- */
 store.set('categories', [
   { id: 'c2', name: 'Runes', sort: 1 },

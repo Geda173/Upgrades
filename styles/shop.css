@@ -705,3 +705,23 @@
   border: 1px solid var(--upg-line); cursor: pointer; line-height: 1.4;
 }
 .upg-deposit:hover { background: var(--upg-fill-hover); box-shadow: none; }
+
+/* ---------- several resources ---------- */
+.upg-balance { display: flex; gap: 14px; align-items: flex-start; }
+.upg-purse { text-align: center; }
+.upg-price { display: inline-flex; align-items: center; gap: 4px; }
+.upg-price + .upg-price { margin-left: 8px; }
+.upg-ledger .upg-purse { display: inline-flex; align-items: center; gap: 6px; }
+.upg-currency-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.upg-currency-list li {
+  display: flex; align-items: center; gap: 9px; padding: 4px 8px;
+  border: 1px solid var(--upg-line-soft); border-radius: 5px; font-size: 13px;
+}
+.upg-currency-list li > i { color: var(--upg-accent); }
+.upg-currency-name { flex: 1; }
+.upg-currency-list a { color: var(--upg-ink-dim); }
+.upg-currency-list a:hover { color: var(--upg-gold-bright); }
+.upg-cost-rows { display: flex; flex-direction: column; gap: 6px; }
+.upg-cost-row { display: flex; align-items: center; gap: 8px; }
+.upg-cost-row label { flex: 1; color: var(--upg-ink-dim); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.upg-cost-row input { flex: 0 0 90px; }

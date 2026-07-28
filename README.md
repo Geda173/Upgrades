@@ -29,6 +29,9 @@ Supports **PF2e** and **dnd5e** for mechanical effects. The cosmetic layer works
 
 ### Buying
 
+- **One resource or several** — most tables want one. Define more and every upgrade can be priced in
+  any combination of them: an upgrade might cost *3 Sprigs and 1 Pearl of Power*. With a single
+  resource the UI is exactly as simple as it was before.
 - **Request → approve** — players petition, the GM gets an approve/decline dialog, approval deducts the
   cost and posts an announcement. Approval can be turned off. A GM buying directly is never asked to
   approve themselves.
@@ -109,9 +112,10 @@ of names. The setup window carries a live preview that updates as you type.
 1. **Party actor** — point this at your PF2e Party or dnd5e Group actor. Without it, party-wide upgrades
    fall back to *every player-owned character*, which in a mature world also means chests, item piles,
    summons and wildshape copies. This is the one setting that will bite you if skipped.
-2. **Vocabulary** — currency name, icon, window title, action verb, merchant name, greeting.
-3. **Theme** — pick by looking at it, not by name.
-4. Optionally: a **merchant actor**, a **currency item**, and whether pickups credit automatically.
+2. **Resources** — one exists by default; add more only if you want a compound economy.
+3. **Vocabulary** — currency name, icon, window title, action verb, merchant name, greeting.
+4. **Theme** — pick by looking at it, not by name.
+5. Optionally: a **merchant actor**, a **currency item**, and whether pickups credit automatically.
 
 ## Notes
 

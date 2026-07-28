@@ -4,7 +4,8 @@
 import {
   MODULE_ID, SETTINGS, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
   getBalance, adjustBalance, getHistory, getVocabulary,
-  getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory, removePurchase
+  getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory, removePurchase,
+  getCurrencies, getCurrency, getBalances, getCosts, describeCosts, hasMultipleCurrencies
 } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
@@ -56,6 +57,10 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       vocab,
       balance: getBalance(),
+      currencies: getCurrencies().map(c => ({
+        ...c, balance: getBalances()[c.id] ?? 0, isImage: /[/\\]/.test(c.icon ?? "")
+      })),
+      hasMultipleCurrencies: hasMultipleCurrencies(),
       hasCurrencyItem: !!game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ITEM),
       categories: getCategories(),
       hasCategories: getCategories().length > 0,
@@ -158,25 +163,34 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const ok = await DialogV2.confirm({
       window: { title: "Refund upgrade" },
-      content: `<p>Refund <strong>${foundry.utils.escapeHTML(u.name)}</strong> — ${u.cost}
-        ${foundry.utils.escapeHTML(vocab.currencyName)} back, and its effect removed from
+      content: `<p>Refund <strong>${foundry.utils.escapeHTML(u.name)}</strong> — 
+        ${foundry.utils.escapeHTML(describeCosts(u).map(c => `${c.amount} ${c.currency.name}`).join(", ") || "nothing")}
+        back, and its effect removed from
         ${foundry.utils.escapeHTML(who)}?</p>`
         + (remaining ? `<p>${remaining} other acquisition(s) of this upgrade are left untouched.</p>` : "")
     });
     if (!ok) return;
 
-    await adjustBalance(u.cost, `Refund: ${u.name}`);
+    for (const cost of getCosts(u)) await adjustBalance(cost.currencyId, cost.amount, `Refund: ${u.name}`);
     await removePurchase(u.id, last.id);
     // Repeatable grants carry a purchase id, so only this one is removed.
     await removeUpgradeEffect(u.id, u.repeatable ? last.id : null);
     EditorApp.#afterMutation();
   }
 
-  static async #onAdjustBalance() {
-    const vocab = getVocabulary();
+  static async #onAdjustBalance(_event, target) {
+    const currencies = getCurrencies();
+    // The picker only appears once there is a choice to make.
+    const preset = target?.dataset?.currencyId;
+    const picker = (currencies.length > 1 && !preset)
+      ? `<div class="form-group"><label>Resource</label><select name="currencyId">`
+        + currencies.map(c => `<option value="${c.id}">${foundry.utils.escapeHTML(c.name)}</option>`).join("")
+        + `</select></div>`
+      : "";
+
     const result = await DialogV2.prompt({
-      window: { title: `Adjust ${vocab.currencyName}` },
-      content: `
+      window: { title: preset ? `Adjust ${getCurrency(preset)?.name ?? ""}` : "Adjust" },
+      content: `${picker}
         <div class="form-group"><label>Amount (use negatives to remove)</label>
           <input type="number" name="delta" value="1" step="1" autofocus></div>
         <div class="form-group"><label>Reason (shown in history)</label>
@@ -185,12 +199,16 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
         label: "Apply",
         callback: (_event, button) => {
           const form = button.form;
-          return { delta: Number(form.elements.delta.value) || 0, reason: form.elements.reason.value };
+          return {
+            currencyId: preset ?? form.elements.currencyId?.value ?? currencies[0]?.id,
+            delta: Number(form.elements.delta.value) || 0,
+            reason: form.elements.reason.value
+          };
         }
       }
-    });
+    }).catch(() => null);
     if (!result || !result.delta) return;
-    await adjustBalance(result.delta, result.reason);
+    await adjustBalance(result.currencyId, result.delta, result.reason);
     EditorApp.#afterMutation();
   }
 

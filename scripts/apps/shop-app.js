@@ -3,7 +3,8 @@
  */
 import {
   MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory, isAvailable,
-  unmetRequirements, isUnlocked, sortByPath, pathDepth
+  unmetRequirements, isUnlocked, sortByPath, pathDepth,
+  getCurrencies, getBalances, describeCosts, canAfford, hasMultipleCurrencies
 } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
@@ -81,7 +82,15 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
           // Named so a player can see what to buy first rather than just that they cannot buy this.
           requiresLabel: mystery ? "" : unmetRequirements(u, all).map(r => r.name).join(", "),
           onPath: !mystery && pathDepth(u, all) > 0,
-          affordable: isAvailable(u) && isUnlocked(u, all) && balance >= u.cost,
+          affordable: isAvailable(u) && isUnlocked(u, all) && canAfford(u),
+          // One entry per resource the upgrade is priced in; with a single resource this is
+          // exactly the one icon-and-number the card always showed.
+          costs: mystery ? [] : describeCosts(u).map(c => ({
+            amount: c.amount,
+            name: c.currency.name,
+            icon: c.currency.icon,
+            isImage: /[/\\]/.test(c.currency.icon ?? "")
+          })),
           ownedCount: u.repeatable ? (u.purchases?.length ?? 0) : 0,
           ownedBy: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", "),
           selected: u.id === this.#selectedId,
@@ -113,6 +122,12 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
       selected,
       selectedDescription: selected ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(selected.description ?? "") : null,
       vocab: getVocabulary(),
+      currencies: getCurrencies().map(c => ({
+        ...c,
+        balance: getBalances()[c.id] ?? 0,
+        isImage: /[/\\]/.test(c.icon ?? "")
+      })),
+      hasMultipleCurrencies: hasMultipleCurrencies(),
       ...(await ShopApp.#depositContext())
     };
   }
