@@ -121,6 +121,9 @@ export async function resolveEffectPayload(upgrade) {
               rules,
               category: "bonus",
               level: { value: 1 },
+              // A repeatable upgrade really is taken more than once; leaving the default of 1
+              // would have the feat contradict the three copies of itself on the sheet.
+              maxTakable: upgrade.repeatable ? 99 : 1,
               traits: { value: [], rarity: "common" }
             }
           }

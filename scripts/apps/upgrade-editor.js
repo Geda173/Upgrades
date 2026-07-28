@@ -105,6 +105,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
       isPf2e: isPf2e(),
+      bonusTypeLegend: isPf2e() ? PF2E_BONUS_TYPES.filter(b => !b.label.includes("rarely")) : [],
 
       targetOptions: [
         { value: TARGET.PARTY, label: "The whole party", isSelected: draft.target === TARGET.PARTY },
@@ -153,6 +154,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       mode: Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD),
       isCustom: row.preset === "custom",
       isPf2e: isPf2e(),
+      bonusTypeLegend: isPf2e() ? PF2E_BONUS_TYPES.filter(b => !b.label.includes("rarely")) : [],
       bonusTypes: PF2E_BONUS_TYPES.map(b => ({
         ...b, isSelected: b.id === (row.bonusType ?? "circumstance")
       })),
@@ -254,6 +256,21 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
         this.#syncDraft();
         this.render();
       });
+    }
+
+    // A dice value becomes a DamageDice rule, which has no bonus type, so the selector is
+    // hidden rather than left there inviting a choice that is quietly discarded.
+    for (const row of this.element.querySelectorAll(".upg-row")) {
+      const value = row.querySelector('[name="rowValue"]');
+      const bonusType = row.querySelector('[name="rowBonusType"]');
+      if (!value || !bonusType) continue;
+      const sync = () => {
+        const isDice = /\d*\s*d\s*\d+/i.test(value.value);
+        bonusType.classList.toggle("hidden", isDice);
+        bonusType.disabled = isDice;
+      };
+      value.addEventListener("input", sync);
+      sync();
     }
 
     const drop = this.element.querySelector('[data-drop="effect"]');

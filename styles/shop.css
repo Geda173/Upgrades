@@ -693,3 +693,8 @@
 }
 .upg-prereqs { display: flex; flex-direction: column; gap: 4px; }
 .upg-prereqs label.checkbox { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.upg-legend dl { margin: 6px 0 8px; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+.upg-legend dt { color: var(--upg-accent); white-space: nowrap; }
+.upg-legend dd { margin: 0; color: var(--upg-ink-dim); }
+.upg-legend p { margin: 0 0 6px; }
+.upg-row select.hidden { display: none; }

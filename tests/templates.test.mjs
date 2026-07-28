@@ -100,6 +100,7 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   vocab, saveLabel: 'Save', systemId: 'dnd5e', builderSupported: true, isPf2e: false,
   hasCategories: true,
   categories: [{ id: 'c1', name: 'Lighthouse', isSelected: true }],
+  bonusTypeLegend: [],
   hasPrerequisiteCandidates: true,
   prerequisites: [{ id: 'p1', name: 'Activate Magelight', isSelected: true },
                   { id: 'p2', name: 'Talisman Permanency', isSelected: false }],

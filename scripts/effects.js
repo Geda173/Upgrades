@@ -145,12 +145,18 @@ const PRESETS_GENERIC = [
  * The type is what drives stacking, so it is a first-class choice rather than a hidden default.
  */
 export const PF2E_BONUS_TYPES = [
-  { id: "circumstance", label: "Circumstance — from the situation" },
-  { id: "item", label: "Item — from gear or an upgrade" },
-  { id: "status", label: "Status — from a spell or condition" },
-  { id: "proficiency", label: "Proficiency" },
-  { id: "ability", label: "Ability" },
-  { id: "untyped", label: "Untyped — always stacks" }
+  { id: "circumstance", label: "Circumstance — from where you are or what you did",
+    hint: "Terrain, cover, a lit beacon, a clever plan. The usual choice for something the world provides." },
+  { id: "item", label: "Item — from gear, a rune, an installed upgrade",
+    hint: "Will not stack with a magic weapon or armour giving the same kind of bonus — the larger one wins." },
+  { id: "status", label: "Status — from a spell, condition or blessing",
+    hint: "Will not stack with spell buffs like Bless that grant the same kind of bonus." },
+  { id: "untyped", label: "Untyped — always stacks with everything",
+    hint: "Nothing suppresses it. Use it when you just want the bonus to apply, at the cost of breaking PF2e's stacking maths." },
+  { id: "proficiency", label: "Proficiency (rarely right for an upgrade)",
+    hint: "Reserved for training rank. Almost never what an upgrade should grant." },
+  { id: "ability", label: "Ability (rarely right for an upgrade)",
+    hint: "Reserved for an attribute modifier. Almost never what an upgrade should grant." }
 ];
 
 /** Dice sizes PF2e accepts for a DamageDice rule element. */

@@ -57,4 +57,14 @@ t('describes dice without a bonus type',
 globalThis.game.system.id = "dnd5e";
 t('dnd5e still builds ActiveEffect changes',
   E.buildChanges([{preset:"ac", value:"1"}])[0].key === "system.attributes.ac.bonus");
+/* ---------- the labels are the interface; jargon alone is not enough ---------- */
+for (const b of E.PF2E_BONUS_TYPES) {
+  t(`bonus type "${b.id}" explains itself`, typeof b.hint === 'string' && b.hint.length > 30);
+  t(`bonus type "${b.id}" is labelled in plain language`, /—|\(/.test(b.label));
+}
+t('the two rarely-right types say so',
+  E.PF2E_BONUS_TYPES.filter(b => /rarely/.test(b.label)).map(b => b.id).sort().join() === 'ability,proficiency');
+t('untyped is offered as the just-make-it-work option',
+  E.PF2E_BONUS_TYPES.find(b => b.id === 'untyped').label.includes('always stacks'));
+
 process.exit(bad);

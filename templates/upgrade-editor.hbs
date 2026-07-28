@@ -188,11 +188,18 @@
       <button type="button" class="upg-add-row" data-action="addRow"><i class="fa-solid fa-plus"></i> Add a bonus</button>
 
       {{#if isPf2e}}
-      <p class="upg-hint">
-        Enter a flat number (<code>1</code>) or dice (<code>1d6</code>). The bonus type matters:
-        PF2e counts only the <em>highest</em> bonus of each type, so an <code>item</code> bonus from an
-        upgrade will not stack with a magic weapon's, while <code>untyped</code> always stacks.
-      </p>
+      <div class="upg-hint upg-legend">
+        <p>Enter a flat number like <code>1</code>, or dice like <code>1d6</code>. Extra dice have no
+          bonus type, so that dropdown disappears when you type dice.</p>
+        <p><strong>Why the type matters:</strong> PF2e adds only the <em>largest</em> bonus of each type.
+          Two item bonuses to AC do not become +2 — the bigger one simply wins.</p>
+        <dl>
+          {{#each bonusTypeLegend}}
+          <dt>{{label}}</dt><dd>{{hint}}</dd>
+          {{/each}}
+        </dl>
+        <p>If you only want it to work and do not care about the maths, pick <strong>Untyped</strong>.</p>
+      </div>
       {{else}}
       <p class="upg-hint">
         Values are dnd5e roll formulas, and they should carry a sign: <code>+2</code> for a flat bonus,

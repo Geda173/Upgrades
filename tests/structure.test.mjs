@@ -90,6 +90,11 @@ t('a locked upgrade is refused at the socket entry point, not just in the UI',
 t('locked cards are visually distinct', /\.upg-card\.locked \{/.test(css));
 t('cards on a path carry a rail', /\.upg-card\.on-path \{[^}]*border-left/.test(css));
 
+t('a repeatable upgrade does not declare itself take-once',
+  /maxTakable: upgrade\.repeatable/.test(read('scripts/systems/adapter.js')));
+t('the bonus type is hidden on a dice row, where it would be discarded',
+  /bonusType\.classList\.toggle\("hidden", isDice\)/.test(read('scripts/apps/upgrade-editor.js')));
+
 /* ---------- effect visibility rules ---------- */
 const shopJs = read('scripts/apps/shop-app.js');
 t('teasers never compute effect lines', /u\.hidden && !isGM\) return;/.test(shopJs));
