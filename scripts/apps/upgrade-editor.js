@@ -6,12 +6,12 @@
  */
 import {
   MODULE_ID, SETTINGS, TARGET, getVocabulary, getCategories,
-  getUpgrades, eligiblePrerequisites, getCurrencies, getCosts
+  getUpgrades, eligiblePrerequisites, getCurrencies, getCosts, isImagePath
 } from "../data.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
-import { applyTheme, fitToViewport, captureViewState, restoreViewState } from "./theme.js";
+import { UpgradesWindow, wireDropZone } from "./ui.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -23,7 +23,7 @@ const MODE_CHOICES = [
   { value: CONST.ACTIVE_EFFECT_MODES.MULTIPLY, label: "Multiply" }
 ];
 
-export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
+export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(ApplicationV2)) {
   static DEFAULT_OPTIONS = {
     id: "upgrades-upgrade-editor",
     classes: ["upgrades", "upg-upgrade-editor"],
@@ -42,6 +42,8 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       cancel: UpgradeEditor.#onCancel
     }
   };
+
+  static SCROLL_SELECTOR = ".upg-form-body";
 
   static PARTS = {
     main: { template: `modules/${MODULE_ID}/templates/upgrade-editor.hbs` }
@@ -102,7 +104,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       saveLabel: this.isNew ? "Create" : "Save",
       costRows: getCurrencies().map(c => ({
         id: c.id, name: c.name, icon: c.icon,
-        isImage: /[/\\]/.test(c.icon ?? ""),
+        isImage: isImagePath(c.icon ?? ""),
         amount: draft.costs[c.id] ?? 0
       })),
       categories: getCategories().map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
@@ -257,20 +259,10 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     }));
   }
 
-  _onFirstRender(context, options) {
-    super._onFirstRender(context, options);
-    fitToViewport(this);
-  }
 
-  async _preRender(context, options) {
-    await super._preRender(context, options);
-    this.viewState = captureViewState(this, ".upg-form-body");
-  }
 
   _onRender(context, options) {
     super._onRender(context, options);
-    applyTheme(this);
-    restoreViewState(this, ".upg-form-body", this.viewState);
 
     // Controls marked data-action="rerender" reshape the form rather than doing anything themselves.
     for (const el of this.element.querySelectorAll('[data-action="rerender"]')) {
@@ -295,42 +287,20 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       sync();
     }
 
-    const drop = this.element.querySelector('[data-drop="effect"]');
-    if (drop) {
-      drop.addEventListener("dragover", event => {
-        event.preventDefault();
-        drop.classList.add("hover");
-      });
-      drop.addEventListener("dragleave", () => drop.classList.remove("hover"));
-      drop.addEventListener("drop", event => this.#onDrop(event, drop));
-    }
+    // Either kind can be granted, so both are accepted here.
+    wireDropZone(this.element.querySelector('[data-drop="effect"]'), {
+      accept: ["ActiveEffect", "Item"],
+      onDrop: (doc, uuid) => {
+        this.#syncDraft();
+        this.draft.effectUuid = uuid;
+        this.draft.effectMode = EFFECT_MODE.LINK;
+        if (!this.draft.name) this.draft.name = doc.name;
+        if (!this.draft.img) this.draft.img = doc.img ?? "";
+        this.render();
+      }
+    });
   }
 
-  async #onDrop(event, drop) {
-    event.preventDefault();
-    drop.classList.remove("hover");
-
-    let data;
-    try {
-      data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
-    } catch {
-      try { data = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { data = null; }
-    }
-    if (!data?.uuid) return ui.notifications.warn("Upgrades: that drop had no document in it.");
-
-    const doc = await fromUuid(data.uuid).catch(() => null);
-    if (!doc) return ui.notifications.warn("Upgrades: could not resolve the dropped document.");
-    if (!["ActiveEffect", "Item"].includes(doc.documentName)) {
-      return ui.notifications.warn(`Upgrades: drop an Effect or an Item — ${doc.documentName} can't be granted.`);
-    }
-
-    this.#syncDraft();
-    this.draft.effectUuid = data.uuid;
-    this.draft.effectMode = EFFECT_MODE.LINK;
-    if (!this.draft.name) this.draft.name = doc.name;
-    if (!this.draft.img) this.draft.img = doc.img ?? "";
-    this.render();
-  }
 
   /* ---------- actions ---------- */
 

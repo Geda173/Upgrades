@@ -15,7 +15,7 @@ const scripts = [
   'scripts/data.js', 'scripts/effects.js', 'scripts/main.js', 'scripts/purchase.js',
   'scripts/sockets.js', 'scripts/systems/adapter.js',
   'scripts/apps/shop-app.js', 'scripts/apps/editor-app.js', 'scripts/apps/upgrade-editor.js',
-  'scripts/apps/settings-app.js', 'scripts/apps/theme.js'
+  'scripts/apps/settings-app.js', 'scripts/apps/ui.js', 'scripts/apps/choice-dialog.js'
 ];
 for (const rel of scripts) {
   const path = new URL(`../${rel}`, import.meta.url).pathname;
@@ -50,8 +50,20 @@ for (const cls of ['upg-upgrade-editor', 'upg-settings-app', 'upg-editor', 'upg-
   t(`${cls} is capped to the viewport`,
     new RegExp(`\\.${cls} \\.window-content \\{[^}]*max-height: calc\\(100vh`).test(css));
 }
+// Theme, viewport fitting and scroll preservation are guaranteed by one mixin rather than
+// repeated per app, so the assertion is that every window goes through it.
+const ui = read('scripts/apps/ui.js');
+t('the shared window mixin applies the theme', /applyTheme\(this\)/.test(ui));
+t('the shared window mixin shrinks to the viewport', /fitToViewport\(this\)/.test(ui));
+t('the shared window mixin restores scroll and focus', /restoreViewState\(this, selector/.test(ui));
 for (const app of ['shop-app', 'editor-app', 'settings-app', 'upgrade-editor']) {
-  t(`${app} shrinks itself on first render`, /fitToViewport\(this\)/.test(read(`scripts/apps/${app}.js`)));
+  t(`${app} is built on the shared window mixin`,
+    /extends UpgradesWindow\(/.test(read(`scripts/apps/${app}.js`)));
+}
+// A window that re-renders itself must name its scrolling element, or the mixin has nothing to restore.
+for (const app of ['settings-app', 'upgrade-editor']) {
+  t(`${app} declares which element scrolls`,
+    /static SCROLL_SELECTOR = "\.[\w-]+"/.test(read(`scripts/apps/${app}.js`)));
 }
 
 /* ---------- cards align across a row ---------- */
@@ -105,7 +117,7 @@ t('the buyer is asked on their own client, before the request is sent',
 t('cancelling the prompt spends nothing', /if \(!choice\) return;/.test(read('scripts/purchase.js')));
 t('the choice is remembered on the purchase so re-sync can rebuild it',
   /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
-t('re-renders restore scroll position', /restoreViewState\(this/.test(read('scripts/apps/upgrade-editor.js')));
+t('re-renders restore scroll position', /restoreViewState\(this, selector/.test(read('scripts/apps/ui.js')));
 
 /* ---------- the merchant token has to be reachable by players ---------- */
 const dataJs = read('scripts/data.js');

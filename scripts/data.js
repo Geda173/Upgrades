@@ -286,8 +286,15 @@ export async function deleteCurrency(id) {
 /* ---------- Vocabulary helpers ---------- */
 
 /** Everything the UI needs in order to call things by the GM's chosen names. */
-function isImagePath(value) {
-  return /[/\\]/.test(value ?? "") || /\.(webp|png|jpe?g|gif|svg)$/i.test(value ?? "");
+/**
+ * Icons are stored as either a Font Awesome class or a path to artwork, and every surface that
+ * renders one has to tell them apart. Four copies of this had drifted: two accepted a bare
+ * "pearl.png", two demanded a slash, so the same value rendered as an image in one window and as
+ * a broken icon class in another.
+ */
+export function isImagePath(value) {
+  const v = value ?? "";
+  return /[/\\]/.test(v) || /\.(webp|png|jpe?g|gif|svg)$/i.test(v);
 }
 
 export function getVocabulary() {

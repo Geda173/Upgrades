@@ -1,5 +1,5 @@
 /**
- * Shared window helpers.
+ * Shared window behaviour.
  *
  * Theming: every window carries `upg-theme-<id>` on its root element, and the stylesheet
  * defines each theme purely as a set of custom-property values. Structural CSS is shared,
@@ -69,4 +69,72 @@ export function restoreViewState(app, scrollSelector, state) {
   if (state.caret !== null && typeof field.setSelectionRange === "function") {
     try { field.setSelectionRange(state.caret, state.caret); } catch { /* not a text field */ }
   }
+}
+
+/**
+ * Drag-and-drop onto a zone, done once.
+ *
+ * Three copies of this existed — the effect link, the setup window's two slots, and the buyer
+ * prompt — each re-deriving the drag payload and its own idea of what counts as a valid drop.
+ *
+ * @param {HTMLElement} el         the zone, usually carrying `data-drop`
+ * @param {string[]}    accept     document names to accept, e.g. ["Item"]; empty accepts any
+ * @param {Function}    onDrop     called with (doc, uuid) once a valid document is resolved
+ */
+export function wireDropZone(el, { accept = [], onDrop } = {}) {
+  if (!el || typeof onDrop !== "function") return;
+
+  el.addEventListener("dragover", event => { event.preventDefault(); el.classList.add("hover"); });
+  el.addEventListener("dragleave", () => el.classList.remove("hover"));
+  el.addEventListener("drop", async event => {
+    event.preventDefault();
+    el.classList.remove("hover");
+
+    let data = null;
+    try {
+      data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+    } catch {
+      // Some drag sources only put plain JSON on the clipboard.
+      try { data = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { data = null; }
+    }
+
+    const doc = data?.uuid ? await fromUuid(data.uuid).catch(() => null) : null;
+    if (!doc) return ui.notifications.warn("Upgrades: that drop had nothing in it.");
+    if (accept.length && !accept.includes(doc.documentName)) {
+      const wanted = accept.map(a => (a === "Actor" ? "an Actor" : `a ${a}`)).join(" or ");
+      return ui.notifications.warn(`Upgrades: drop ${wanted} here — that was ${doc.documentName}.`);
+    }
+    await onDrop(doc, data.uuid);
+  });
+}
+
+/**
+ * Everything every window in this module wants: the current theme, a size that fits the screen,
+ * and a scroll position that survives the re-render triggered by changing a field.
+ *
+ * Set `static SCROLL_SELECTOR` on a subclass to name its scrolling element; windows that do not
+ * re-render themselves can leave it null.
+ */
+export function UpgradesWindow(Base) {
+  return class extends Base {
+    static SCROLL_SELECTOR = null;
+
+    async _preRender(context, options) {
+      await super._preRender(context, options);
+      const selector = this.constructor.SCROLL_SELECTOR;
+      if (selector) this.viewState = captureViewState(this, selector);
+    }
+
+    _onFirstRender(context, options) {
+      super._onFirstRender(context, options);
+      fitToViewport(this);
+    }
+
+    _onRender(context, options) {
+      super._onRender(context, options);
+      applyTheme(this);
+      const selector = this.constructor.SCROLL_SELECTOR;
+      if (selector) restoreViewState(this, selector, this.viewState);
+    }
+  };
 }

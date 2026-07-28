@@ -36,10 +36,14 @@ for (const suite of suites) {
   const pass = (out.match(/^PASS /gm) ?? []).length;
   const fail = (out.match(/^FAIL /gm) ?? []).length;
   const skipped = /^SKIP /m.test(out);
+  // A suite can die before printing anything — a bad import, a missing file. Without this it
+  // contributes no failures and the summary cheerfully reports zero.
+  const crashed = res.status !== 0 && fail === 0;
 
-  results.push({ label, pass, fail, skipped, code: res.status, out });
+  results.push({ label, pass, fail, skipped, crashed, code: res.status, out });
 
   const status = skipped ? 'SKIP'
+    : crashed ? 'CRASHED — suite did not run'
     : res.status === 0 ? `${String(pass).padStart(3)} passed`
     : `${fail} FAILED of ${pass + fail}`;
   console.log(`${label.padEnd(16)} ${status}`);
@@ -59,5 +63,7 @@ const totalFail = results.reduce((n, r) => n + r.fail, 0);
 const failedSuites = results.filter(r => r.code !== 0);
 
 console.log('─'.repeat(40));
-console.log(`${totalPass} passed, ${totalFail} failed, ${results.filter(r => r.skipped).length} skipped`);
+const crashes = results.filter(r => r.crashed).length;
+console.log(`${totalPass} passed, ${totalFail} failed, ${results.filter(r => r.skipped).length} skipped`
+  + (crashes ? `, ${crashes} CRASHED` : ''));
 process.exit(failedSuites.length ? 1 : 0);

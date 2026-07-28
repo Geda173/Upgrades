@@ -5,17 +5,17 @@ import {
   MODULE_ID, SETTINGS, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
   getBalance, adjustBalance, getHistory, getVocabulary,
   getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory, removePurchase,
-  getCurrencies, getCurrency, getBalances, getCosts, describeCosts, hasMultipleCurrencies
+  getCurrencies, getCurrency, getBalances, getCosts, describeCosts, hasMultipleCurrencies, isImagePath
 } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
 import { describeBuild, EFFECT_MODE } from "../effects.js";
 import { UpgradeEditor } from "./upgrade-editor.js";
-import { applyTheme, fitToViewport } from "./theme.js";
+import { UpgradesWindow } from "./ui.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
-export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
+export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(ApplicationV2)) {
   static instance = null;
 
   static DEFAULT_OPTIONS = {
@@ -58,7 +58,7 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       vocab,
       balance: getBalance(),
       currencies: getCurrencies().map(c => ({
-        ...c, balance: getBalances()[c.id] ?? 0, isImage: /[/\\]/.test(c.icon ?? "")
+        ...c, balance: getBalances()[c.id] ?? 0, isImage: isImagePath(c.icon ?? "")
       })),
       hasMultipleCurrencies: hasMultipleCurrencies(),
       hasCurrencyItem: !!game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ITEM),
@@ -94,15 +94,7 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return label;
   }
 
-  _onFirstRender(context, options) {
-    super._onFirstRender(context, options);
-    fitToViewport(this);
-  }
 
-  _onRender(context, options) {
-    super._onRender(context, options);
-    applyTheme(this);
-  }
 
   /* ---------- actions ---------- */
 

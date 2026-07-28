@@ -14,7 +14,7 @@ const SCRIPTS = [
   'scripts/data.js', 'scripts/effects.js', 'scripts/main.js', 'scripts/purchase.js',
   'scripts/sockets.js', 'scripts/currency.js', 'scripts/systems/adapter.js',
   'scripts/apps/shop-app.js', 'scripts/apps/editor-app.js', 'scripts/apps/upgrade-editor.js',
-  'scripts/apps/settings-app.js', 'scripts/apps/theme.js', 'scripts/apps/choice-dialog.js'
+  'scripts/apps/settings-app.js', 'scripts/apps/ui.js', 'scripts/apps/choice-dialog.js'
 ];
 
 // Things the browser, Foundry, or the language provides.
@@ -58,7 +58,12 @@ for (const rel of SCRIPTS) {
     // method definitions, including the private ones these classes lean on
     ...[...src.matchAll(/^\s*(?:static\s+)?(?:async\s+)?(?:get\s+|set\s+)?#?(\w+)\s*\([^)]*\)\s*\{/gm)].map(m => m[1]),
     // object-literal shorthand methods and properties holding functions
-    ...[...src.matchAll(/^\s*(\w+)\s*:/gm)].map(m => m[1])
+    ...[...src.matchAll(/^\s*(\w+)\s*:/gm)].map(m => m[1]),
+    // destructured parameters, both `({ a, b })` and `(el, { a = [], b } = {})`
+    ...[...src.matchAll(/\{([^{}]*)\}\s*=\s*\{\}/g), ...src.matchAll(/\(\s*\{([^{}]*)\}\s*\)/g)]
+      .flatMap(m => m[1].split(',')
+        .map(x => x.trim().split(/[=:]/)[0].trim())
+        .filter(Boolean))
   ]);
 
   // Bare calls only: never obj.foo(), never this.#foo(), never a definition.

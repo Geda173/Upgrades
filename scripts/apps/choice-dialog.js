@@ -5,6 +5,8 @@
  * from the GM-side pipeline would need a request/response round trip over the socket; asking
  * first and sending the answer along with the request needs none.
  */
+import { wireDropZone } from "./ui.js";
+
 const { DialogV2 } = foundry.applications.api;
 
 /**
@@ -38,27 +40,18 @@ export async function promptForDocument({ label, hint } = {}) {
       const ok = root.querySelector('[data-action="ok"]');
       if (ok) ok.disabled = true;   // nothing to confirm until something is dropped
 
-      zone?.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("hover"); });
-      zone?.addEventListener("dragleave", () => zone.classList.remove("hover"));
-      zone?.addEventListener("drop", async event => {
-        event.preventDefault();
-        zone.classList.remove("hover");
-
-        let data;
-        try { data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event); }
-        catch { data = null; }
-        const doc = data?.uuid ? await fromUuid(data.uuid).catch(() => null) : null;
-        if (!doc) return ui.notifications.warn("Upgrades: that drop had nothing in it.");
-
-        picked = { uuid: data.uuid, name: doc.name, img: doc.img ?? "" };
-        zone.classList.add("filled");
-        zone.innerHTML = `
-          ${doc.img ? `<img src="${foundry.utils.escapeHTML(doc.img)}" alt="">` : ""}
-          <div class="upg-drop-text">
-            <strong>${foundry.utils.escapeHTML(doc.name)}</strong>
-            <span>${foundry.utils.escapeHTML(doc.type ?? doc.documentName ?? "")}</span>
-          </div>`;
-        if (ok) ok.disabled = false;
+      wireDropZone(zone, {
+        onDrop: doc => {
+          picked = { uuid: doc.uuid, name: doc.name, img: doc.img ?? "" };
+          zone.classList.add("filled");
+          zone.innerHTML = `
+            ${doc.img ? `<img src="${foundry.utils.escapeHTML(doc.img)}" alt="">` : ""}
+            <div class="upg-drop-text">
+              <strong>${foundry.utils.escapeHTML(doc.name)}</strong>
+              <span>${foundry.utils.escapeHTML(doc.type ?? doc.documentName ?? "")}</span>
+            </div>`;
+          if (ok) ok.disabled = false;
+        }
       });
     },
     rejectClose: false

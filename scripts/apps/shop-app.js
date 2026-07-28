@@ -4,17 +4,17 @@
 import {
   MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory, isAvailable,
   unmetRequirements, isUnlocked, sortByPath, pathDepth,
-  getCurrencies, getBalances, describeCosts, canAfford, hasMultipleCurrencies
+  getCurrencies, getBalances, describeCosts, canAfford, hasMultipleCurrencies, isImagePath
 } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
 import { describeUpgradeEffect } from "../effects.js";
-import { applyTheme, fitToViewport } from "./theme.js";
+import { UpgradesWindow } from "./ui.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
+export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(ApplicationV2)) {
   static instance = null;
 
   static DEFAULT_OPTIONS = {
@@ -89,7 +89,7 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
             amount: c.amount,
             name: c.currency.name,
             icon: c.currency.icon,
-            isImage: /[/\\]/.test(c.currency.icon ?? "")
+            isImage: isImagePath(c.currency.icon ?? "")
           })),
           ownedCount: u.repeatable ? (u.purchases?.length ?? 0) : 0,
           ownedBy: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", "),
@@ -125,22 +125,14 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
       currencies: getCurrencies().map(c => ({
         ...c,
         balance: getBalances()[c.id] ?? 0,
-        isImage: /[/\\]/.test(c.icon ?? "")
+        isImage: isImagePath(c.icon ?? "")
       })),
       hasMultipleCurrencies: hasMultipleCurrencies(),
       ...(await ShopApp.#depositContext())
     };
   }
 
-  _onFirstRender(context, options) {
-    super._onFirstRender(context, options);
-    fitToViewport(this);
-  }
 
-  _onRender(context, options) {
-    super._onRender(context, options);
-    applyTheme(this);
-  }
 
   /** Strip the GM's HTML down to a short line for the card face. */
   static #excerpt(html, limit = 130) {

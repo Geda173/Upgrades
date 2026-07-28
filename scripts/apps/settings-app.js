@@ -10,10 +10,11 @@
  */
 import {
   MODULE_ID, SETTINGS, THEMES,
-  getCurrencies, upsertCurrency, deleteCurrency, merchantNeedsAccess, grantMerchantAccess
+  getCurrencies, upsertCurrency, deleteCurrency, merchantNeedsAccess, grantMerchantAccess,
+  isImagePath
 } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
-import { applyTheme, fitToViewport, captureViewState, restoreViewState } from "./theme.js";
+import { UpgradesWindow, wireDropZone } from "./ui.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -42,7 +43,7 @@ function wireIconPicker(root, inputName) {
     }
     if (preview) {
       const v = input.value.trim();
-      preview.innerHTML = /[/\\]/.test(v)
+      preview.innerHTML = isImagePath(v)
         ? `<img class="upg-currency-img" src="${foundry.utils.escapeHTML(v)}" alt="">`
         : `<i class="${foundry.utils.escapeHTML(v || "fa-solid fa-circle")}"></i>`;
     }
@@ -121,7 +122,7 @@ const HOST_ICON_GROUPS = [
 /** Checkbox fields need .checked rather than .value when read back off the form. */
 const BOOL_FIELDS = ["requireApproval", "playersCanOpen", "autoDeposit"];
 
-export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
+export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(ApplicationV2)) {
   static instance = null;
 
   static DEFAULT_OPTIONS = {
@@ -147,6 +148,8 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       cancel: SettingsApp.#onCancel
     }
   };
+
+  static SCROLL_SELECTOR = ".upg-settings-form";
 
   static PARTS = {
     main: { template: `modules/${MODULE_ID}/templates/settings.hbs` }
@@ -194,14 +197,14 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     this.currencyItemName = d.currencyItem
       ? (await fromUuid(d.currencyItem).catch(() => null))?.name ?? null
       : null;
-    const isImg = SettingsApp.#iconIsImage(d.currencyIcon);
+    const isImg = isImagePath(d.currencyIcon);
 
     return {
       draft: d,
       currencyIconIsImg: isImg,
       // The portrait accepts an image path or an icon class, so the template needs both forms.
-      hostIsImage: !!d.hostImg && SettingsApp.#iconIsImage(d.hostImg),
-      hostIconClass: (d.hostImg && !SettingsApp.#iconIsImage(d.hostImg))
+      hostIsImage: !!d.hostImg && isImagePath(d.hostImg),
+      hostIconClass: (d.hostImg && !isImagePath(d.hostImg))
         ? d.hostImg
         : (isImg ? "fa-solid fa-gem" : (d.currencyIcon || "fa-solid fa-gem")),
       iconClassOrDefault: isImg ? "fa-solid fa-gem" : (d.currencyIcon || "fa-solid fa-gem"),
@@ -218,7 +221,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       })),
 
       currencyItemName: this.currencyItemName ?? null,
-      currencies: getCurrencies().map(c => ({ ...c, isImage: /[/\\]/.test(c.icon ?? "") })),
+      currencies: getCurrencies().map(c => ({ ...c, isImage: isImagePath(c.icon ?? "") })),
       hasMultipleCurrencies: getCurrencies().length > 1,
       hostActorName: d.hostActor ? (game.actors.get(d.hostActor)?.name ?? "missing actor") : null,
       // Checked against the saved actor, since the warning is about world state, not the draft.
@@ -234,10 +237,6 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       partyWarning: SettingsApp.#partyWarning(),
 
     };
-  }
-
-  static #iconIsImage(icon) {
-    return /[/\\]/.test(icon ?? "") || /\.(webp|png|jpe?g|gif|svg)$/i.test(icon ?? "");
   }
 
   static #partyActorChoices(selected) {
@@ -262,48 +261,21 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /* ---------- live preview ---------- */
 
-  _onFirstRender(context, options) {
-    super._onFirstRender(context, options);
-    fitToViewport(this);
-  }
 
-  async _preRender(context, options) {
-    await super._preRender(context, options);
-    this.viewState = captureViewState(this, ".upg-settings-form");
-  }
 
   _onRender(context, options) {
     super._onRender(context, options);
-    applyTheme(this);
-    restoreViewState(this, ".upg-settings-form", this.viewState);
 
-    // Both drop zones in this window: an Item to use as physical currency, and the Actor whose
-    // token opens the board. Stored differently on purpose — an item is referenced by uuid, an
-    // actor by id, because that is what a token resolves to.
-    for (const [zone, expects, field] of [["currency-item", "Item", "currencyItem"],
-                                          ["host-actor", "Actor", "hostActor"]]) {
-      const el = this.element.querySelector(`[data-drop="${zone}"]`);
-      if (!el) continue;
-      el.addEventListener("dragover", event => { event.preventDefault(); el.classList.add("hover"); });
-      el.addEventListener("dragleave", () => el.classList.remove("hover"));
-      el.addEventListener("drop", async event => {
-        event.preventDefault();
-        el.classList.remove("hover");
-
-        let data = null;
-        try { data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event); }
-        catch { try { data = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { data = null; } }
-
-        const doc = data?.uuid ? await fromUuid(data.uuid).catch(() => null) : null;
-        if (!doc) return ui.notifications.warn("Upgrades: that drop had nothing in it.");
-        if (doc.documentName !== expects) {
-          return ui.notifications.warn(
-            `Upgrades: drop ${expects === "Actor" ? "an Actor" : "an Item"} here — that was ${doc.documentName}.`);
+    // An item is referenced by uuid, an actor by id — that is what a token resolves to.
+    for (const [zone, accept, field] of [["currency-item", "Item", "currencyItem"],
+                                         ["host-actor", "Actor", "hostActor"]]) {
+      wireDropZone(this.element.querySelector(`[data-drop="${zone}"]`), {
+        accept: [accept],
+        onDrop: (doc, uuid) => {
+          this.#syncAll();
+          this.#draft[field] = accept === "Actor" ? doc.id : uuid;
+          this.render();
         }
-
-        this.#syncAll();
-        this.#draft[field] = expects === "Actor" ? doc.id : data.uuid;
-        this.render();
       });
     }
 
@@ -348,7 +320,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     setText("currencyName", d.currencyName || "Points");
     setText("actionVerb", d.actionVerb || "Request");
 
-    const iconHtml = SettingsApp.#iconIsImage(d.currencyIcon)
+    const iconHtml = isImagePath(d.currencyIcon)
       ? `<img class="upg-currency-img" src="${foundry.utils.escapeHTML(d.currencyIcon)}" alt="">`
       : `<i class="${foundry.utils.escapeHTML(d.currencyIcon || "fa-solid fa-gem")}"></i>`;
     for (const el of root.querySelectorAll('[data-bind="currency-icon"]')) el.innerHTML = iconHtml;
@@ -356,7 +328,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const portrait = root.querySelector('[data-bind="host-portrait"]');
     if (portrait) {
       if (!d.hostImg) portrait.innerHTML = iconHtml;
-      else if (SettingsApp.#iconIsImage(d.hostImg)) {
+      else if (isImagePath(d.hostImg)) {
         portrait.innerHTML = `<img src="${foundry.utils.escapeHTML(d.hostImg)}" alt="">`;
       } else {
         portrait.innerHTML = `<i class="${foundry.utils.escapeHTML(d.hostImg)}"></i>`;
