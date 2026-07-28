@@ -10,7 +10,7 @@
  */
 import {
   MODULE_ID, SETTINGS, THEMES,
-  getCurrencies, upsertCurrency, deleteCurrency
+  getCurrencies, upsertCurrency, deleteCurrency, merchantNeedsAccess, grantMerchantAccess
 } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { applyTheme, fitToViewport, captureViewState, restoreViewState } from "./theme.js";
@@ -140,6 +140,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       clearHostImg: SettingsApp.#onClearHostImg,
       clearCurrencyItem: SettingsApp.#onClearCurrencyItem,
       clearHostActor: SettingsApp.#onClearHostActor,
+      grantMerchantAccess: SettingsApp.#onGrantMerchantAccess,
       addCurrency: SettingsApp.#onAddCurrency,
       editCurrency: SettingsApp.#onEditCurrency,
       removeCurrency: SettingsApp.#onRemoveCurrency,
@@ -220,6 +221,8 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       currencies: getCurrencies().map(c => ({ ...c, isImage: /[/\\]/.test(c.icon ?? "") })),
       hasMultipleCurrencies: getCurrencies().length > 1,
       hostActorName: d.hostActor ? (game.actors.get(d.hostActor)?.name ?? "missing actor") : null,
+      // Checked against the saved actor, since the warning is about world state, not the draft.
+      merchantNeedsAccess: merchantNeedsAccess(),
 
       hostIconGroups: HOST_ICON_GROUPS.map(g => ({
         label: g.label,
@@ -494,6 +497,13 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     });
     if (!ok) return;
     await deleteCurrency(current.id);
+    this.render();
+  }
+
+  static async #onGrantMerchantAccess() {
+    this.#syncAll();
+    const ok = await grantMerchantAccess();
+    if (ok) ui.notifications.info("Upgrades: players can now interact with the merchant's token.");
     this.render();
   }
 

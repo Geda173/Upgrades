@@ -68,6 +68,8 @@ Other systems get the custom-target row plus link mode.
 
 - **Merchant actor** — bind an actor and double-clicking their token opens the window. Pair that with
   turning off "players can open the window themselves" and visiting them is the only way in.
+  Foundry only delivers a double-click to a token the user may view, so Setup warns when players
+  have no access to that actor and offers to grant the minimum level that lets the click through.
 - **Physical currency** — nominate an Item worth one unit, place stacks into a chest or a body from the
   console, and let the party loot it. They hand it in from the window, or it credits automatically on
   pickup if you prefer.

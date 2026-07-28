@@ -401,6 +401,41 @@ export function getHostActor() {
   return id ? (game.actors?.get(id) ?? null) : null;
 }
 
+/**
+ * Can the players actually interact with the merchant's token?
+ *
+ * Foundry only dispatches a double-click to a token the user is permitted to view, so a merchant
+ * that players have no ownership of simply never responds to them — silently, and only for them.
+ * LIMITED is the lowest level that lets the click through.
+ */
+export function merchantAccessLevel() {
+  const actor = getHostActor();
+  if (!actor) return null;
+  const LEVELS = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+  const players = game.users.filter(u => !u.isGM);
+  if (!players.length) return LEVELS.LIMITED;   // nothing to block
+  return Math.min(...players.map(u => actor.testUserPermission(u, "LIMITED") ? LEVELS.LIMITED : LEVELS.NONE));
+}
+
+export function merchantNeedsAccess() {
+  const actor = getHostActor();
+  if (!actor) return false;
+  return merchantAccessLevel() < CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED;
+}
+
+/** Give every player the minimum ownership that lets a token respond to them. */
+export async function grantMerchantAccess() {
+  const actor = getHostActor();
+  if (!actor) return false;
+  await actor.update({
+    "ownership.default": Math.max(
+      actor.ownership?.default ?? 0,
+      CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED
+    )
+  });
+  return true;
+}
+
 /** Is this token the merchant? */
 export function isHostToken(token) {
   const id = game.settings.get(MODULE_ID, SETTINGS.HOST_ACTOR);

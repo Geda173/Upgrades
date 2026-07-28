@@ -107,6 +107,17 @@ t('the choice is remembered on the purchase so re-sync can rebuild it',
   /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
 t('re-renders restore scroll position', /restoreViewState\(this/.test(read('scripts/apps/upgrade-editor.js')));
 
+/* ---------- the merchant token has to be reachable by players ---------- */
+const dataJs = read('scripts/data.js');
+t('the module checks whether players can view the merchant actor',
+  /testUserPermission\(u, "LIMITED"\)/.test(dataJs));
+t('and offers to grant the minimum level that lets a click through',
+  /ownership\.default/.test(dataJs) && /DOCUMENT_OWNERSHIP_LEVELS\.LIMITED/.test(dataJs));
+t('granting never lowers an existing permission',
+  /Math\.max\(\s*actor\.ownership\?\.default/.test(dataJs));
+t('a world with no players is not warned about',
+  /if \(!players\.length\) return LEVELS\.LIMITED/.test(dataJs));
+
 /* ---------- no dead interactive surfaces ---------- */
 // A drop zone in a template with no listener behind it looks completely normal and does nothing
 // at all. Both zones in the setup window shipped that way, unnoticed, because the edit that was

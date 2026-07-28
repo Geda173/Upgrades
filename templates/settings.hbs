@@ -62,6 +62,16 @@
           {{/if}}
         </div>
         <input type="hidden" name="hostActor" value="{{draft.hostActor}}">
+        {{#if merchantNeedsAccess}}
+        <p class="upg-warn">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          Players have no access to this actor, so Foundry will not deliver their double-clicks to
+          the token — it simply will not respond, and only for them.
+        </p>
+        <button type="button" class="upg-add-row" data-action="grantMerchantAccess">
+          <i class="fa-solid fa-key"></i> Give players access
+        </button>
+        {{/if}}
         <p class="upg-hint">
           Their name and portrait are used below unless you override them. Pair this with turning
           off “players can open the window themselves” and the only way in is to visit them.
