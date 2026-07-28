@@ -1,7 +1,7 @@
 /**
  * Upgrades — entry point.
  */
-import { MODULE_ID, SETTINGS, registerSettings, getVocabulary } from "./data.js";
+import { MODULE_ID, SETTINGS, registerSettings, getVocabulary, populatePartyActorChoices } from "./data.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
@@ -12,6 +12,8 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   initSockets();
+  // The actor directory only exists now, so the Party actor dropdown is filled in here.
+  populatePartyActorChoices();
 
   // Public API: macros can call game.modules.get("upgrades").api.openShop()
   const mod = game.modules.get(MODULE_ID);
