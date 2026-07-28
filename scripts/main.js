@@ -34,6 +34,14 @@ Hooks.once("ready", () => {
     openSettings: () => SettingsApp.show()
   };
 
+  // Only the active GM reacts, or several clients would credit the same pickup.
+  Hooks.on("createItem", async item => {
+    const { isActiveGM } = await import("./sockets.js");
+    if (!isActiveGM()) return;
+    const { autoDepositOnPickup } = await import("./currency.js");
+    await autoDepositOnPickup(item);
+  });
+
   console.log(`${MODULE_ID} | Ready. Open via the token controls button or game.modules.get("${MODULE_ID}").api.openShop()`);
 });
 

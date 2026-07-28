@@ -12,6 +12,8 @@ export const SETTINGS = {
   REQUIRE_APPROVAL: "requireApproval",
   PLAYERS_CAN_OPEN: "playersCanOpen",
   PARTY_ACTOR: "partyActor",
+  CURRENCY_ITEM: "currencyItem",
+  AUTO_DEPOSIT: "autoDeposit",
   THEME: "theme",
   CURRENCY_NAME: "currencyName",
   CURRENCY_ICON: "currencyIcon",
@@ -103,6 +105,18 @@ export function registerSettings() {
     // and Foundry reads this object as-is rather than calling it, so a lazy function would render blank.
     scope: "world", config: false, type: String, default: "",
     choices: {},
+    onChange: () => refreshWindows()
+  });
+
+  S.register(MODULE_ID, SETTINGS.CURRENCY_ITEM, {
+    name: "Currency item",
+    hint: "An Item representing one unit, so the currency can be looted from a chest or a body.",
+    scope: "world", config: false, type: String, default: "",
+    onChange: () => refreshWindows()
+  });
+  S.register(MODULE_ID, SETTINGS.AUTO_DEPOSIT, {
+    name: "Credit currency automatically when picked up",
+    scope: "world", config: false, type: Boolean, default: false,
     onChange: () => refreshWindows()
   });
 

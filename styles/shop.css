@@ -698,3 +698,10 @@
 .upg-legend dd { margin: 0; color: var(--upg-ink-dim); }
 .upg-legend p { margin: 0 0 6px; }
 .upg-row select.hidden { display: none; }
+.upg-deposit {
+  margin-top: 6px; width: 100%; font-family: inherit; font-size: 10px;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 5px;
+  background: var(--upg-fill-soft); color: var(--upg-gold-bright);
+  border: 1px solid var(--upg-line); cursor: pointer; line-height: 1.4;
+}
+.upg-deposit:hover { background: var(--upg-fill-hover); box-shadow: none; }

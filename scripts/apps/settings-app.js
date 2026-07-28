@@ -68,7 +68,7 @@ const HOST_ICON_GROUPS = [
 ];
 
 /** Checkbox fields need .checked rather than .value when read back off the form. */
-const BOOL_FIELDS = ["requireApproval", "playersCanOpen"];
+const BOOL_FIELDS = ["requireApproval", "playersCanOpen", "autoDeposit"];
 
 export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static instance = null;
@@ -87,6 +87,7 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       pickHostIcon: SettingsApp.#onPickHostIcon,
       pickHostImg: SettingsApp.#onPickHostImg,
       clearHostImg: SettingsApp.#onClearHostImg,
+      clearCurrencyItem: SettingsApp.#onClearCurrencyItem,
       cancel: SettingsApp.#onCancel
     }
   };
@@ -119,6 +120,8 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       greeting: g(SETTINGS.GREETING),
       currencyName: g(SETTINGS.CURRENCY_NAME),
       currencyIcon: g(SETTINGS.CURRENCY_ICON),
+      currencyItem: g(SETTINGS.CURRENCY_ITEM),
+      autoDeposit: g(SETTINGS.AUTO_DEPOSIT),
       actionVerb: g(SETTINGS.ACTION_VERB),
       partyActor: g(SETTINGS.PARTY_ACTOR),
       requireApproval: g(SETTINGS.REQUIRE_APPROVAL),
@@ -130,6 +133,10 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   async _prepareContext(_options) {
     const d = this.#draft;
+    // Resolved here so the template can name the item rather than showing a raw uuid.
+    this.currencyItemName = d.currencyItem
+      ? (await fromUuid(d.currencyItem).catch(() => null))?.name ?? null
+      : null;
     const isImg = SettingsApp.#iconIsImage(d.currencyIcon);
 
     return {
@@ -152,6 +159,8 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
         label: g.label,
         icons: g.icons.map(([cls, name]) => ({ cls, name, isSelected: cls === d.currencyIcon }))
       })),
+
+      currencyItemName: this.currencyItemName ?? null,
 
       hostIconGroups: HOST_ICON_GROUPS.map(g => ({
         label: g.label,
@@ -325,6 +334,14 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }).browse();
   }
 
+  static #onClearCurrencyItem() {
+    this.#syncAll();
+    this.#draft.currencyItem = "";
+    const field = this.element.querySelector('[name="currencyItem"]');
+    if (field) field.value = "";
+    this.render();
+  }
+
   static #onCancel() {
     this.close();
   }
@@ -343,6 +360,8 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       [SETTINGS.GREETING, d.greeting],
       [SETTINGS.CURRENCY_NAME, d.currencyName],
       [SETTINGS.CURRENCY_ICON, d.currencyIcon],
+      [SETTINGS.CURRENCY_ITEM, d.currencyItem],
+      [SETTINGS.AUTO_DEPOSIT, !!d.autoDeposit],
       [SETTINGS.ACTION_VERB, d.actionVerb],
       [SETTINGS.PARTY_ACTOR, d.partyActor],
       [SETTINGS.REQUIRE_APPROVAL, !!d.requireApproval],

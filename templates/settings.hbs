@@ -106,6 +106,35 @@
         <p class="upg-hint">Pick one above, or browse for your own image.</p>
       </div>
 
+      <div class="form-group stacked">
+        <label>Physical currency (optional)</label>
+        <div class="upg-drop {{#if currencyItemName}}filled{{/if}}" data-drop="currency-item">
+          {{#if currencyItemName}}
+            <i class="fa-solid fa-coins"></i>
+            <div class="upg-drop-text">
+              <strong>{{currencyItemName}}</strong>
+              <span>one of these is worth one {{draft.currencyName}}</span>
+            </div>
+            <button type="button" data-action="clearCurrencyItem" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+          {{else}}
+            <i class="fa-solid fa-hand-pointer"></i>
+            <div class="upg-drop-text">
+              <strong>Drag an Item here</strong>
+              <span>lets you hide payment in a chest for the party to loot</span>
+            </div>
+          {{/if}}
+        </div>
+        <input type="hidden" name="currencyItem" value="{{draft.currencyItem}}">
+        <label class="checkbox">
+          <input type="checkbox" name="autoDeposit" {{#if draft.autoDeposit}}checked{{/if}}>
+          Credit it the moment a player picks it up
+        </label>
+        <p class="upg-hint">
+          Leave that unticked and players hand it in with a button in this window instead — an item
+          vanishing out of the inventory you just looted it into is startling if you did not ask for it.
+        </p>
+      </div>
+
       <h3>Behaviour</h3>
 
       <div class="form-group">

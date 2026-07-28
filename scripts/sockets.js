@@ -14,6 +14,17 @@ export function initSockets() {
         // Only one GM client should handle the request
         if (isActiveGM()) await handlePurchaseRequest(msg);
         break;
+      case "deposit":
+        if (isActiveGM()) {
+          const { depositFrom } = await import("./currency.js");
+          const actor = game.actors.get(msg.actorId);
+          const amount = await depositFrom(actor);
+          emit({ type: "notify", userId: msg.userId,
+                 message: amount ? `Handed in ${amount}.` : "Nothing to hand in." });
+          refreshOpenApps();
+          emit({ type: "refresh" });
+        }
+        break;
       case "openShop":
         if (!game.user.isGM) openShopForClient();
         break;

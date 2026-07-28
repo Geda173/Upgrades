@@ -23,6 +23,7 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
     position: { width: 920, height: "auto" },
     actions: {
       buy: ShopApp.#onBuy,
+      deposit: ShopApp.#onDeposit,
       showToPlayers: ShopApp.#onShowToPlayers,
       openEditor: ShopApp.#onOpenEditor,
       openSettings: ShopApp.#onOpenSettings,
@@ -111,7 +112,8 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
       hasSections: groups.some(g => g.name),
       selected,
       selectedDescription: selected ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(selected.description ?? "") : null,
-      vocab: getVocabulary()
+      vocab: getVocabulary(),
+      ...(await ShopApp.#depositContext())
     };
   }
 
@@ -137,6 +139,31 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
     // cut on a word boundary rather than mid-word
     const cut = text.slice(0, limit);
     return cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : limit) + "…";
+  }
+
+  /** What the current user could hand in right now, if anything. */
+  static async #depositContext() {
+    const { getCurrencyItem, countCurrencyOn } = await import("../currency.js");
+    const source = await getCurrencyItem();
+    const actor = game.user.character;
+    if (!source || !actor) return { canDeposit: false, depositAmount: 0, depositActorId: null };
+    const amount = countCurrencyOn(actor, source.name);
+    return { canDeposit: amount > 0, depositAmount: amount, depositActorId: actor.id };
+  }
+
+  static async #onDeposit(_event, target) {
+    const actorId = target.dataset.actorId;
+    if (!actorId) return;
+    if (game.user.isGM) {
+      const { depositFrom } = await import("../currency.js");
+      const amount = await depositFrom(game.actors.get(actorId));
+      ui.notifications.info(amount ? `Handed in ${amount}.` : "Nothing to hand in.");
+      emit({ type: "refresh" });
+      ShopApp.instance?.render();
+      return;
+    }
+    // World data is GM-writable only, so the actual move happens on their client.
+    emit({ type: "deposit", actorId, userId: game.user.id });
   }
 
   static #onBuy(_event, target) {

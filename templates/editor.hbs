@@ -7,6 +7,9 @@
     </div>
     <button type="button" data-action="adjustBalance"><i class="fa-solid fa-plus-minus"></i> Adjust {{vocab.currencyName}}</button>
     <button type="button" data-action="resync" title="Re-create any missing granted effects on their current targets (late joiners, roster changes, hand-deleted effects)"><i class="fa-solid fa-rotate"></i> Re-sync effects</button>
+    {{#if hasCurrencyItem}}
+    <button type="button" data-action="placeCurrency" title="Put currency into a chest or an NPC for the party to find"><i class="fa-solid fa-hand-holding-dollar"></i> Place {{vocab.currencyName}}</button>
+    {{/if}}
     <button type="button" data-action="openSettings"><i class="fa-solid fa-sliders"></i> Setup</button>
   </section>
 

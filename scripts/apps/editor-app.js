@@ -2,7 +2,7 @@
  * GM console: upgrade CRUD, currency ledger, history. (ApplicationV2 + Handlebars)
  */
 import {
-  MODULE_ID, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
+  MODULE_ID, SETTINGS, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
   getBalance, adjustBalance, getHistory, getVocabulary,
   getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory, removePurchase
 } from "../data.js";
@@ -31,6 +31,7 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       adjustBalance: EditorApp.#onAdjustBalance,
       resync: EditorApp.#onResync,
       openSettings: EditorApp.#onOpenSettings,
+      placeCurrency: EditorApp.#onPlaceCurrency,
       addCategory: EditorApp.#onAddCategory,
       editCategory: EditorApp.#onEditCategory,
       removeCategory: EditorApp.#onRemoveCategory,
@@ -55,6 +56,7 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       vocab,
       balance: getBalance(),
+      hasCurrencyItem: !!game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ITEM),
       categories: getCategories(),
       hasCategories: getCategories().length > 0,
       groups: groupByCategory(
@@ -195,6 +197,35 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onOpenSettings() {
     const { SettingsApp } = await import("./settings-app.js");
     SettingsApp.show();
+  }
+
+  /** Drop currency into a chest, a body, or anyone else the party will search. */
+  static async #onPlaceCurrency() {
+    const { getCurrencyItem, placeCurrency } = await import("../currency.js");
+    const source = await getCurrencyItem();
+    if (!source) {
+      return ui.notifications.warn("Upgrades: choose a currency item in Setup first.");
+    }
+    const actors = game.actors.filter(a => a.isOwner).sort((a, b) => a.name.localeCompare(b.name));
+    const options = actors
+      .map(a => `<option value="${a.id}">${foundry.utils.escapeHTML(a.name)} (${a.type})</option>`).join("");
+    const result = await DialogV2.prompt({
+      window: { title: `Place ${source.name}` },
+      content: `<div class="form-group"><label>Into</label><select name="actorId">${options}</select></div>
+        <div class="form-group"><label>How many</label>
+          <input type="number" name="amount" value="1" min="1" step="1" autofocus></div>`,
+      ok: {
+        label: "Place",
+        callback: (_e, button) => ({
+          actorId: button.form.elements.actorId.value,
+          amount: Math.max(1, Number(button.form.elements.amount.value) || 0)
+        })
+      }
+    }).catch(() => null);
+    if (!result) return;
+    const actor = game.actors.get(result.actorId);
+    const placed = await placeCurrency(actor, result.amount);
+    if (placed) ui.notifications.info(`Upgrades: placed ${placed} × ${source.name} on ${actor.name}.`);
   }
 
   static async #onAddCategory() {

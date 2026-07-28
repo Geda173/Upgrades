@@ -14,6 +14,11 @@
         {{balance}}
       </div>
       <div class="upg-lbl">{{vocab.currencyName}}</div>
+      {{#if canDeposit}}
+      <button type="button" class="upg-deposit" data-action="deposit" data-actor-id="{{depositActorId}}">
+        Hand in {{depositAmount}}
+      </button>
+      {{/if}}
     </div>
   </header>
 
