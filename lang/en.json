@@ -1,6 +1,5 @@
 {
-  "PEARL_UPGRADES": {
-    "ShopTitle": "The Pearl Merchant",
-    "EditorTitle": "Pearl Upgrades — GM Console"
+  "UPGRADES": {
+    "EditorTitle": "Upgrades — GM Console"
   }
 }

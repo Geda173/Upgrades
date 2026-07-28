@@ -1,7 +1,7 @@
 /**
- * Pearl Upgrades — entry point.
+ * Upgrades — entry point.
  */
-import { MODULE_ID, SETTINGS, registerSettings } from "./data.js";
+import { MODULE_ID, SETTINGS, registerSettings, getVocabulary } from "./data.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
@@ -13,14 +13,14 @@ Hooks.once("init", () => {
 Hooks.once("ready", () => {
   initSockets();
 
-  // Public API: macros can call game.modules.get("pearl-upgrades").api.openShop()
+  // Public API: macros can call game.modules.get("upgrades").api.openShop()
   const mod = game.modules.get(MODULE_ID);
   mod.api = {
     openShop: () => ShopApp.show(),
     openEditor: () => EditorApp.show()
   };
 
-  console.log(`${MODULE_ID} | Ready. Open the shop via the token controls button or game.modules.get("${MODULE_ID}").api.openShop()`);
+  console.log(`${MODULE_ID} | Ready. Open via the token controls button or game.modules.get("${MODULE_ID}").api.openShop()`);
 });
 
 /**
@@ -31,10 +31,12 @@ Hooks.on("getSceneControlButtons", (controls) => {
   const canOpen = game.user.isGM || game.settings.get(MODULE_ID, SETTINGS.PLAYERS_CAN_OPEN);
   if (!canOpen) return;
 
+  const vocab = getVocabulary();
   const tool = {
-    name: "pearl-upgrades",
-    title: "Pearl Upgrades — Open Shop",
-    icon: "fa-solid fa-gem",
+    name: "upgrades",
+    title: `Open ${vocab.windowTitle}`,
+    // Reuse the currency icon when it's a Font Awesome class; an image path can't go here.
+    icon: vocab.currencyIconIsImg ? "fa-solid fa-gem" : (vocab.currencyIcon || "fa-solid fa-gem"),
     button: true,
     onChange: () => ShopApp.show(),
     onClick: () => ShopApp.show()

@@ -1,0 +1,182 @@
+/**
+ * Effect authoring: turn plain-language choices into an ActiveEffect payload,
+ * so a GM never has to know a UUID or a system data path.
+ *
+ * An upgrade carries one of three payload modes:
+ *   "none"  — cosmetic only
+ *   "link"  — effectUuid points at an existing ActiveEffect or Item (drag & drop in the editor)
+ *   "build" — effectBuild.rows are preset bonuses assembled here into ActiveEffect changes
+ */
+import { MODULE_ID } from "./data.js";
+
+export const EFFECT_MODE = {
+  NONE: "none",
+  LINK: "link",
+  BUILD: "build"
+};
+
+const MODES = CONST.ACTIVE_EFFECT_MODES;
+
+/**
+ * Preset bonuses, grouped for the editor's dropdown.
+ * Paths verified against the dnd5e 5.3.3 actor data models (release-5.3.3).
+ *
+ * Each preset writes `value` into one or more system paths. `keys` (plural) exists because
+ * some player-facing concepts — "all weapon damage" — are several data paths in dnd5e.
+ *
+ * `type` matters more than it looks. Almost every dnd5e bonus target is a FormulaField, i.e. a
+ * *string*, and Foundry's ADD mode on a string concatenates rather than adds. Two upgrades each
+ * granting "1d8[cold]" would produce "1d8[cold]1d6[fire]" — not a formula. So formula values are
+ * normalised to carry an explicit sign ("+1d8[cold]"), which makes concatenation compose correctly:
+ * "" + "+2" + "+3" evaluates as 5. Only genuinely numeric fields use type "number".
+ */
+const PRESETS_DND5E = [
+  { group: "Attack & damage", id: "weapon.attack", label: "All weapon attack rolls", placeholder: "+1",
+    keys: ["system.bonuses.mwak.attack", "system.bonuses.rwak.attack"] },
+  { group: "Attack & damage", id: "weapon.damage", label: "All weapon damage", placeholder: "+1d8[cold]",
+    keys: ["system.bonuses.mwak.damage", "system.bonuses.rwak.damage"] },
+  { group: "Attack & damage", id: "melee.attack", label: "Melee weapon attack rolls", placeholder: "+1",
+    keys: ["system.bonuses.mwak.attack"] },
+  { group: "Attack & damage", id: "melee.damage", label: "Melee weapon damage", placeholder: "+1d8[cold]",
+    keys: ["system.bonuses.mwak.damage"] },
+  { group: "Attack & damage", id: "ranged.attack", label: "Ranged weapon attack rolls", placeholder: "+1",
+    keys: ["system.bonuses.rwak.attack"] },
+  { group: "Attack & damage", id: "ranged.damage", label: "Ranged weapon damage", placeholder: "+1d6[fire]",
+    keys: ["system.bonuses.rwak.damage"] },
+
+  // dnd5e has no `bonuses.spell.attack`; spell attacks are the melee/ranged spell-attack pair.
+  { group: "Spellcasting", id: "spell.attack", label: "Spell attack rolls", placeholder: "+2",
+    keys: ["system.bonuses.msak.attack", "system.bonuses.rsak.attack"] },
+  { group: "Spellcasting", id: "spell.dc", label: "Spell save DC", placeholder: "+1",
+    keys: ["system.bonuses.spell.dc"] },
+  { group: "Spellcasting", id: "spell.damage", label: "Spell damage", placeholder: "+1d4[radiant]",
+    keys: ["system.bonuses.msak.damage", "system.bonuses.rsak.damage"] },
+
+  { group: "Defence", id: "ac", label: "Armor Class", placeholder: "+1",
+    keys: ["system.attributes.ac.bonus"] },
+  { group: "Defence", id: "hp.max", label: "Maximum hit points", placeholder: "+10",
+    keys: ["system.attributes.hp.bonuses.overall"] },
+  { group: "Defence", id: "save.all", label: "All saving throws", placeholder: "+1",
+    keys: ["system.bonuses.abilities.save"] },
+
+  { group: "Checks", id: "check.all", label: "All ability checks", placeholder: "+1",
+    keys: ["system.bonuses.abilities.check"] },
+  { group: "Checks", id: "skill.all", label: "All skill checks", placeholder: "+1",
+    keys: ["system.bonuses.abilities.skill"] },
+  { group: "Checks", id: "init", label: "Initiative", placeholder: "+2",
+    keys: ["system.attributes.init.bonus"] },
+
+  // Ability scores are real NumberFields, so these add arithmetically.
+  { group: "Ability scores", id: "ability.str", label: "Strength score", placeholder: "2", type: "number",
+    keys: ["system.abilities.str.value"] },
+  { group: "Ability scores", id: "ability.dex", label: "Dexterity score", placeholder: "2", type: "number",
+    keys: ["system.abilities.dex.value"] },
+  { group: "Ability scores", id: "ability.con", label: "Constitution score", placeholder: "2", type: "number",
+    keys: ["system.abilities.con.value"] },
+  { group: "Ability scores", id: "ability.int", label: "Intelligence score", placeholder: "2", type: "number",
+    keys: ["system.abilities.int.value"] },
+  { group: "Ability scores", id: "ability.wis", label: "Wisdom score", placeholder: "2", type: "number",
+    keys: ["system.abilities.wis.value"] },
+  { group: "Ability scores", id: "ability.cha", label: "Charisma score", placeholder: "2", type: "number",
+    keys: ["system.abilities.cha.value"] },
+
+  { group: "Movement & senses", id: "speed.walk", label: "Walking speed", placeholder: "+10",
+    keys: ["system.attributes.movement.walk"] },
+  // Also a FormulaField — on a creature with no fly speed, "+30" simply yields 30.
+  { group: "Movement & senses", id: "speed.fly", label: "Flying speed", placeholder: "+30",
+    keys: ["system.attributes.movement.fly"] },
+  // Moved under `ranges` in dnd5e 5.3; the old senses.darkvision is a deprecated getter.
+  { group: "Movement & senses", id: "darkvision", label: "Darkvision (raise to, in feet)", placeholder: "60",
+    type: "number", mode: MODES.UPGRADE,
+    keys: ["system.attributes.senses.ranges.darkvision"] },
+
+  { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
+];
+
+/** Systems other than dnd5e only get the custom row — their data paths differ. */
+const PRESETS_GENERIC = [
+  { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
+];
+
+export function getPresets() {
+  return game.system.id === "dnd5e" ? PRESETS_DND5E : PRESETS_GENERIC;
+}
+
+export function getPreset(id) {
+  return getPresets().find(p => p.id === id) ?? null;
+}
+
+/** True when the current system's effects are ActiveEffect-driven (so the builder is meaningful). */
+export function systemSupportsBuilder() {
+  return game.system.id === "dnd5e";
+}
+
+/** Presets shaped for a <select> with <optgroup>s. */
+export function getPresetGroups() {
+  const groups = [];
+  for (const preset of getPresets()) {
+    let group = groups.find(g => g.label === preset.group);
+    if (!group) groups.push(group = { label: preset.group, presets: [] });
+    group.presets.push(preset);
+  }
+  return groups;
+}
+
+/**
+ * Give a formula value an explicit sign so that stacking composes.
+ *
+ * dnd5e bonus fields hold formula *strings*, and Foundry's ADD mode concatenates strings.
+ * Unsigned values corrupt the formula the moment a second effect touches the same field:
+ * "2" then "3" becomes "23". Signed, the same pair becomes "+2+3" — which evaluates to 5.
+ */
+export function signFormula(value) {
+  const v = String(value).trim();
+  if (!v || /^[+-]/.test(v)) return v;
+  return `+${v}`;
+}
+
+/**
+ * Assemble an upgrade's built rows into ActiveEffect `changes`.
+ * Rows referencing an unknown preset are skipped rather than silently writing a bad path.
+ */
+export function buildChanges(rows = []) {
+  const changes = [];
+  for (const row of rows) {
+    const raw = String(row.value ?? "").trim();
+    if (!raw) continue;
+
+    if (row.preset === "custom") {
+      const key = String(row.key ?? "").trim();
+      if (!key) continue;
+      // Custom rows keep the GM's value verbatim — they chose the path and the mode themselves.
+      changes.push({ key, mode: Number(row.mode ?? MODES.ADD), value: raw, priority: null });
+      continue;
+    }
+
+    const preset = getPreset(row.preset);
+    if (!preset) {
+      console.warn(`${MODULE_ID} | Unknown effect preset "${row.preset}" — row skipped.`);
+      continue;
+    }
+    const mode = preset.mode ?? MODES.ADD;
+    // Only formula targets need signing; numeric fields add arithmetically already.
+    const value = (preset.type === "number" || mode !== MODES.ADD) ? raw : signFormula(raw);
+    for (const key of preset.keys) {
+      changes.push({ key, mode, value, priority: null });
+    }
+  }
+  return changes;
+}
+
+/** One-line human summary of a built payload, for the GM console list. */
+export function describeBuild(rows = []) {
+  const parts = [];
+  for (const row of rows) {
+    const value = String(row.value ?? "").trim();
+    if (!value) continue;
+    const preset = getPreset(row.preset);
+    const label = row.preset === "custom" ? (row.key || "custom") : (preset?.label ?? row.preset);
+    parts.push(`${value} ${label.toLowerCase()}`);
+  }
+  return parts.join(", ");
+}

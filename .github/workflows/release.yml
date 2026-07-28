@@ -22,18 +22,18 @@ jobs:
           with open("module.json") as f:
               m = json.load(f)
           m["version"] = tag.lstrip("v")
-          m["download"] = f"https://github.com/${{ github.repository }}/releases/download/{tag}/pearl-upgrades.zip"
+          m["download"] = f"https://github.com/${{ github.repository }}/releases/download/{tag}/upgrades.zip"
           with open("module.json", "w") as f:
               json.dump(m, f, indent=2)
           EOF
 
       - name: Build zip
-        run: zip -r pearl-upgrades.zip . -x ".git/*" -x ".github/*" -x "pearl-upgrades.zip"
+        run: zip -r upgrades.zip . -x ".git/*" -x ".github/*" -x "upgrades.zip"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            pearl-upgrades.zip
+            upgrades.zip
             module.json
           generate_release_notes: true

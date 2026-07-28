@@ -1,9 +1,11 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import { MODULE_ID, SETTINGS, getUpgrades, getPearls } from "../data.js";
+import { MODULE_ID, getUpgrades, getBalance, getVocabulary } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
+import { describeTarget } from "../systems/adapter.js";
+import { applyTheme } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -11,9 +13,9 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static instance = null;
 
   static DEFAULT_OPTIONS = {
-    id: "pearl-upgrades-shop",
-    classes: ["pearl-upgrades", "pu-shop"],
-    window: { title: "The Pearl Merchant", icon: "fa-solid fa-gem", resizable: true },
+    id: "upgrades-shop",
+    classes: ["upgrades", "upg-shop"],
+    window: { title: "Upgrades", icon: "fa-solid fa-gem", resizable: true },
     position: { width: 920, height: "auto" },
     actions: {
       buy: ShopApp.#onBuy,
@@ -29,6 +31,11 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   #selectedId = null;
 
+  /** The GM names the window ("The Memorial Garden"), so the title can't live in DEFAULT_OPTIONS. */
+  get title() {
+    return getVocabulary().windowTitle;
+  }
+
   static show() {
     ShopApp.instance ??= new ShopApp();
     ShopApp.instance.render({ force: true });
@@ -37,7 +44,7 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   async _prepareContext(_options) {
     const isGM = game.user.isGM;
-    const pearls = getPearls();
+    const balance = getBalance();
     const upgrades = getUpgrades()
       .filter(u => isGM || !u.hidden || u.teaser !== false) // hidden upgrades appear as "???" teasers
       .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
@@ -49,8 +56,10 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
           displayName: mystery ? "???" : u.name,
           displayFlavor: mystery ? "“Prove yourselves further, and I may show you more…”" : u.flavor,
           displayImg: mystery ? "" : u.img,
-          affordable: !u.purchased && pearls >= u.cost,
-          selected: u.id === this.#selectedId
+          affordable: !u.purchased && balance >= u.cost,
+          selected: u.id === this.#selectedId,
+          // Only worth showing when it isn't the default "everyone" case.
+          targetLabel: (!mystery && u.target === "actor") ? describeTarget(u) : null
         };
       });
 
@@ -58,15 +67,17 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     return {
       isGM,
-      pearls,
+      balance,
       upgrades,
       selected,
       selectedDescription: selected ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(selected.description ?? "") : null,
-      currencyName: game.settings.get(MODULE_ID, SETTINGS.CURRENCY_NAME),
-      merchantName: game.settings.get(MODULE_ID, SETTINGS.MERCHANT_NAME),
-      merchantImg: game.settings.get(MODULE_ID, SETTINGS.MERCHANT_IMG),
-      merchantGreeting: game.settings.get(MODULE_ID, SETTINGS.MERCHANT_GREETING)
+      vocab: getVocabulary()
     };
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+    applyTheme(this);
   }
 
   static #onBuy(_event, target) {

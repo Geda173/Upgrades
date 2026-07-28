@@ -1,9 +1,15 @@
 /**
- * GM config window: upgrade CRUD, pearl ledger, history. (ApplicationV2 + Handlebars)
+ * GM console: upgrade CRUD, currency ledger, history. (ApplicationV2 + Handlebars)
  */
-import { MODULE_ID, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade, getPearls, adjustPearls, getHistory } from "../data.js";
+import {
+  MODULE_ID, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
+  getBalance, adjustBalance, getHistory, getVocabulary
+} from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
-import { resyncUpgrades, removeUpgradeEffect } from "../systems/adapter.js";
+import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
+import { describeBuild, EFFECT_MODE } from "../effects.js";
+import { UpgradeEditor } from "./upgrade-editor.js";
+import { applyTheme } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -11,17 +17,17 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static instance = null;
 
   static DEFAULT_OPTIONS = {
-    id: "pearl-upgrades-editor",
-    classes: ["pearl-upgrades", "pu-editor"],
-    window: { title: "Pearl Upgrades — GM Console", icon: "fa-solid fa-scale-balanced", resizable: true },
-    position: { width: 720, height: 640 },
+    id: "upgrades-editor",
+    classes: ["upgrades", "upg-editor"],
+    window: { title: "Upgrades — GM Console", icon: "fa-solid fa-scale-balanced", resizable: true },
+    position: { width: 760, height: 640 },
     actions: {
       addUpgrade: EditorApp.#onAddUpgrade,
       editUpgrade: EditorApp.#onEditUpgrade,
       deleteUpgrade: EditorApp.#onDeleteUpgrade,
       toggleHidden: EditorApp.#onToggleHidden,
       refund: EditorApp.#onRefund,
-      addPearls: EditorApp.#onAdjustPearls,
+      adjustBalance: EditorApp.#onAdjustBalance,
       resync: EditorApp.#onResync
     }
   };
@@ -38,9 +44,17 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _prepareContext(_options) {
+    const vocab = getVocabulary();
     return {
-      pearls: getPearls(),
-      upgrades: getUpgrades().sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)),
+      vocab,
+      balance: getBalance(),
+      upgrades: getUpgrades()
+        .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+        .map(u => ({
+          ...u,
+          targetLabel: describeTarget(u),
+          effectLabel: EditorApp.#effectLabel(u)
+        })),
       history: getHistory().slice(-25).reverse().map(h => ({
         ...h,
         when: new Date(h.ts).toLocaleString(),
@@ -50,24 +64,56 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     };
   }
 
+  /** Short "what does it do" cell for the upgrade table. */
+  static #effectLabel(upgrade) {
+    if (upgrade.effectMode === EFFECT_MODE.BUILD) return describeBuild(upgrade.effectBuild?.rows) || "empty bonus";
+    if (upgrade.effectMode === EFFECT_MODE.LINK) return upgrade.effectUuid ? "linked effect" : "link not set";
+    return "";
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+    applyTheme(this);
+  }
+
   /* ---------- actions ---------- */
 
   static async #onAddUpgrade() {
-    await EditorApp.#upgradeDialog(null);
+    new UpgradeEditor(null, async data => {
+      await upsertUpgrade(data);
+      EditorApp.#afterMutation();
+    }).render({ force: true });
   }
 
   static async #onEditUpgrade(_event, target) {
-    await EditorApp.#upgradeDialog(getUpgrade(target.dataset.id));
+    const existing = getUpgrade(target.dataset.id);
+    if (!existing) return;
+    new UpgradeEditor(existing, async data => {
+      await upsertUpgrade({ id: existing.id, ...data });
+      // An owned upgrade whose payload or target changed must be rebuilt on the sheets.
+      if (existing.purchased) {
+        const updated = getUpgrade(existing.id);
+        const { count } = await reapplyUpgradeEffect(updated);
+        if (count) ui.notifications.info(`Upgrades: re-applied “${updated.name}” to ${count} character(s).`);
+      }
+      EditorApp.#afterMutation();
+    }).render({ force: true });
   }
 
   static async #onDeleteUpgrade(_event, target) {
     const u = getUpgrade(target.dataset.id);
+    if (!u) return;
     const ok = await DialogV2.confirm({
       window: { title: "Delete upgrade" },
-      content: `<p>Delete <strong>${foundry.utils.escapeHTML(u?.name ?? "?")}</strong>? This cannot be undone.</p>`
+      content: `<p>Delete <strong>${foundry.utils.escapeHTML(u.name)}</strong>?</p>`
+        + (u.purchased ? `<p>It is currently owned — its effect will also be removed from every character that has it.</p>` : "")
+        + `<p>This cannot be undone.</p>`
     });
     if (!ok) return;
-    await deleteUpgrade(target.dataset.id);
+    // Delete the catalog entry *and* whatever it put on the sheets, or the bonus is orphaned forever.
+    const { count } = await removeUpgradeEffect(u.id);
+    await deleteUpgrade(u.id);
+    if (count) ui.notifications.info(`Upgrades: removed ${count} granted document(s) from character sheets.`);
     EditorApp.#afterMutation();
   }
 
@@ -81,25 +127,29 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onRefund(_event, target) {
     const u = getUpgrade(target.dataset.id);
     if (!u?.purchased) return;
+    const vocab = getVocabulary();
     const ok = await DialogV2.confirm({
       window: { title: "Refund upgrade" },
-      content: `<p>Refund <strong>${foundry.utils.escapeHTML(u.name)}</strong> (${u.cost} pearls back, effect removed from all characters)?</p>`
+      content: `<p>Refund <strong>${foundry.utils.escapeHTML(u.name)}</strong> — ${u.cost}
+        ${foundry.utils.escapeHTML(vocab.currencyName)} back, and its effect removed from
+        ${foundry.utils.escapeHTML(describeTarget(u).toLowerCase())}?</p>`
     });
     if (!ok) return;
-    await adjustPearls(u.cost, `Refund: ${u.name}`);
+    await adjustBalance(u.cost, `Refund: ${u.name}`);
     await upsertUpgrade({ id: u.id, purchased: false, purchasedBy: null, purchasedAt: null });
     await removeUpgradeEffect(u.id);
     EditorApp.#afterMutation();
   }
 
-  static async #onAdjustPearls() {
+  static async #onAdjustBalance() {
+    const vocab = getVocabulary();
     const result = await DialogV2.prompt({
-      window: { title: "Adjust pearl pool" },
+      window: { title: `Adjust ${vocab.currencyName}` },
       content: `
         <div class="form-group"><label>Amount (use negatives to remove)</label>
           <input type="number" name="delta" value="1" step="1" autofocus></div>
         <div class="form-group"><label>Reason (shown in history)</label>
-          <input type="text" name="reason" placeholder="Defeated the kraken cult"></div>`,
+          <input type="text" name="reason" placeholder="Cleared the blighted grove"></div>`,
       ok: {
         label: "Apply",
         callback: (_event, button) => {
@@ -109,55 +159,13 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     });
     if (!result || !result.delta) return;
-    await adjustPearls(result.delta, result.reason);
+    await adjustBalance(result.delta, result.reason);
     EditorApp.#afterMutation();
   }
 
   static async #onResync() {
     const { created } = await resyncUpgrades();
-    ui.notifications.info(`Pearl Upgrades: re-sync complete (${created} effect(s) created).`);
-  }
-
-  /* ---------- upgrade edit dialog ---------- */
-
-  static async #upgradeDialog(existing) {
-    const u = existing ?? { name: "", cost: 1, img: "", flavor: "", description: "", effectUuid: "", hidden: false };
-    const result = await DialogV2.prompt({
-      window: { title: existing ? `Edit: ${u.name}` : "New upgrade" },
-      position: { width: 480 },
-      content: `
-        <div class="form-group"><label>Name</label>
-          <input type="text" name="name" value="${foundry.utils.escapeHTML(u.name)}" autofocus></div>
-        <div class="form-group"><label>Cost (pearls)</label>
-          <input type="number" name="cost" value="${u.cost}" min="0" step="1"></div>
-        <div class="form-group"><label>Art image path</label>
-          <input type="text" name="img" value="${foundry.utils.escapeHTML(u.img ?? "")}" placeholder="e.g. worlds/mycampaign/art/upgrade.webp"></div>
-        <div class="form-group"><label>Flavor line (card text)</label>
-          <input type="text" name="flavor" value="${foundry.utils.escapeHTML(u.flavor ?? "")}"></div>
-        <div class="form-group"><label>Description / tooltip (HTML allowed)</label>
-          <textarea name="description" rows="4">${u.description ?? ""}</textarea></div>
-        <div class="form-group"><label>Effect UUID (optional, Phase 2)</label>
-          <input type="text" name="effectUuid" value="${foundry.utils.escapeHTML(u.effectUuid ?? "")}" placeholder="Right-click an Effect item → Copy UUID">
-          <p class="hint">Drag-and-drop coming soon: paste the UUID of a PF2e Effect item to auto-apply it to all PCs on purchase.</p></div>
-        <div class="form-group"><label class="checkbox"><input type="checkbox" name="hidden" ${u.hidden ? "checked" : ""}> Hidden (shows as “???” teaser)</label></div>`,
-      ok: {
-        label: existing ? "Save" : "Create",
-        callback: (_event, button) => {
-          const f = button.form.elements;
-          return {
-            name: f.name.value || "Unnamed upgrade",
-            cost: Math.max(0, Number(f.cost.value) || 0),
-            img: f.img.value.trim(),
-            flavor: f.flavor.value,
-            description: f.description.value,
-            effectUuid: f.effectUuid.value.trim() || null,
-            hidden: f.hidden.checked
-          };
-        }
-      }
-    });
-    if (!result) return;
-    await upsertUpgrade(existing ? { id: existing.id, ...result } : result);
+    ui.notifications.info(`Upgrades: re-sync complete (${created} document(s) created).`);
     EditorApp.#afterMutation();
   }
 

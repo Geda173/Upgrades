@@ -1,65 +1,75 @@
-<div class="pu-window">
-  <header class="pu-banner">
-    <div class="pu-npc">
-      {{#if merchantImg}}<img src="{{merchantImg}}" alt="{{merchantName}}">{{else}}<i class="fa-solid fa-gem"></i>{{/if}}
+<div class="upg-window">
+  <header class="upg-banner">
+    <div class="upg-npc">
+      {{#if vocab.hostImg}}<img src="{{vocab.hostImg}}" alt="{{vocab.hostName}}">{{else}}<i class="{{vocab.currencyIcon}}"></i>{{/if}}
     </div>
-    <div class="pu-title">
-      <h1>{{merchantName}}</h1>
-      <div class="pu-sub">“{{merchantGreeting}}”</div>
+    <div class="upg-title">
+      <h1>{{vocab.hostName}}</h1>
+      {{#if vocab.greeting}}<div class="upg-sub">“{{vocab.greeting}}”</div>{{/if}}
     </div>
-    <div class="pu-balance">
-      <div class="pu-num"><span class="pu-pearl-icon"></span>{{pearls}}</div>
-      <div class="pu-lbl">{{currencyName}}</div>
+    <div class="upg-balance">
+      <div class="upg-num">
+        {{#if vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{vocab.currencyIcon}}" alt="">
+        {{else}}<i class="{{vocab.currencyIcon}}"></i>{{/if}}
+        {{balance}}
+      </div>
+      <div class="upg-lbl">{{vocab.currencyName}}</div>
     </div>
   </header>
 
   {{#if isGM}}
-  <nav class="pu-gm-bar">
+  <nav class="upg-gm-bar">
     <button type="button" data-action="showToPlayers"><i class="fa-solid fa-eye"></i> Show to players</button>
-    <button type="button" data-action="openEditor"><i class="fa-solid fa-pen-to-square"></i> Manage upgrades &amp; pearls</button>
+    <button type="button" data-action="openEditor"><i class="fa-solid fa-pen-to-square"></i> Manage</button>
   </nav>
   {{/if}}
 
-  <section class="pu-grid">
+  <section class="upg-grid">
     {{#each upgrades}}
-    <div class="pu-card {{#if purchased}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless purchased}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
+    <div class="upg-card {{#if purchased}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless purchased}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
          data-action="selectCard" data-upgrade-id="{{id}}">
-      {{#if purchased}}<div class="pu-stamp">Owned</div>{{/if}}
-      <div class="pu-art">
+      {{#if purchased}}<div class="upg-stamp">Owned</div>{{/if}}
+      <div class="upg-art">
         {{#if displayImg}}<img src="{{displayImg}}" alt="">{{else}}<i class="fa-solid {{#if mystery}}fa-question{{else}}fa-wand-sparkles{{/if}}"></i>{{/if}}
       </div>
-      <div class="pu-body">
+      <div class="upg-body">
         <h3>{{displayName}}</h3>
-        <div class="pu-flavor"><em>{{displayFlavor}}</em></div>
-        <div class="pu-cost">
-          {{#unless mystery}}<span class="pu-pearl-icon"></span>{{cost}}{{else}}—{{/unless}}
+        {{#if targetLabel}}<div class="upg-for"><i class="fa-solid fa-user"></i> {{targetLabel}}</div>{{/if}}
+        <div class="upg-flavor"><em>{{displayFlavor}}</em></div>
+        <div class="upg-cost">
+          {{#unless mystery}}
+            {{#if ../vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{../vocab.currencyIcon}}" alt="">
+            {{else}}<i class="{{../vocab.currencyIcon}}"></i>{{/if}}
+            {{cost}}
+          {{else}}—{{/unless}}
           {{#unless purchased}}{{#unless mystery}}
             {{#if affordable}}
-              <button type="button" class="pu-buy" data-action="buy" data-upgrade-id="{{id}}">Request</button>
+              <button type="button" class="upg-buy" data-action="buy" data-upgrade-id="{{id}}">{{../vocab.actionVerb}}</button>
             {{else}}
-              <button type="button" class="pu-buy disabled" disabled>Too costly</button>
+              <button type="button" class="upg-buy disabled" disabled>Too costly</button>
             {{/if}}
           {{/unless}}{{/unless}}
         </div>
       </div>
     </div>
     {{else}}
-    <p class="pu-empty">The merchant's shelves are bare… (GM: add upgrades via “Manage upgrades”.)</p>
+    <p class="upg-empty">Nothing on offer yet… (GM: add upgrades via “Manage”.)</p>
     {{/each}}
   </section>
 
   {{#if selected}}
-  <section class="pu-detail">
-    <div class="pu-detail-art">
+  <section class="upg-detail">
+    <div class="upg-detail-art">
       {{#if selected.img}}<img src="{{selected.img}}" alt="">{{else}}<i class="fa-solid fa-wand-sparkles"></i>{{/if}}
     </div>
-    <div class="pu-detail-text">
+    <div class="upg-detail-text">
       <h4>{{selected.name}}</h4>
-      {{#if selected.flavor}}<p class="pu-flavor"><em>{{selected.flavor}}</em></p>{{/if}}
-      {{#if selectedDescription}}<div class="pu-desc">{{{selectedDescription}}}</div>{{/if}}
+      {{#if selected.targetLabel}}<div class="upg-for"><i class="fa-solid fa-user"></i> {{selected.targetLabel}}</div>{{/if}}
+      {{#if selected.flavor}}<p class="upg-flavor"><em>{{selected.flavor}}</em></p>{{/if}}
+      {{#if selectedDescription}}<div class="upg-desc">{{{selectedDescription}}}</div>{{/if}}
     </div>
   </section>
   {{else}}
-  <footer class="pu-hint">Click a card to inspect it · Request to petition the merchant</footer>
+  <footer class="upg-hint">Click a card to inspect it</footer>
   {{/if}}
 </div>

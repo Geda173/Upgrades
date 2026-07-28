@@ -1,44 +1,147 @@
 /**
- * System adapter: applies/removes an upgrade's mechanical payload on player characters.
+ * System adapter: applies/removes an upgrade's mechanical payload on its target actors.
  *
  * The payload (upgrade.effectUuid) may point at:
  *  - an ActiveEffect (dnd5e & most systems)  → copied onto each actor as an ActiveEffect
  *  - an Item (PF2e Effect items, or a 5e feature/item) → copied onto each actor as an Item
  * Everything created is flagged with the upgrade id for clean refund/undo.
  */
-import { MODULE_ID } from "../data.js";
+import { MODULE_ID, SETTINGS, TARGET } from "../data.js";
+import { EFFECT_MODE, buildChanges } from "../effects.js";
 
-/** All player-owned characters (the "party"). Prefers explicit party/group actors when present. */
+/**
+ * The party: members of the configured Group/Party actor.
+ *
+ * The fallback (every player-owned character) is deliberately last — a mature world tends to
+ * hold dozens of "character" actors that are not PCs (wildshape copies, loot holders, summons),
+ * so configuring the Party actor setting is strongly preferred.
+ */
 export function getPartyActors() {
+  const configuredId = game.settings.get(MODULE_ID, SETTINGS.PARTY_ACTOR);
+  const configured = configuredId ? game.actors.get(configuredId) : null;
+  if (configured) {
+    const members = groupMembers(configured);
+    if (members.length) return members;
+    console.warn(`${MODULE_ID} | Configured party actor "${configured.name}" has no character members.`);
+  }
+
   // PF2e: Party actor
   if (game.system.id === "pf2e") {
     const party = game.actors.find(a => a.type === "party");
-    if (party?.members?.length) return [...party.members];
+    const members = party ? groupMembers(party) : [];
+    if (members.length) return members;
   }
-  // dnd5e: Group actor (use the first group that has members)
+  // dnd5e: first Group actor that has members
   if (game.system.id === "dnd5e") {
     for (const group of game.actors.filter(a => a.type === "group")) {
-      const members = (group.system?.members ?? [])
-        .map(m => m?.actor ?? (typeof m === "string" ? game.actors.get(m) : null))
-        .filter(a => a && a.type === "character");
+      const members = groupMembers(group);
       if (members.length) return members;
     }
   }
-  // Fallback: every player-owned character
+  // Last resort: every player-owned character
   return game.actors.filter(a => a.type === "character" && a.hasPlayerOwner);
 }
 
-/** Copy the source document onto one actor, flagged with the upgrade id. */
-async function createFromSource(actor, source, upgradeId) {
-  const data = source.toObject();
-  delete data._id;
-  foundry.utils.setProperty(data, `flags.${MODULE_ID}.upgradeId`, upgradeId);
-  const embeddedName = source.documentName === "ActiveEffect" ? "ActiveEffect" : "Item";
-  if (embeddedName === "ActiveEffect") {
-    data.origin = null;
-    data.transfer = false;
+/** Character members of a Group (dnd5e) or Party (PF2e) actor. */
+function groupMembers(actor) {
+  // PF2e exposes resolved documents directly
+  if (actor.members?.length) return [...actor.members].filter(a => a?.type === "character");
+  // dnd5e stores {actor} references or raw ids
+  return (actor.system?.members ?? [])
+    .map(m => m?.actor ?? (typeof m === "string" ? game.actors.get(m) : null))
+    .filter(a => a && a.type === "character");
+}
+
+/**
+ * The actors an upgrade's effect should land on.
+ * "actor" upgrades resolve to exactly one actor; "party" upgrades to the whole party.
+ */
+export function getTargetActors(upgrade) {
+  if (upgrade.target === TARGET.ACTOR) {
+    const actor = upgrade.targetActorId ? game.actors.get(upgrade.targetActorId) : null;
+    if (!actor) {
+      console.warn(`${MODULE_ID} | Upgrade "${upgrade.name}" targets a missing actor (${upgrade.targetActorId}).`);
+      return [];
+    }
+    return [actor];
   }
-  return actor.createEmbeddedDocuments(embeddedName, [data]);
+  return getPartyActors();
+}
+
+/** Human-readable description of who an upgrade applies to. */
+export function describeTarget(upgrade) {
+  if (upgrade.target !== TARGET.ACTOR) return "The party";
+  const actor = upgrade.targetActorId ? game.actors.get(upgrade.targetActorId) : null;
+  return actor?.name ?? "Unknown actor";
+}
+
+/**
+ * Resolve an upgrade's payload into `{ documentName, data }` ready to embed, or null.
+ * "build" assembles an ActiveEffect from the GM's preset rows; "link" clones a real document.
+ */
+export async function resolveEffectPayload(upgrade) {
+  const mode = upgrade.effectMode ?? (upgrade.effectUuid ? EFFECT_MODE.LINK : EFFECT_MODE.NONE);
+
+  if (mode === EFFECT_MODE.BUILD) {
+    const changes = buildChanges(upgrade.effectBuild?.rows ?? []);
+    if (!changes.length) return null;
+    return {
+      documentName: "ActiveEffect",
+      data: {
+        name: upgrade.name,
+        img: upgrade.img || "icons/svg/upgrade.svg",
+        changes,
+        disabled: false,
+        transfer: false,
+        origin: null,
+        description: upgrade.flavor ?? ""
+      }
+    };
+  }
+
+  if (mode === EFFECT_MODE.LINK) {
+    if (!upgrade.effectUuid) return null;
+    const source = await fromUuid(upgrade.effectUuid);
+    if (!source) return null;
+    const data = source.toObject();
+    delete data._id;
+    if (source.documentName === "ActiveEffect") {
+      data.origin = null;
+      data.transfer = false;
+    }
+    return { documentName: source.documentName === "ActiveEffect" ? "ActiveEffect" : "Item", data };
+  }
+
+  return null;
+}
+
+/**
+ * Embed a resolved payload on one actor, flagged with the upgrade id.
+ *
+ * When the payload is an ActiveEffect and the GM asked for "feature" granting, the effect is
+ * wrapped in a dnd5e feat item so it shows up in Features rather than hiding on the Effects tab.
+ * Deleting that one item takes the bonus with it, which is what makes refund/undo clean.
+ */
+async function createFromPayload(actor, payload, upgrade) {
+  const data = foundry.utils.deepClone(payload.data);
+  foundry.utils.setProperty(data, `flags.${MODULE_ID}.upgradeId`, upgrade.id);
+
+  const grantAs = game.settings.get(MODULE_ID, SETTINGS.GRANT_AS);
+  const wrap = payload.documentName === "ActiveEffect" && grantAs === "feature" && game.system.id === "dnd5e";
+
+  if (wrap) {
+    const item = {
+      name: upgrade.name || data.name,
+      type: "feat",
+      img: upgrade.img || data.img || "icons/svg/upgrade.svg",
+      system: { description: { value: upgrade.description || upgrade.flavor || "" } },
+      effects: [{ ...data, transfer: true, disabled: false }],
+      flags: { [MODULE_ID]: { upgradeId: upgrade.id } }
+    };
+    return actor.createEmbeddedDocuments("Item", [item]);
+  }
+
+  return actor.createEmbeddedDocuments(payload.documentName, [data]);
 }
 
 function hasUpgrade(actor, upgradeId) {
@@ -47,26 +150,35 @@ function hasUpgrade(actor, upgradeId) {
   return inItems || inEffects;
 }
 
-/** Apply the upgrade's effect (if any) to all party actors. GM-side only. */
+/** Apply the upgrade's effect (if any) to its target actors. GM-side only. */
 export async function applyUpgradeEffect(upgrade) {
-  if (!upgrade.effectUuid) return { count: 0 };
-  const source = await fromUuid(upgrade.effectUuid);
-  if (!source) {
-    ui.notifications.warn(`Pearl Upgrades: could not resolve effect for "${upgrade.name}".`);
-    return { count: 0 };
+  const payload = await resolveEffectPayload(upgrade);
+  if (!payload) {
+    // A cosmetic upgrade is a normal, silent case; a broken link is not.
+    if (upgrade.effectMode === EFFECT_MODE.LINK && upgrade.effectUuid) {
+      ui.notifications.warn(`Upgrades: could not resolve the linked effect for “${upgrade.name}”.`);
+    }
+    return { count: 0, names: [] };
   }
 
-  let count = 0;
-  for (const actor of getPartyActors()) {
+  const targets = getTargetActors(upgrade);
+  if (!targets.length) {
+    ui.notifications.warn(`Upgrades: “${upgrade.name}” has no valid target to apply its effect to.`);
+    return { count: 0, names: [] };
+  }
+
+  const names = [];
+  for (const actor of targets) {
     try {
       if (hasUpgrade(actor, upgrade.id)) continue;
-      await createFromSource(actor, source, upgrade.id);
-      count++;
+      await createFromPayload(actor, payload, upgrade);
+      names.push(actor.name);
     } catch (err) {
       console.error(`${MODULE_ID} | Could not apply effect to ${actor.name}`, err);
+      ui.notifications.error(`Upgrades: failed to apply “${upgrade.name}” to ${actor.name} — see the console.`);
     }
   }
-  return { count };
+  return { count: names.length, names };
 }
 
 /** Remove everything this module created for a given upgrade (refund/undo). GM-side only. */
@@ -87,19 +199,32 @@ export async function removeUpgradeEffect(upgradeId) {
   return { count };
 }
 
-/** Re-sync: ensure every party actor has effects for all purchased upgrades (late joiners). */
+/**
+ * Re-sync: ensure every purchased upgrade's effect exists on its current targets.
+ * Catches late joiners and party-roster changes; per-actor upgrades are re-checked too,
+ * which repairs the case where an effect was deleted off a sheet by hand.
+ */
 export async function resyncUpgrades() {
   const { getUpgrades } = await import("../data.js");
-  const purchased = getUpgrades().filter(u => u.purchased && u.effectUuid);
   let created = 0;
-  for (const upgrade of purchased) {
-    const source = await fromUuid(upgrade.effectUuid);
-    if (!source) continue;
-    for (const actor of getPartyActors()) {
+  for (const upgrade of getUpgrades().filter(u => u.purchased)) {
+    const payload = await resolveEffectPayload(upgrade);
+    if (!payload) continue;
+    for (const actor of getTargetActors(upgrade)) {
       if (hasUpgrade(actor, upgrade.id)) continue;
-      await createFromSource(actor, source, upgrade.id);
+      await createFromPayload(actor, payload, upgrade);
       created++;
     }
   }
   return { created };
+}
+
+/**
+ * Re-apply a purchased upgrade from scratch: strip what we created, then apply the current
+ * payload to the current targets. Used after the GM edits an upgrade that is already owned,
+ * so a changed effect or a changed target takes hold immediately.
+ */
+export async function reapplyUpgradeEffect(upgrade) {
+  await removeUpgradeEffect(upgrade.id);
+  return applyUpgradeEffect(upgrade);
 }
