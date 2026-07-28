@@ -10,7 +10,7 @@ import { emit, refreshOpenApps } from "./sockets.js";
 import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
 
 /** Entry point for a player's purchase request (or a GM's direct purchase). */
-export async function handlePurchaseRequest({ upgradeId, userId }) {
+export async function handlePurchaseRequest({ upgradeId, userId, choice = null }) {
   const upgrade = getUpgrade(upgradeId);
   const user = game.users.get(userId);
   const vocab = getVocabulary();
@@ -60,7 +60,7 @@ export async function handlePurchaseRequest({ upgradeId, userId }) {
     }
   }
 
-  await commitPurchase(upgrade, user, buyerActor);
+  await commitPurchase(upgrade, user, buyerActor, choice);
 }
 
 /**
@@ -89,14 +89,15 @@ async function resolveBuyer(user) {
   return chosen ? game.actors.get(chosen) : null;
 }
 
-async function commitPurchase(upgrade, user, buyerActor = null) {
+async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
   const vocab = getVocabulary();
   const after = await adjustBalance(-upgrade.cost, `Acquired: ${upgrade.name}`);
 
   const purchase = await addPurchase(upgrade.id, {
     actorId: buyerActor?.id ?? (upgrade.target === TARGET.ACTOR ? upgrade.targetActorId : null),
     actorName: buyerActor?.name ?? null,
-    by: user?.name ?? "GM"
+    by: user?.name ?? "GM",
+    choice
   });
 
   await addHistory({
@@ -107,7 +108,7 @@ async function commitPurchase(upgrade, user, buyerActor = null) {
   // Apply the mechanical payload, if the upgrade has one (cosmetic upgrades no-op silently).
   let effectNote = "";
   try {
-    const applied = await applyUpgradeEffect(upgrade, { buyerActor, purchaseId: purchase?.id });
+    const applied = await applyUpgradeEffect(upgrade, { buyerActor, purchaseId: purchase?.id, choice });
     if (applied?.count) {
       effectNote = `<p class="upg-effect-note">✦ Effect applied to ${foundry.utils.escapeHTML(applied.names.join(", "))}.</p>`;
     }
@@ -120,7 +121,7 @@ async function commitPurchase(upgrade, user, buyerActor = null) {
     content: `
       <div class="upgrades-chat-card">
         ${upgrade.img ? `<img src="${foundry.utils.escapeHTML(upgrade.img)}" alt="">` : ""}
-        <h3>${foundry.utils.escapeHTML(upgrade.name)}</h3>
+        <h3>${foundry.utils.escapeHTML(upgrade.name)}${choice ? ` (${foundry.utils.escapeHTML(choice.name)})` : ""}</h3>
         <p class="upg-flavor"><em>${foundry.utils.escapeHTML(upgrade.flavor ?? "")}</em></p>
         <p>Acquired for <strong>${upgrade.cost}</strong> ${foundry.utils.escapeHTML(vocab.currencyName)}.
            Remaining: <strong>${after}</strong>.</p>
@@ -138,8 +139,22 @@ async function notifyUser(userId, message) {
 }
 
 /** Called from the shop UI on any client. Routes to the GM. */
-export function requestPurchase(upgradeId) {
-  if (game.user.isGM) return handlePurchaseRequest({ upgradeId, userId: game.user.id });
-  emit({ type: "requestPurchase", upgradeId, userId: game.user.id });
+export async function requestPurchase(upgradeId) {
+  const upgrade = getUpgrade(upgradeId);
+
+  // Asked here, on the buyer's own client, so the answer can travel with the request instead of
+  // the GM having to ask back over the socket.
+  let choice = null;
+  if (upgrade?.choice?.enabled) {
+    const { promptForDocument } = await import("./apps/choice-dialog.js");
+    choice = await promptForDocument({
+      label: upgrade.choice.label || "Choose",
+      hint: upgrade.choice.hint || ""
+    });
+    if (!choice) return;   // cancelled: nothing spent, nothing sent
+  }
+
+  if (game.user.isGM) return handlePurchaseRequest({ upgradeId, userId: game.user.id, choice });
+  emit({ type: "requestPurchase", upgradeId, userId: game.user.id, choice });
   ui.notifications.info("Your request has been sent…");
 }

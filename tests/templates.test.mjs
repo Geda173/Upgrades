@@ -96,11 +96,12 @@ const editor = Handlebars.compile(tpl('editor.hbs'))({
 const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   upgrade: { name: 'Nightbloom', cost: 3, img: '', flavor: '', description: '', hidden: false,
              target: 'actor', effectMode: 'build', effectUuid: '', purchased: true, hideEffect: true,
-             repeatable: true },
+             repeatable: true, choiceEnabled: true, choiceLabel: 'Which spell?', choiceHint: 'Drag one in.' },
   vocab, saveLabel: 'Save', systemId: 'dnd5e', builderSupported: true, isPf2e: false,
   hasCategories: true,
   categories: [{ id: 'c1', name: 'Lighthouse', isSelected: true }],
   bonusTypeLegend: [],
+  choiceEnabled: true,
   hasPrerequisiteCandidates: true,
   prerequisites: [{ id: 'p1', name: 'Activate Magelight', isSelected: true },
                   { id: 'p2', name: 'Talisman Permanency', isSelected: false }],
@@ -196,6 +197,9 @@ t('upgrade-editor: prerequisite picker lists candidates',
   upgradeEditor.includes('name="requires"') && upgradeEditor.includes('Talisman Permanency'));
 t('upgrade-editor: an existing prerequisite is ticked',
   /value="p1"[^>]*checked/.test(upgradeEditor));
+t('upgrade-editor: offers the buyer-choice prompt', upgradeEditor.includes('name="choiceEnabled"'));
+t('upgrade-editor: the prompt question is editable when enabled',
+  upgradeEditor.includes('value="Which spell?"'));
 t('upgrade-editor: offers the effects-bar toggle', upgradeEditor.includes('showInEffectsBar'));
 t('upgrade-editor: offers the buyer target', upgradeEditor.includes('Whoever buys it'));
 t('upgrade-editor: repeatable checkbox is checked when set',

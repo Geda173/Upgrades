@@ -170,8 +170,19 @@ export async function resolveEffectPayload(upgrade) {
  * wrapped in a dnd5e feat item so it shows up in Features rather than hiding on the Effects tab.
  * Deleting that one item takes the bonus with it, which is what makes refund/undo clean.
  */
-async function createFromPayload(actor, payload, upgrade, purchaseId = null) {
+async function createFromPayload(actor, payload, upgrade, purchaseId = null, choice = null) {
   const data = foundry.utils.deepClone(payload.data);
+
+  // A nominated document names the grant, so "Temporary Scroll" on the sheet reads
+  // "Temporary Scroll (Fireball)" and links back to what was chosen.
+  if (choice?.name) {
+    data.name = `${data.name} (${choice.name})`;
+    const link = `<p>Chosen: @UUID[${choice.uuid}]{${choice.name}}</p>`;
+    const path = payload.documentName === "Item" ? "system.description.value" : "description";
+    const existing = foundry.utils.getProperty(data, path) ?? "";
+    foundry.utils.setProperty(data, path, `${existing}${link}`);
+  }
+
   foundry.utils.setProperty(data, `flags.${MODULE_ID}.upgradeId`, upgrade.id);
   if (purchaseId) foundry.utils.setProperty(data, `flags.${MODULE_ID}.purchaseId`, purchaseId);
 
@@ -209,7 +220,7 @@ function hasUpgrade(actor, upgradeId, purchaseId = null) {
 }
 
 /** Apply the upgrade's effect (if any) to its target actors. GM-side only. */
-export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseId = null } = {}) {
+export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseId = null, choice = null } = {}) {
   const payload = await resolveEffectPayload(upgrade);
   if (!payload) {
     // A cosmetic upgrade is a normal, silent case; a broken link is not.
@@ -229,7 +240,7 @@ export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseI
   for (const actor of targets) {
     try {
       if (hasUpgrade(actor, upgrade.id, upgrade.repeatable ? purchaseId : null)) continue;
-      await createFromPayload(actor, payload, upgrade, purchaseId);
+      await createFromPayload(actor, payload, upgrade, purchaseId, choice);
       names.push(actor.name);
     } catch (err) {
       console.error(`${MODULE_ID} | Could not apply effect to ${actor.name}`, err);
@@ -277,7 +288,7 @@ export async function resyncUpgrades() {
       const buyerActor = purchase.actorId ? game.actors.get(purchase.actorId) : null;
       for (const actor of getTargetActors(upgrade, { buyerActor })) {
         if (hasUpgrade(actor, upgrade.id, upgrade.repeatable ? purchase.id : null)) continue;
-        await createFromPayload(actor, payload, upgrade, purchase.id);
+        await createFromPayload(actor, payload, upgrade, purchase.id, purchase.choice ?? null);
         created++;
       }
     }
@@ -295,7 +306,11 @@ export async function reapplyUpgradeEffect(upgrade) {
   let count = 0;
   for (const purchase of upgrade.purchases ?? []) {
     const buyerActor = purchase.actorId ? game.actors.get(purchase.actorId) : null;
-    const result = await applyUpgradeEffect(upgrade, { buyerActor, purchaseId: purchase.id });
+    // The buyer's nomination has to travel with the rebuild, or editing an owned upgrade would
+    // quietly strip "(Fireball)" off every grant it had.
+    const result = await applyUpgradeEffect(upgrade, {
+      buyerActor, purchaseId: purchase.id, choice: purchase.choice ?? null
+    });
     count += result.count;
   }
   return { count, names: [] };

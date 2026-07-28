@@ -10,7 +10,7 @@
  */
 import { MODULE_ID, SETTINGS, THEMES } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
-import { applyTheme, fitToViewport } from "./theme.js";
+import { applyTheme, fitToViewport, captureViewState, restoreViewState } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -208,9 +208,15 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
     fitToViewport(this);
   }
 
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    this.viewState = captureViewState(this, ".upg-settings-form");
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
     applyTheme(this);
+    restoreViewState(this, ".upg-settings-form", this.viewState);
 
     for (const el of this.element.querySelectorAll("input, select")) {
       const event = (el.type === "checkbox" || el.tagName === "SELECT") ? "change" : "input";

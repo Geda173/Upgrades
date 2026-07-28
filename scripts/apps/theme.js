@@ -33,3 +33,40 @@ export function fitToViewport(app, margin = 60) {
   if (typeof height === "number" && height > maxHeight) next.height = maxHeight;
   if (Object.keys(next).length) app.setPosition(next);
 }
+
+/**
+ * Remember where the user was before a re-render, and put them back afterwards.
+ *
+ * These windows rebuild themselves whenever a choice reshapes the form, which otherwise throws
+ * the scroll position back to the top and drops focus — unusable once the form is longer than
+ * the window. Foundry does not restore either for us.
+ */
+export function captureViewState(app, scrollSelector) {
+  const scroller = app.element?.querySelector(scrollSelector);
+  const active = document.activeElement;
+  const inApp = active && app.element?.contains(active);
+  return {
+    scrollTop: scroller?.scrollTop ?? 0,
+    name: inApp ? (active.name || null) : null,
+    row: inApp ? (active.closest?.(".upg-row")?.dataset?.index ?? null) : null,
+    caret: inApp && typeof active.selectionStart === "number" ? active.selectionStart : null
+  };
+}
+
+export function restoreViewState(app, scrollSelector, state) {
+  if (!state || !app.element) return;
+  const scroller = app.element.querySelector(scrollSelector);
+  if (scroller) scroller.scrollTop = state.scrollTop;
+  if (!state.name) return;
+
+  const scope = state.row !== null && state.row !== undefined
+    ? app.element.querySelector(`.upg-row[data-index="${state.row}"]`) ?? app.element
+    : app.element;
+  const field = scope.querySelector(`[name="${state.name}"]`);
+  if (!field) return;
+  field.focus();
+  // Putting the caret back matters most in the value fields, where a re-render lands mid-typing.
+  if (state.caret !== null && typeof field.setSelectionRange === "function") {
+    try { field.setSelectionRange(state.caret, state.caret); } catch { /* not a text field */ }
+  }
+}

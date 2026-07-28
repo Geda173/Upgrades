@@ -11,7 +11,7 @@ import {
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
-import { applyTheme, fitToViewport } from "./theme.js";
+import { applyTheme, fitToViewport, captureViewState, restoreViewState } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -73,6 +73,9 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       repeatable: !!u.repeatable,
       showInEffectsBar: !!u.showInEffectsBar,
       requires: [...(u.requires ?? [])],
+      choiceEnabled: !!u.choice?.enabled,
+      choiceLabel: u.choice?.label ?? "",
+      choiceHint: u.choice?.hint ?? "",
       categoryId: u.categoryId ?? "",
       purchased: !!u.purchased,
       target: u.target ?? TARGET.PARTY,
@@ -113,6 +116,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
         { value: TARGET.ACTOR, label: "One specific character", isSelected: draft.target === TARGET.ACTOR }
       ],
       isBuyerTarget: draft.target === TARGET.BUYER,
+      choiceEnabled: draft.choiceEnabled,
       isActorTarget: draft.target === TARGET.ACTOR,
       hasTargetActor: !!draft.targetActorId,
       actorGroups: this.#actorGroups(),
@@ -223,6 +227,9 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.repeatable = !!get("repeatable")?.checked;
     this.draft.showInEffectsBar = !!get("showInEffectsBar")?.checked;
     this.draft.requires = [...form.querySelectorAll('[name="requires"]:checked')].map(el => el.value);
+    this.draft.choiceEnabled = !!get("choiceEnabled")?.checked;
+    this.draft.choiceLabel = val("choiceLabel");
+    this.draft.choiceHint = val("choiceHint");
     this.draft.categoryId = val("categoryId");
     this.draft.target = val("target") || TARGET.PARTY;
     this.draft.targetActorId = val("targetActorId");
@@ -246,9 +253,15 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     fitToViewport(this);
   }
 
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    this.viewState = captureViewState(this, ".upg-form-body");
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
     applyTheme(this);
+    restoreViewState(this, ".upg-form-body", this.viewState);
 
     // Controls marked data-action="rerender" reshape the form rather than doing anything themselves.
     for (const el of this.element.querySelectorAll('[data-action="rerender"]')) {
@@ -372,6 +385,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       repeatable: d.repeatable,
       showInEffectsBar: d.showInEffectsBar,
       requires: d.requires,
+      choice: { enabled: d.choiceEnabled, label: d.choiceLabel, hint: d.choiceHint },
       categoryId: d.categoryId || null,
       target: d.target,
       targetActorId: d.target === TARGET.ACTOR ? d.targetActorId : null,

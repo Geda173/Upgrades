@@ -100,6 +100,13 @@ t('the merchant token wrap falls through for every other token',
 t('the merchant token wrap is applied only once',
   /_upgradesMerchantBound/.test(read('scripts/main.js')));
 
+t('the buyer is asked on their own client, before the request is sent',
+  /promptForDocument[\s\S]{0,400}emit\(\{ type: "requestPurchase"/.test(read('scripts/purchase.js')));
+t('cancelling the prompt spends nothing', /if \(!choice\) return;/.test(read('scripts/purchase.js')));
+t('the choice is remembered on the purchase so re-sync can rebuild it',
+  /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
+t('re-renders restore scroll position', /restoreViewState\(this/.test(read('scripts/apps/upgrade-editor.js')));
+
 /* ---------- effect visibility rules ---------- */
 const shopJs = read('scripts/apps/shop-app.js');
 t('teasers never compute effect lines', /u\.hidden && !isGM\) return;/.test(shopJs));

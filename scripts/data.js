@@ -240,6 +240,7 @@ export function getVocabulary() {
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
  *   hideEffect, categoryId, repeatable, showInEffectsBar, requires: [upgradeId],
+ *   choice: { enabled, label, hint },
  *   purchases: [{ id, actorId, actorName, by, at }] }
  *
  * `purchases` is the record of every acquisition. `purchased` is derived from it and kept
@@ -264,6 +265,7 @@ function normalizeUpgrade(upgrade) {
     repeatable: false,
     showInEffectsBar: false,
     requires: [],
+    choice: { enabled: false, label: "", hint: "" },
     ...upgrade
   };
 
@@ -302,6 +304,7 @@ export async function upsertUpgrade(data) {
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
     categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false, requires: [],
+    choice: { enabled: false, label: "", hint: "" },
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
   });
@@ -383,11 +386,11 @@ export function isAvailable(upgrade) {
 }
 
 /** Record an acquisition. Returns the new purchase record. */
-export async function addPurchase(upgradeId, { actorId = null, actorName = null, by = "GM" } = {}) {
+export async function addPurchase(upgradeId, { actorId = null, actorName = null, by = "GM", choice = null } = {}) {
   const upgrades = getUpgrades();
   const upgrade = upgrades.find(u => u.id === upgradeId);
   if (!upgrade) return null;
-  const record = { id: foundry.utils.randomID(), actorId, actorName, by, at: Date.now() };
+  const record = { id: foundry.utils.randomID(), actorId, actorName, by, at: Date.now(), choice };
   upgrade.purchases = [...(upgrade.purchases ?? []), record];
   upgrade.purchased = true;
   upgrade.purchasedBy = by;
