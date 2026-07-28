@@ -1,81 +1,137 @@
 # Upgrades
 
 A FoundryVTT module for running an **upgrade board**: the party banks a shared resource and spends it on
-GM-authored upgrades — each with its own art, flavor text, rich description, and optional mechanical effect.
+GM-authored upgrades — each with its own art, flavour, description, and optional mechanical effect.
 
-Nothing in the player-facing UI is hard-coded to one fiction. The currency, the host, the window title,
-the action verb and the colour theme are all settings, so the same module can be a pearl merchant in one
-campaign and a memorial garden in the next.
+Nothing the players read is hard-coded to one fiction. The currency, the merchant, the window title, the
+action verb and the colour theme are all settings, so the same module is a pearl merchant in one campaign,
+a memorial garden in the next, and a ship's requisitions console in a third.
 
-## Features
+Supports **PF2e** and **dnd5e** for mechanical effects. The cosmetic layer works in any system.
 
-- **Player window** — art-forward card grid with availability states: available, too costly, owned, and
-  hidden "???" teasers. Click a card for its full description.
-- **Shared pool** — one party-wide balance, GM-adjustable with a reason log.
-- **Request → approve flow** — players petition; the GM gets an approve/decline dialog; approval deducts the
-  cost, marks the upgrade owned, and posts an announcement chat card. (Approval requirement is a setting.)
-- **Party-wide or single-character** — each upgrade targets either every member of the party actor, or one
-  named character. A memorial garden where only one PC benefits is a first-class case.
-- **Effect builder** — pick a bonus from a plain-language list ("All weapon damage", "Spell save DC",
-  "Armor Class") and type a value. No UUIDs, no data paths. `1d8[cold]` on *All weapon damage* is exactly
-  "every weapon swing deals an extra 1d8 cold".
-- **Drag & drop linking** — or drag any existing Effect or Item from a sheet, the sidebar, or a compendium
-  onto the upgrade to grant that instead.
-- **Clean removal** — everything the module grants is flagged with the upgrade id. Refunding, deleting, or
-  editing an upgrade removes or rebuilds what it put on the sheets. Nothing is orphaned.
-- **Themes** — sixteen palettes. *Fantasy:* Abyss, Grove, Ember, Arcane, Frost, Ossuary, Bloodmoon, Golden
-  Hall, Mycelium, Tempest, Parchment. *Sci-fi:* Holo, Neon, Starship, Rust, Phosphor. A theme is a palette
-  swap, not a layout fork — Parchment and Starship are light, the rest dark.
-- **Show to players** — GM button that pops the window open on every player's screen for the big NPC moment.
+---
 
-## Install
+## What it does
 
-Manifest URL: `https://github.com/Geda173/Upgrades/releases/latest/download/module.json`
+### The board
 
-For development, clone into your Foundry data directory as `Data/modules/upgrades` and enable it in your world.
-Open it via the gem button in the token scene controls, or with a macro:
+- **Art-forward card grid** with availability states: available, too costly, owned, locked, and hidden
+  "???" teasers. Each card carries a description excerpt so the board can be read without expanding
+  anything, and the full text on click.
+- **Sections** — group upgrades into GM-defined headings ("Lighthouse", "Runes and Enchanting"),
+  reorderable from the console. Deleting a section keeps its upgrades.
+- **Upgrade paths** — an upgrade can require others. Until they are owned it stays visible but locked,
+  *naming what unlocks it* rather than merely refusing. Cards on a path are ordered so a prerequisite
+  always appears before what needs it, and are marked as linked. Cycles cannot be authored.
+- **Sixteen themes.** *Fantasy:* Abyss, Grove, Ember, Arcane, Frost, Ossuary, Bloodmoon, Golden Hall,
+  Mycelium, Tempest, Parchment. *Sci-fi:* Holo, Neon, Starship, Rust, Phosphor. A theme is a palette
+  swap, not a layout fork; Parchment and Starship are light, the rest dark.
 
-```js
-game.modules.get("upgrades").api.openShop();   // player window
-game.modules.get("upgrades").api.openEditor(); // GM console
-```
+### Buying
 
-## Setup checklist
+- **Request → approve** — players petition, the GM gets an approve/decline dialog, approval deducts the
+  cost and posts an announcement. Approval can be turned off. A GM buying directly is never asked to
+  approve themselves.
+- **Who it lands on** — each upgrade targets *the whole party*, *whoever buys it* (resolved at purchase
+  time from the buyer's character, so the GM needn't know in advance), or *one named character*.
+- **Repeat buying** — mark an upgrade repeatable and it can be bought again; the card shows a tally
+  instead of an Owned stamp. Each acquisition is tracked separately and refunds one at a time.
+- **Ask the buyer a question** — an upgrade can open a prompt on the buyer's own client before payment.
+  They drag in a document, and it names the grant: *Temporary Scroll* becomes *Temporary Scroll
+  (Fireball)*, linked in the description. Cancelling buys nothing.
 
-1. **Party actor** (module settings) — point this at your dnd5e Group / PF2e Party actor. Without it the
-   module falls back to *every player-owned character*, which in a mature world also means loot holders,
-   summons and wildshape copies.
-2. **Vocabulary** — set the currency name, icon, window title, action verb, host name and greeting.
-3. **Theme** — pick one that matches the fiction.
-4. **Grant upgrades as** — "Feature on the sheet" (visible under Features, recommended) or a bare Active Effect.
+### Effects
 
-## How effects persist
-
-An upgrade's payload is one of three modes:
+Three modes per upgrade:
 
 | Mode | What it does |
 | --- | --- |
-| Cosmetic | Nothing mechanical — just the card, the art and the chat announcement. |
-| Build a bonus | Preset rows are assembled into ActiveEffect changes at purchase time. |
-| Link | Clones an existing ActiveEffect or Item you dragged in. |
+| **Cosmetic** | Nothing mechanical — the card, the art, the announcement. Plenty of upgrades want exactly this. |
+| **Build a bonus** | Pick from a plain-language list and type a value. No data paths, no UUIDs. |
+| **Link** | Drag any existing Effect or Item in and grant a copy of that. |
 
-On purchase the payload is embedded on each target actor and flagged `flags.upgrades.upgradeId`.
-With the default "Feature" setting on dnd5e, an ActiveEffect payload is wrapped in a `feat` item named after
-the upgrade, so players can see what they earned instead of hunting the Effects tab. Refund, delete, or
-re-target the upgrade and that flag is how the module finds and removes exactly what it created.
+The bonus builder is system-aware:
 
-**Re-sync effects** (GM console) re-creates anything missing on the current targets — for late joiners, roster
-changes, or an effect someone deleted off a sheet by hand.
+- **PF2e** — produces rule elements. `FlatModifier` for flat bonuses, `DamageDice` for extra dice.
+  Selectors are semantic (`attack`, `ac`, `fortitude`, all sixteen skills, spell attack and DC, class DC,
+  speeds). Bonus type is a first-class choice, because in PF2e the type is what decides stacking — and
+  each option explains when to use it and what it will refuse to stack with.
+- **dnd5e** — produces ActiveEffect changes across the usual paths, with the melee/ranged fan-out handled
+  for you and a damage-type dropdown so nobody types `[cold]` by hand.
+
+Other systems get the custom-target row plus link mode.
+
+### Where it lives in the world
+
+- **Merchant actor** — bind an actor and double-clicking their token opens the window. Pair that with
+  turning off "players can open the window themselves" and visiting them is the only way in.
+- **Physical currency** — nominate an Item worth one unit, place stacks into a chest or a body from the
+  console, and let the party loot it. They hand it in from the window, or it credits automatically on
+  pickup if you prefer.
+
+### Housekeeping
+
+- **Clean removal** — everything granted is flagged with the upgrade *and* purchase id. Refunding,
+  deleting, or editing an upgrade removes or rebuilds exactly what it created. Nothing is orphaned.
+- **Re-sync** — re-creates anything missing on current targets, for late joiners, roster changes, or an
+  effect someone deleted off a sheet by hand.
+- **History** — every purchase and adjustment logged with a reason.
+
+---
+
+## Install
+
+Manifest URL:
+
+```
+https://github.com/Geda173/Upgrades/releases/latest/download/module.json
+```
+
+Paste it into **Add-on Modules → Install Module**, in the *Manifest URL* field below the search results.
+The module is not in Foundry's package registry, so searching for it will not find it.
+
+For development, clone into your Foundry data directory as `Data/modules/upgrades`.
+
+Open it via the gem button in the token scene controls, the merchant's token, or a macro:
+
+```js
+game.modules.get("upgrades").api.openShop();     // player window
+game.modules.get("upgrades").api.openEditor();   // GM console
+game.modules.get("upgrades").api.openSettings(); // setup
+```
+
+## Setup
+
+Everything is configured **inside the module** — the gem button, then **Setup**. Foundry's own settings
+list holds a single button that opens the same window, because a theme cannot be chosen from a dropdown
+of names. The setup window carries a live preview that updates as you type.
+
+1. **Party actor** — point this at your PF2e Party or dnd5e Group actor. Without it, party-wide upgrades
+   fall back to *every player-owned character*, which in a mature world also means chests, item piles,
+   summons and wildshape copies. This is the one setting that will bite you if skipped.
+2. **Vocabulary** — currency name, icon, window title, action verb, merchant name, greeting.
+3. **Theme** — pick by looking at it, not by name.
+4. Optionally: a **merchant actor**, a **currency item**, and whether pickups credit automatically.
 
 ## Notes
 
 - All world mutations run on the GM's client, so **purchases require a GM to be logged in**.
-- The bonus presets are dnd5e data paths. Other systems get the custom-path row and the drag-and-drop link
-  mode; the cosmetic layer works everywhere.
-- Art images are referenced by path into your Foundry data folder — upload via any file picker, or use the
-  browse button in the upgrade editor.
+- Physical currency is matched by **item name**, so that copies a GM makes by hand still count. Pick a
+  name you will not reuse.
+- Art is referenced by path into your Foundry data folder — use the browse button in the editor.
+
+## Development
+
+```bash
+npm install   # only handlebars, for the template tests
+npm test      # or: node tests/run.mjs [name-fragment]
+```
+
+No framework and no build step. Each suite is a standalone ES module that prints PASS/FAIL; the runner
+spawns them and totals up. Every suite exists because something broke — see `CLAUDE.md` for which bug
+each one guards. Tests are excluded from the release zip.
 
 ## Roadmap
 
-Starter effect compendium, categories/tiers with prerequisites, per-character purchasing (each PC buys from a
-shared catalog independently), purchase sound/animation, catalog export/import, PF2e rule-element support.
+Starter effect compendium, predicates on PF2e bonuses (conditional "only against undead" style bonuses),
+catalogue export/import, purchase sound, localisation.
