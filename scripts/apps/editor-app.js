@@ -1,12 +1,9 @@
 /**
  * GM console: upgrade CRUD, currency ledger, history. (ApplicationV2 + Handlebars)
  */
-import {
-  MODULE_ID, SETTINGS, getUpgrades, getUpgrade, upsertUpgrade, deleteUpgrade,
-  getBalance, adjustBalance, getHistory, getVocabulary,
-  getCategories, upsertCategory, deleteCategory, moveCategory, groupByCategory, removePurchase,
-  getCurrencies, getCurrency, getBalances, getCosts, describeCosts, hasMultipleCurrencies, isImagePath
-} from "../data.js";
+import { deleteCategory, deleteUpgrade, getCategories, getUpgrade, getUpgrades, groupByCategory, moveCategory, removePurchase, upsertCategory, upsertUpgrade } from "../catalog.js";
+import { adjustBalance, describeCosts, getBalance, getBalances, getCosts, getCurrencies, getCurrency, getHistory, hasMultipleCurrencies } from "../economy.js";
+import { MODULE_ID, SETTINGS, getVocabulary, isImagePath } from "../settings.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
 import { describeBuild, EFFECT_MODE } from "../effects.js";

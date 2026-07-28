@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 const read = rel => fs.readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 const readme = read('README.md');
-const data = read('scripts/data.js');
+const data = read('scripts/settings.js');
 const effects = read('scripts/effects.js');
 const main = read('scripts/main.js');
 const module_ = JSON.parse(read('module.json'));

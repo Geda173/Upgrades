@@ -12,7 +12,7 @@ const read = rel => fs.readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8
 
 /* ---------- every script parses as an ES module ---------- */
 const scripts = [
-  'scripts/data.js', 'scripts/effects.js', 'scripts/main.js', 'scripts/purchase.js',
+  'scripts/settings.js', 'scripts/economy.js', 'scripts/catalog.js', 'scripts/effects.js', 'scripts/main.js', 'scripts/purchase.js',
   'scripts/sockets.js', 'scripts/systems/adapter.js',
   'scripts/apps/shop-app.js', 'scripts/apps/editor-app.js', 'scripts/apps/upgrade-editor.js',
   'scripts/apps/settings-app.js', 'scripts/apps/ui.js', 'scripts/apps/choice-dialog.js'
@@ -120,7 +120,7 @@ t('the choice is remembered on the purchase so re-sync can rebuild it',
 t('re-renders restore scroll position', /restoreViewState\(this, selector/.test(read('scripts/apps/ui.js')));
 
 /* ---------- the merchant token has to be reachable by players ---------- */
-const dataJs = read('scripts/data.js');
+const dataJs = read('scripts/settings.js');
 t('the module checks whether players can view the merchant actor',
   /testUserPermission\(u, "LIMITED"\)/.test(dataJs));
 t('and offers to grant the minimum level that lets a click through',

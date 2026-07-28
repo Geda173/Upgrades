@@ -8,7 +8,7 @@
  * Fitting: our default sizes assume a roomy screen. On a laptop they can put the footer —
  * and therefore the Save button — below the bottom of the display.
  */
-import { THEMES, getTheme } from "../data.js";
+import { THEMES, getTheme } from "../settings.js";
 
 const THEME_CLASSES = THEMES.map(t => `upg-theme-${t.id}`);
 

@@ -7,7 +7,7 @@
  *   "link"  — effectUuid points at an existing ActiveEffect or Item (drag & drop in the editor)
  *   "build" — effectBuild.rows are preset bonuses assembled here into ActiveEffect changes
  */
-import { MODULE_ID } from "./data.js";
+import { MODULE_ID } from "./settings.js";
 
 export const EFFECT_MODE = {
   NONE: "none",

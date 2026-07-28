@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const data = fs.readFileSync(new URL('../scripts/data.js', import.meta.url), 'utf8');
+const data = fs.readFileSync(new URL('../scripts/settings.js', import.meta.url), 'utf8');
 const app  = fs.readFileSync(new URL('../scripts/apps/settings-app.js', import.meta.url), 'utf8');
 const main = fs.readFileSync(new URL('../scripts/main.js', import.meta.url), 'utf8');
 

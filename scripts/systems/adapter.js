@@ -6,7 +6,8 @@
  *  - an Item (PF2e Effect items, or a 5e feature/item) → copied onto each actor as an Item
  * Everything created is flagged with the upgrade id for clean refund/undo.
  */
-import { MODULE_ID, SETTINGS, TARGET } from "../data.js";
+import { TARGET } from "../catalog.js";
+import { MODULE_ID, SETTINGS } from "../settings.js";
 import { EFFECT_MODE, buildChanges, buildRules, isPf2e } from "../effects.js";
 
 /**
@@ -277,7 +278,7 @@ export async function removeUpgradeEffect(upgradeId, purchaseId = null) {
  * which repairs the case where an effect was deleted off a sheet by hand.
  */
 export async function resyncUpgrades() {
-  const { getUpgrades } = await import("../data.js");
+  const { getUpgrades } = await import("../catalog.js");
   let created = 0;
   for (const upgrade of getUpgrades().filter(u => u.purchases?.length)) {
     const payload = await resolveEffectPayload(upgrade);

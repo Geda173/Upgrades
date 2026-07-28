@@ -4,10 +4,9 @@
  * Deliberately not a DialogV2: it needs drag & drop, a variable number of bonus rows,
  * and a form that reshapes itself as the GM picks a target or an effect mode.
  */
-import {
-  MODULE_ID, SETTINGS, TARGET, getVocabulary, getCategories,
-  getUpgrades, eligiblePrerequisites, getCurrencies, getCosts, isImagePath
-} from "../data.js";
+import { TARGET, eligiblePrerequisites, getCategories, getUpgrades } from "../catalog.js";
+import { getCosts, getCurrencies } from "../economy.js";
+import { MODULE_ID, SETTINGS, getVocabulary, isImagePath } from "../settings.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";

@@ -2,11 +2,9 @@
  * Purchase pipeline: player request → GM approval → commit (deduct, mark, announce).
  * Everything in this file runs on the GM client only (dispatched via sockets.js).
  */
-import {
-  MODULE_ID, SETTINGS, TARGET, getUpgrade, getBalance, adjustBalance,
-  addHistory, getVocabulary, isAvailable, addPurchase, unmetRequirements,
-  getCosts, describeCosts, canAfford
-} from "./data.js";
+import { TARGET, addPurchase, getUpgrade, isAvailable, unmetRequirements } from "./catalog.js";
+import { addHistory, adjustBalance, canAfford, describeCosts, getBalance, getCosts } from "./economy.js";
+import { MODULE_ID, SETTINGS, getVocabulary } from "./settings.js";
 import { emit, refreshOpenApps } from "./sockets.js";
 import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
 

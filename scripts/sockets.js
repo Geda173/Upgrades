@@ -2,18 +2,21 @@
  * Socket layer (native game.socket — no external dependency).
  * All world mutations run on the active GM's client; players only send requests.
  */
-import { MODULE_ID } from "./data.js";
-import { handlePurchaseRequest } from "./purchase.js";
+import { MODULE_ID } from "./settings.js";
 
 const CHANNEL = `module.${MODULE_ID}`;
 
 export function initSockets() {
   game.socket.on(CHANNEL, async (msg) => {
     switch (msg?.type) {
-      case "requestPurchase":
-        // Only one GM client should handle the request
-        if (isActiveGM()) await handlePurchaseRequest(msg);
+      case "requestPurchase": {
+        // Only one GM client should handle the request. Imported here rather than at the top
+        // because purchase.js emits through this module — a static pair would be a cycle.
+        if (!isActiveGM()) break;
+        const { handlePurchaseRequest } = await import("./purchase.js");
+        await handlePurchaseRequest(msg);
         break;
+      }
       case "deposit":
         if (isActiveGM()) {
           const { depositFrom } = await import("./currency.js");

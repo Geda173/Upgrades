@@ -9,7 +9,8 @@
  * the item around by hand, copy it between actors, or hand out one they made earlier, and all
  * of those should still count.
  */
-import { MODULE_ID, SETTINGS, adjustBalance, getVocabulary } from "./data.js";
+import { adjustBalance } from "./economy.js";
+import { MODULE_ID, SETTINGS, getVocabulary } from "./settings.js";
 
 /** The configured Item that represents one unit, or null when the feature is unused. */
 export async function getCurrencyItem() {

@@ -36,7 +36,7 @@ let bad = 0;
 const t = (n, c) => { if (!c) bad = 1; console.log((c ? 'PASS ' : 'FAIL ') + n); };
 const read = rel => fs.readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 
-const src = read('scripts/apps/settings-app.js') + read('scripts/data.js') + read('scripts/main.js');
+const src = read('scripts/apps/settings-app.js') + read('scripts/settings.js') + read('scripts/main.js');
 const used = [...new Set([...src.matchAll(/fa-solid fa-([a-z0-9-]+)/g)].map(m => m[1]))];
 t('the module ships icon classes at all', used.length > 20);
 const missing = used.filter(n => !names.has(n));

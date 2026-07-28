@@ -8,11 +8,8 @@
  * The preview is patched in place rather than re-rendered — a full render on every keystroke
  * would pull focus out of whatever field the GM is typing in.
  */
-import {
-  MODULE_ID, SETTINGS, THEMES,
-  getCurrencies, upsertCurrency, deleteCurrency, merchantNeedsAccess, grantMerchantAccess,
-  isImagePath
-} from "../data.js";
+import { deleteCurrency, getCurrencies, upsertCurrency } from "../economy.js";
+import { MODULE_ID, SETTINGS, THEMES, grantMerchantAccess, isImagePath, merchantNeedsAccess } from "../settings.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { UpgradesWindow, wireDropZone } from "./ui.js";
 

@@ -1,11 +1,9 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import {
-  MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory, isAvailable,
-  unmetRequirements, isUnlocked, sortByPath, pathDepth,
-  getCurrencies, getBalances, describeCosts, canAfford, hasMultipleCurrencies, isImagePath
-} from "../data.js";
+import { getUpgrades, groupByCategory, isAvailable, isUnlocked, pathDepth, sortByPath, unmetRequirements } from "../catalog.js";
+import { canAfford, describeCosts, getBalance, getBalances, getCurrencies, hasMultipleCurrencies } from "../economy.js";
+import { MODULE_ID, getVocabulary, isImagePath } from "../settings.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";

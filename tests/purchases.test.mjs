@@ -20,7 +20,12 @@ globalThis.foundry = {
   }
 };
 
-const D = await import(new URL('../scripts/data.js', import.meta.url));
+// This suite spans both halves of the old data.js: what an upgrade is, and what it costs.
+// Merged into one namespace so the assertions below read as they always did.
+const D = {
+  ...await import(new URL('../scripts/catalog.js', import.meta.url)),
+  ...await import(new URL('../scripts/economy.js', import.meta.url))
+};
 
 let bad = 0;
 const t = (n, c) => { if (!c) bad = 1; console.log((c ? 'PASS ' : 'FAIL ') + n); };

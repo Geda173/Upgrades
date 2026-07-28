@@ -1,7 +1,7 @@
 /**
  * Upgrades — entry point.
  */
-import { MODULE_ID, SETTINGS, registerSettings, getVocabulary, warnIfNoPartyActor, isHostToken } from "./data.js";
+import { MODULE_ID, SETTINGS, getVocabulary, isHostToken, registerSettings, warnIfNoPartyActor } from "./settings.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
