@@ -68,6 +68,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       hidden: !!u.hidden,
       hideEffect: !!u.hideEffect,
       repeatable: !!u.repeatable,
+      showInEffectsBar: !!u.showInEffectsBar,
       categoryId: u.categoryId ?? "",
       purchased: !!u.purchased,
       target: u.target ?? TARGET.PARTY,
@@ -180,10 +181,11 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   #grantNote() {
-    const grantAs = game.settings.get(MODULE_ID, SETTINGS.GRANT_AS);
-    const how = grantAs === "feature" && game.system.id === "dnd5e"
-      ? "Granted as a feature on the character sheet"
-      : "Granted as an Active Effect";
+    const how = this.draft.showInEffectsBar
+      ? (game.system.id === "pf2e"
+          ? "Granted as an Effect, so it sits in the effects bar"
+          : "Granted as an Active Effect, so it sits on the Effects tab")
+      : "Granted as a quiet, permanent feature on the sheet";
     const owned = this.draft.purchased ? " This upgrade is already owned — saving re-applies it to its targets." : "";
     return `${how}; removing or refunding the upgrade deletes it again.${owned}`;
   }
@@ -208,6 +210,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.hidden = !!get("hidden")?.checked;
     this.draft.hideEffect = !!get("hideEffect")?.checked;
     this.draft.repeatable = !!get("repeatable")?.checked;
+    this.draft.showInEffectsBar = !!get("showInEffectsBar")?.checked;
     this.draft.categoryId = val("categoryId");
     this.draft.target = val("target") || TARGET.PARTY;
     this.draft.targetActorId = val("targetActorId");
@@ -340,6 +343,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       hidden: d.hidden,
       hideEffect: d.hideEffect,
       repeatable: d.repeatable,
+      showInEffectsBar: d.showInEffectsBar,
       categoryId: d.categoryId || null,
       target: d.target,
       targetActorId: d.target === TARGET.ACTOR ? d.targetActorId : null,

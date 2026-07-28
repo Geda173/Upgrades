@@ -12,7 +12,6 @@ export const SETTINGS = {
   REQUIRE_APPROVAL: "requireApproval",
   PLAYERS_CAN_OPEN: "playersCanOpen",
   PARTY_ACTOR: "partyActor",
-  GRANT_AS: "grantAs",
   THEME: "theme",
   CURRENCY_NAME: "currencyName",
   CURRENCY_ICON: "currencyIcon",
@@ -104,17 +103,6 @@ export function registerSettings() {
     // and Foundry reads this object as-is rather than calling it, so a lazy function would render blank.
     scope: "world", config: false, type: String, default: "",
     choices: {},
-    onChange: () => refreshWindows()
-  });
-  S.register(MODULE_ID, SETTINGS.GRANT_AS, {
-    name: "Grant upgrades as",
-    hint: "“Feature” creates a named feature on the character sheet carrying the effect — visible, and removing it "
-        + "removes the bonus. “Active Effect” puts a bare effect on the Effects tab instead.",
-    scope: "world", config: false, type: String, default: "feature",
-    choices: {
-      feature: "Feature on the sheet (recommended)",
-      effect: "Active Effect only"
-    },
     onChange: () => refreshWindows()
   });
 
@@ -227,7 +215,7 @@ export function getVocabulary() {
  * { id, name, cost, img, flavor, description (HTML), hidden, purchased,
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
- *   hideEffect, categoryId, repeatable,
+ *   hideEffect, categoryId, repeatable, showInEffectsBar,
  *   purchases: [{ id, actorId, actorName, by, at }] }
  *
  * `purchases` is the record of every acquisition. `purchased` is derived from it and kept
@@ -250,6 +238,7 @@ function normalizeUpgrade(upgrade) {
     hideEffect: false,
     categoryId: null,
     repeatable: false,
+    showInEffectsBar: false,
     ...upgrade
   };
 
@@ -287,7 +276,7 @@ export async function upsertUpgrade(data) {
     name: "New Upgrade", cost: 1, img: "", flavor: "", description: "",
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
-    categoryId: null, repeatable: false, purchases: [],
+    categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false,
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
   });

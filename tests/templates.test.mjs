@@ -174,6 +174,7 @@ t('upgrade-editor: cost label uses the configured currency',
   upgradeEditor.includes('Cost (Sprigs)'));
 t('upgrade-editor: section dropdown marks the current section',
   /name="categoryId"[\s\S]*?value="c1" selected/.test(upgradeEditor));
+t('upgrade-editor: offers the effects-bar toggle', upgradeEditor.includes('showInEffectsBar'));
 t('upgrade-editor: offers the buyer target', upgradeEditor.includes('Whoever buys it'));
 t('upgrade-editor: repeatable checkbox is checked when set',
   /name="repeatable"[^>]*checked/.test(upgradeEditor));

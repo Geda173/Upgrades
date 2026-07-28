@@ -216,6 +216,12 @@
     {{#if showsGrantNote}}
     <div class="form-group">
       <label class="checkbox">
+        <input type="checkbox" name="showInEffectsBar" data-action="rerender" {{#if upgrade.showInEffectsBar}}checked{{/if}}>
+        Show it in the effects bar
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="checkbox">
         <input type="checkbox" name="hideEffect" {{#if upgrade.hideEffect}}checked{{/if}}>
         Keep what it does secret until it is owned
       </label>

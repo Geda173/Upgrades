@@ -94,20 +94,36 @@ export async function resolveEffectPayload(upgrade) {
     if (!rules.length) return null;
     return {
       documentName: "Item",
-      data: {
-        name: upgrade.name || "Upgrade",
-        type: "effect",
-        img: upgrade.img || "icons/svg/upgrade.svg",
-        system: {
-          description: { value: upgrade.description || upgrade.flavor || "" },
-          rules,
-          duration: { value: -1, unit: "unlimited", expiry: null, sustained: false },
-          level: { value: 1 },
-          tokenIcon: { show: false },
-          start: { value: 0, initiative: null },
-          unidentified: false
-        }
-      }
+      data: upgrade.showInEffectsBar
+        ? {
+            // An "effect" is PF2e's temporary-condition type, so it appears in the effects bar.
+            name: upgrade.name || "Upgrade",
+            type: "effect",
+            img: upgrade.img || "icons/svg/upgrade.svg",
+            system: {
+              description: { value: upgrade.description || upgrade.flavor || "" },
+              rules,
+              duration: { value: -1, unit: "unlimited", expiry: null, sustained: false },
+              level: { value: 1 },
+              tokenIcon: { show: true },
+              start: { value: 0, initiative: null },
+              unidentified: false
+            }
+          }
+        : {
+            // Rule elements live on the base item schema and prepareRuleElements() walks every
+            // item, so a feat applies the same bonuses without cluttering the effects bar.
+            name: upgrade.name || "Upgrade",
+            type: "feat",
+            img: upgrade.img || "icons/svg/upgrade.svg",
+            system: {
+              description: { value: upgrade.description || upgrade.flavor || "" },
+              rules,
+              category: "bonus",
+              level: { value: 1 },
+              traits: { value: [], rarity: "common" }
+            }
+          }
     };
   }
 
@@ -156,8 +172,10 @@ async function createFromPayload(actor, payload, upgrade, purchaseId = null) {
   foundry.utils.setProperty(data, `flags.${MODULE_ID}.upgradeId`, upgrade.id);
   if (purchaseId) foundry.utils.setProperty(data, `flags.${MODULE_ID}.purchaseId`, purchaseId);
 
-  const grantAs = game.settings.get(MODULE_ID, SETTINGS.GRANT_AS);
-  const wrap = payload.documentName === "ActiveEffect" && grantAs === "feature" && game.system.id === "dnd5e";
+  // Same choice on the dnd5e side: a bare ActiveEffect shows on the Effects tab, while wrapping
+  // it in a feat keeps it quiet and puts it under Features where a permanent upgrade belongs.
+  const wrap = payload.documentName === "ActiveEffect" && !upgrade.showInEffectsBar
+    && game.system.id === "dnd5e";
 
   if (wrap) {
     const item = {

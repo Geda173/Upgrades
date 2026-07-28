@@ -67,11 +67,6 @@ const HOST_ICON_GROUPS = [
   ]}
 ];
 
-const GRANT_AS_CHOICES = [
-  { id: "feature", name: "A feature on the character sheet (recommended)" },
-  { id: "effect", name: "An Active Effect only" }
-];
-
 /** Checkbox fields need .checked rather than .value when read back off the form. */
 const BOOL_FIELDS = ["requireApproval", "playersCanOpen"];
 
@@ -126,7 +121,6 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       currencyIcon: g(SETTINGS.CURRENCY_ICON),
       actionVerb: g(SETTINGS.ACTION_VERB),
       partyActor: g(SETTINGS.PARTY_ACTOR),
-      grantAs: g(SETTINGS.GRANT_AS),
       requireApproval: g(SETTINGS.REQUIRE_APPROVAL),
       playersCanOpen: g(SETTINGS.PLAYERS_CAN_OPEN)
     };
@@ -168,7 +162,6 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       hasPartyActor: !!d.partyActor,
       partyWarning: SettingsApp.#partyWarning(),
 
-      grantAsChoices: GRANT_AS_CHOICES.map(c => ({ ...c, isSelected: c.id === d.grantAs }))
     };
   }
 
@@ -352,7 +345,6 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
       [SETTINGS.CURRENCY_ICON, d.currencyIcon],
       [SETTINGS.ACTION_VERB, d.actionVerb],
       [SETTINGS.PARTY_ACTOR, d.partyActor],
-      [SETTINGS.GRANT_AS, d.grantAs],
       [SETTINGS.REQUIRE_APPROVAL, !!d.requireApproval],
       [SETTINGS.PLAYERS_CAN_OPEN, !!d.playersCanOpen]
     ];
