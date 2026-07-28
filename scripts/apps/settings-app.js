@@ -17,6 +17,54 @@ import { applyTheme, fitToViewport, captureViewState, restoreViewState } from ".
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+/** Icon picker markup for use inside a DialogV2, where Handlebars is not available. */
+function iconPickerHtml(groups, selected) {
+  const esc = foundry.utils.escapeHTML;
+  return `<div class="upg-icon-picker">` + groups.map(g => `
+    <div class="upg-icon-group">
+      <span class="upg-icon-group-label">${esc(g.label)}</span>
+      <div class="upg-icon-row">
+        ${g.icons.map(([cls, name]) => `
+          <button type="button" class="upg-icon-choice${cls === selected ? " active" : ""}"
+                  data-pick-icon="${esc(cls)}" title="${esc(name)}"><i class="${esc(cls)}"></i></button>`).join("")}
+      </div>
+    </div>`).join("") + `</div>`;
+}
+
+/** Clicking a swatch fills the field, so the typed value stays the single source of truth. */
+function wireIconPicker(root, inputName) {
+  const input = root?.querySelector(`[name="${inputName}"]`);
+  if (!input) return;
+  const preview = root.querySelector("[data-icon-preview]");
+  const paint = () => {
+    for (const b of root.querySelectorAll("[data-pick-icon]")) {
+      b.classList.toggle("active", b.dataset.pickIcon === input.value.trim());
+    }
+    if (preview) {
+      const v = input.value.trim();
+      preview.innerHTML = /[/\\]/.test(v)
+        ? `<img class="upg-currency-img" src="${foundry.utils.escapeHTML(v)}" alt="">`
+        : `<i class="${foundry.utils.escapeHTML(v || "fa-solid fa-circle")}"></i>`;
+    }
+  };
+  for (const b of root.querySelectorAll("[data-pick-icon]")) {
+    b.addEventListener("click", event => {
+      event.preventDefault();
+      input.value = b.dataset.pickIcon;
+      paint();
+    });
+  }
+  input.addEventListener("input", paint);
+
+  const browse = root.querySelector("[data-browse-icon]");
+  browse?.addEventListener("click", event => {
+    event.preventDefault();
+    const FP = foundry.applications.apps.FilePicker?.implementation ?? FilePicker;
+    new FP({ type: "image", current: input.value, callback: path => { input.value = path; paint(); } }).browse();
+  });
+  paint();
+}
+
 /** Curated icons, so nobody has to know the Font Awesome catalogue. */
 const ICON_GROUPS = [
   { label: "Nature", icons: [
