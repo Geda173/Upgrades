@@ -1,25 +1,37 @@
 /**
  * Upgrades — entry point.
  */
-import { MODULE_ID, SETTINGS, registerSettings, getVocabulary, populatePartyActorChoices } from "./data.js";
+import { MODULE_ID, SETTINGS, registerSettings, getVocabulary, warnIfNoPartyActor } from "./data.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
+import { SettingsApp } from "./apps/settings-app.js";
 
 Hooks.once("init", () => {
   registerSettings();
+
+  // Every individual setting is config:false, so Foundry's list shows one button that opens
+  // the setup window instead — where the choices have pickers and a live preview.
+  game.settings.registerMenu(MODULE_ID, "setup", {
+    name: "Upgrades setup",
+    label: "Open setup",
+    hint: "Theme, wording, currency icon, party actor and purchase rules — with a live preview.",
+    icon: "fa-solid fa-sliders",
+    type: SettingsApp,
+    restricted: true
+  });
 });
 
 Hooks.once("ready", () => {
   initSockets();
-  // The actor directory only exists now, so the Party actor dropdown is filled in here.
-  populatePartyActorChoices();
+  warnIfNoPartyActor();
 
   // Public API: macros can call game.modules.get("upgrades").api.openShop()
   const mod = game.modules.get(MODULE_ID);
   mod.api = {
     openShop: () => ShopApp.show(),
-    openEditor: () => EditorApp.show()
+    openEditor: () => EditorApp.show(),
+    openSettings: () => SettingsApp.show()
   };
 
   console.log(`${MODULE_ID} | Ready. Open via the token controls button or game.modules.get("${MODULE_ID}").api.openShop()`);

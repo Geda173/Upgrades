@@ -28,7 +28,8 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       toggleHidden: EditorApp.#onToggleHidden,
       refund: EditorApp.#onRefund,
       adjustBalance: EditorApp.#onAdjustBalance,
-      resync: EditorApp.#onResync
+      resync: EditorApp.#onResync,
+      openSettings: EditorApp.#onOpenSettings
     }
   };
 
@@ -161,6 +162,11 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!result || !result.delta) return;
     await adjustBalance(result.delta, result.reason);
     EditorApp.#afterMutation();
+  }
+
+  static async #onOpenSettings() {
+    const { SettingsApp } = await import("./settings-app.js");
+    SettingsApp.show();
   }
 
   static async #onResync() {

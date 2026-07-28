@@ -21,6 +21,7 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
       buy: ShopApp.#onBuy,
       showToPlayers: ShopApp.#onShowToPlayers,
       openEditor: ShopApp.#onOpenEditor,
+      openSettings: ShopApp.#onOpenSettings,
       selectCard: ShopApp.#onSelectCard
     }
   };
@@ -99,6 +100,11 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onOpenEditor() {
     const { EditorApp } = await import("./editor-app.js");
     EditorApp.show();
+  }
+
+  static async #onOpenSettings() {
+    const { SettingsApp } = await import("./settings-app.js");
+    SettingsApp.show();
   }
 
   async _onClose(options) {

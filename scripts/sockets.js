@@ -52,4 +52,6 @@ export async function refreshOpenApps() {
   const { EditorApp } = await import("./apps/editor-app.js");
   ShopApp.instance?.render();
   EditorApp.instance?.render();
+  // The scene-control button's label, icon and very existence come from settings too.
+  ui.controls?.render();
 }

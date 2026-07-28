@@ -82,12 +82,14 @@ export function registerSettings() {
   S.register(MODULE_ID, SETTINGS.REQUIRE_APPROVAL, {
     name: "Purchases require GM approval",
     hint: "If enabled, player purchase requests must be approved by the GM before the cost is deducted.",
-    scope: "world", config: true, type: Boolean, default: true
+    scope: "world", config: false, type: Boolean, default: true,
+    onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.PLAYERS_CAN_OPEN, {
     name: "Players can open the window freely",
     hint: "If disabled, players only see it when the GM shows it to them.",
-    scope: "world", config: true, type: Boolean, default: true
+    scope: "world", config: false, type: Boolean, default: true,
+    onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.PARTY_ACTOR, {
     name: "Party actor",
@@ -96,7 +98,7 @@ export function registerSettings() {
         + "full of loot, summon and wildshape actors is rarely what you want.",
     // Choices start empty and are filled in on "ready": game.actors does not exist yet at "init",
     // and Foundry reads this object as-is rather than calling it, so a lazy function would render blank.
-    scope: "world", config: true, type: String, default: "",
+    scope: "world", config: false, type: String, default: "",
     choices: {},
     onChange: () => refreshWindows()
   });
@@ -104,7 +106,7 @@ export function registerSettings() {
     name: "Grant upgrades as",
     hint: "“Feature” creates a named feature on the character sheet carrying the effect — visible, and removing it "
         + "removes the bonus. “Active Effect” puts a bare effect on the Effects tab instead.",
-    scope: "world", config: true, type: String, default: "feature",
+    scope: "world", config: false, type: String, default: "feature",
     choices: {
       feature: "Feature on the sheet (recommended)",
       effect: "Active Effect only"
@@ -116,7 +118,7 @@ export function registerSettings() {
   S.register(MODULE_ID, SETTINGS.THEME, {
     name: "Theme",
     hint: "Colour and texture of the player-facing window.",
-    scope: "world", config: true, type: String, default: "abyss",
+    scope: "world", config: false, type: String, default: "abyss",
     // Foundry's choices dropdown is flat, so the group rides along in the label.
     choices: Object.fromEntries(THEMES.map(t => [t.id, `${t.group} · ${t.label} — ${t.blurb}`])),
     onChange: () => refreshWindows()
@@ -126,42 +128,42 @@ export function registerSettings() {
   S.register(MODULE_ID, SETTINGS.WINDOW_TITLE, {
     name: "Window title",
     hint: "Shown in the window title bar. E.g. “The Memorial Garden”.",
-    scope: "world", config: true, type: String, default: "Upgrades",
+    scope: "world", config: false, type: String, default: "Upgrades",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.CURRENCY_NAME, {
     name: "Currency name",
     hint: "The resource that is spent. E.g. “Sprigs”.",
-    scope: "world", config: true, type: String, default: "Points",
+    scope: "world", config: false, type: String, default: "Points",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.CURRENCY_ICON, {
     name: "Currency icon",
     hint: "A Font Awesome class (e.g. “fa-solid fa-seedling”) or a path to an image in your Foundry data folder.",
-    scope: "world", config: true, type: String, default: "fa-solid fa-gem",
+    scope: "world", config: false, type: String, default: "fa-solid fa-gem",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.ACTION_VERB, {
     name: "Action verb",
     hint: "The label on the purchase button. E.g. “Plant”, “Request”, “Buy”.",
-    scope: "world", config: true, type: String, default: "Request",
+    scope: "world", config: false, type: String, default: "Request",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_NAME, {
     name: "Host name",
     hint: "The NPC or place presenting the upgrades. E.g. “Elara’s Respite”.",
-    scope: "world", config: true, type: String, default: "The Merchant",
+    scope: "world", config: false, type: String, default: "The Merchant",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_IMG, {
     name: "Host portrait (image path)",
     hint: "Path to an image in your Foundry data folder. Leave empty for a default icon.",
-    scope: "world", config: true, type: String, default: "", filePicker: "image",
+    scope: "world", config: false, type: String, default: "", filePicker: "image",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.GREETING, {
     name: "Greeting",
-    scope: "world", config: true, type: String,
+    scope: "world", config: false, type: String,
     default: "Well met. Shall we see what can be made of this?",
     onChange: () => refreshWindows()
   });
@@ -177,19 +179,15 @@ function partyActorChoices() {
 }
 
 /**
- * Fill in the Party actor dropdown once the actor directory exists.
- * Called from the "ready" hook; mutating the registered setting is the supported way to
- * offer choices that aren't knowable at registration time.
+ * Warn the GM when the world has no Group actor to point the Party actor setting at.
+ * The dropdown itself now lives in the setup window, which builds its own choices.
  */
-export function populatePartyActorChoices() {
-  const setting = game.settings.settings.get(`${MODULE_ID}.${SETTINGS.PARTY_ACTOR}`);
-  if (!setting) return;
-  setting.choices = partyActorChoices();
-  const count = Object.keys(setting.choices).length - 1;
-  if (!count) {
-    console.warn(`${MODULE_ID} | No Group or Party actor found — party-wide upgrades will fall back `
-      + `to every player-owned character. Create a Group actor and set it in module settings.`);
-  }
+export function warnIfNoPartyActor() {
+  if (!game.user.isGM) return;
+  const groups = game.actors.filter(a => a.type === "group" || a.type === "party").length;
+  if (groups) return;
+  console.warn(`${MODULE_ID} | No Group or Party actor found — party-wide upgrades will fall back `
+    + `to every player-owned character. Create a Group actor and pick it in the setup window.`);
 }
 
 /* ---------- Vocabulary helpers ---------- */

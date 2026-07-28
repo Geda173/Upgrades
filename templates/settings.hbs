@@ -1,0 +1,205 @@
+<div class="upg-settings">
+
+  <div class="upg-settings-panes">
+
+    <section class="upg-settings-form">
+
+      <h3>Appearance</h3>
+
+      <div class="form-group">
+        <label>Theme</label>
+        <div class="upg-theme-picker">
+          {{#each themeGroups}}
+          <div class="upg-theme-group">
+            <span class="upg-theme-group-label">{{label}}</span>
+            <div class="upg-theme-swatches">
+              {{#each themes}}
+              <button type="button" class="upg-swatch upgrades upg-theme-{{id}} {{#if isSelected}}active{{/if}}"
+                      data-action="pickTheme" data-theme="{{id}}" title="{{label}} — {{blurb}}">
+                <span class="upg-swatch-bands">
+                  <span class="b1"></span><span class="b2"></span><span class="b3"></span>
+                </span>
+                <span class="upg-swatch-name">{{label}}</span>
+              </button>
+              {{/each}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Window title</label>
+        <input type="text" name="windowTitle" value="{{draft.windowTitle}}" placeholder="The Memorial Garden">
+      </div>
+
+      <div class="form-group">
+        <label>Host name</label>
+        <input type="text" name="hostName" value="{{draft.hostName}}" placeholder="Elara’s Respite">
+      </div>
+
+      <div class="form-group">
+        <label>Greeting</label>
+        <input type="text" name="greeting" value="{{draft.greeting}}" placeholder="The soil remembers.">
+      </div>
+
+      <div class="form-group">
+        <label>Host portrait</label>
+        <div class="upg-file">
+          <input type="text" name="hostImg" value="{{draft.hostImg}}" placeholder="optional — leave empty for an icon">
+          <button type="button" data-action="pickHostImg" title="Browse for an image"><i class="fa-solid fa-folder-open"></i></button>
+          {{#if draft.hostImg}}
+          <button type="button" data-action="clearHostImg" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+          {{/if}}
+        </div>
+      </div>
+
+      <h3>Currency</h3>
+
+      <div class="form-group">
+        <label>What is it called?</label>
+        <input type="text" name="currencyName" value="{{draft.currencyName}}" placeholder="Sprigs">
+      </div>
+
+      <div class="form-group">
+        <label>Action button</label>
+        <input type="text" name="actionVerb" value="{{draft.actionVerb}}" placeholder="Plant">
+      </div>
+
+      <div class="form-group stacked">
+        <label>Icon</label>
+        <div class="upg-icon-picker">
+          {{#each iconGroups}}
+          <div class="upg-icon-group">
+            <span class="upg-icon-group-label">{{label}}</span>
+            <div class="upg-icon-row">
+              {{#each icons}}
+              <button type="button" class="upg-icon-choice {{#if isSelected}}active{{/if}}"
+                      data-action="pickIcon" data-icon="{{cls}}" title="{{name}}">
+                <i class="{{cls}}"></i>
+              </button>
+              {{/each}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        <div class="upg-file upg-icon-custom">
+          <input type="text" name="currencyIcon" value="{{draft.currencyIcon}}" placeholder="fa-solid fa-seedling">
+          <button type="button" data-action="pickIconImage" title="Use your own image instead"><i class="fa-solid fa-folder-open"></i></button>
+        </div>
+        <p class="upg-hint">Pick one above, or browse for your own image.</p>
+      </div>
+
+      <h3>Behaviour</h3>
+
+      <div class="form-group">
+        <label>Party actor</label>
+        <select name="partyActor">
+          {{#each partyActorChoices}}
+          <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      {{#unless hasPartyActor}}
+      <p class="upg-warn">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        {{partyWarning}}
+      </p>
+      {{/unless}}
+
+      <div class="form-group">
+        <label>Grant upgrades as</label>
+        <select name="grantAs">
+          {{#each grantAsChoices}}
+          <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{name}}</option>
+          {{/each}}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="requireApproval" {{#if draft.requireApproval}}checked{{/if}}>
+          Purchases need my approval
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="playersCanOpen" {{#if draft.playersCanOpen}}checked{{/if}}>
+          Players can open the window themselves
+        </label>
+      </div>
+    </section>
+
+    <aside class="upg-settings-preview">
+      <span class="upg-preview-label">Live preview</span>
+
+      <div class="upgrades upg-theme-{{draft.theme}} upg-preview" data-preview>
+        <div class="upg-preview-bar"><span data-bind="windowTitle">{{draft.windowTitle}}</span></div>
+        <div class="upg-window">
+          <header class="upg-banner">
+            <div class="upg-npc" data-bind="host-portrait">
+              {{#if draft.hostImg}}<img src="{{draft.hostImg}}" alt="">{{else}}<i class="{{iconClassOrDefault}}"></i>{{/if}}
+            </div>
+            <div class="upg-title">
+              <h1 data-bind="hostName">{{draft.hostName}}</h1>
+              <div class="upg-sub" data-bind="greeting">“{{draft.greeting}}”</div>
+            </div>
+            <div class="upg-balance">
+              <div class="upg-num">
+                <span data-bind="currency-icon">
+                  {{#if currencyIconIsImg}}<img class="upg-currency-img" src="{{draft.currencyIcon}}" alt="">
+                  {{else}}<i class="{{iconClassOrDefault}}"></i>{{/if}}
+                </span>
+                7
+              </div>
+              <div class="upg-lbl" data-bind="currencyName">{{draft.currencyName}}</div>
+            </div>
+          </header>
+
+          <section class="upg-grid">
+            <div class="upg-card active">
+              <div class="upg-art"><i class="fa-solid fa-wand-sparkles"></i></div>
+              <div class="upg-body">
+                <h3>Nightbloom Sapling</h3>
+                <div class="upg-for"><i class="fa-solid fa-user"></i> Galadon</div>
+                <div class="upg-flavor"><em>Opens only for those who kept watch.</em></div>
+                <div class="upg-cost">
+                  <span data-bind="currency-icon">
+                    {{#if currencyIconIsImg}}<img class="upg-currency-img" src="{{draft.currencyIcon}}" alt="">
+                    {{else}}<i class="{{iconClassOrDefault}}"></i>{{/if}}
+                  </span>
+                  3
+                  <button type="button" class="upg-buy" data-bind="actionVerb" tabindex="-1">{{draft.actionVerb}}</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="upg-card owned">
+              <div class="upg-stamp">Owned</div>
+              <div class="upg-art"><i class="fa-solid fa-wand-sparkles"></i></div>
+              <div class="upg-body">
+                <h3>Ashen Fern</h3>
+                <div class="upg-flavor"><em>Grown from the ruin of the eastern hold.</em></div>
+                <div class="upg-cost">
+                  <span data-bind="currency-icon">
+                    {{#if currencyIconIsImg}}<img class="upg-currency-img" src="{{draft.currencyIcon}}" alt="">
+                    {{else}}<i class="{{iconClassOrDefault}}"></i>{{/if}}
+                  </span>
+                  2
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <p class="upg-hint">Sample content — your own upgrades and art replace it.</p>
+    </aside>
+  </div>
+
+  <footer class="upg-form-footer">
+    <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    <button type="button" data-action="cancel"><i class="fa-solid fa-ban"></i> Cancel</button>
+  </footer>
+</div>
