@@ -21,6 +21,12 @@ const ICON_GROUPS = [
     ["fa-solid fa-clover", "Clover"], ["fa-solid fa-spa", "Blossom"], ["fa-solid fa-feather", "Feather"],
     ["fa-solid fa-droplet", "Droplet"], ["fa-solid fa-fire", "Flame"]
   ]},
+  // Verified present in FA6 free solid — fa-crystal-ball and fa-orb do not exist and render blank.
+  { label: "Orbs & pearls", icons: [
+    ["fa-solid fa-circle", "Pearl"], ["fa-solid fa-circle-dot", "Orb"],
+    ["fa-solid fa-egg", "Pearl (oval)"], ["fa-solid fa-hurricane", "Swirling orb"],
+    ["fa-solid fa-globe", "Sphere"], ["fa-solid fa-compact-disc", "Disc"]
+  ]},
   { label: "Treasure", icons: [
     ["fa-solid fa-gem", "Gem"], ["fa-solid fa-coins", "Coins"], ["fa-solid fa-crown", "Crown"],
     ["fa-solid fa-ring", "Ring"], ["fa-solid fa-key", "Key"], ["fa-solid fa-sack-dollar", "Purse"],
