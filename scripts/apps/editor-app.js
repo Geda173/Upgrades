@@ -9,7 +9,7 @@ import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
 import { describeBuild, EFFECT_MODE } from "../effects.js";
 import { UpgradeEditor } from "./upgrade-editor.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme, fitToViewport } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -70,6 +70,11 @@ export class EditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (upgrade.effectMode === EFFECT_MODE.BUILD) return describeBuild(upgrade.effectBuild?.rows) || "empty bonus";
     if (upgrade.effectMode === EFFECT_MODE.LINK) return upgrade.effectUuid ? "linked effect" : "link not set";
     return "";
+  }
+
+  _onFirstRender(context, options) {
+    super._onFirstRender(context, options);
+    fitToViewport(this);
   }
 
   _onRender(context, options) {

@@ -298,6 +298,8 @@
 
 /* ---------- shell ---------- */
 
+.upg-shop .window-content { max-height: calc(100vh - 90px); overflow-y: auto; }
+
 .upgrades .window-content {
   background:
     radial-gradient(700px 300px at 50% -10%, var(--upg-halo) 0%, transparent 60%),
@@ -444,7 +446,7 @@
 .upgrades-chat-card .upg-effect-note { color: #2a6f77; font-weight: bold; }
 
 /* ---------- GM console ---------- */
-.upg-editor .window-content { padding: 14px 18px; }
+.upg-editor .window-content { padding: 14px 18px; display: flex; min-height: 0; max-height: calc(100vh - 90px); }
 .upg-editor-body { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow-y: auto; }
 .upg-ledger { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .upg-list header { display: flex; align-items: center; justify-content: space-between; }
@@ -468,8 +470,11 @@
 .upg-history .when { color: var(--upg-ink-dim); font-size: 11px; }
 
 /* ---------- upgrade authoring form ---------- */
-.upg-upgrade-editor .window-content { padding: 0; }
-.upg-form { display: flex; flex-direction: column; gap: 0; }
+/* The form is taller than a laptop screen once a few bonus rows exist, so the body scrolls
+   and the footer stays pinned — otherwise Save sits below the fold and cannot be reached. */
+.upg-upgrade-editor .window-content { padding: 0; display: flex; min-height: 0; max-height: calc(100vh - 90px); }
+.upg-form { display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; }
+.upg-form-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .upg-fieldset { padding: 14px 18px; border-bottom: 1px solid var(--upg-line-soft); }
 .upg-fieldset h3 {
   border: none; margin: 0 0 10px; font-size: 14px;
@@ -515,15 +520,18 @@
 .upg-drop button { margin-left: auto; width: auto; background: none; border: none; color: var(--upg-ink-dim); cursor: pointer; }
 .upg-drop button:hover { color: var(--upg-warn); box-shadow: none; }
 
-.upg-form-footer { display: flex; gap: 10px; padding: 12px 18px; justify-content: flex-end; }
+.upg-form-footer {
+  display: flex; gap: 10px; padding: 12px 18px; justify-content: flex-end;
+  flex: none; border-top: 1px solid var(--upg-line-soft); background: var(--upg-bg-panel);
+}
 .upg-form code {
   background: rgba(0, 0, 0, 0.22); padding: 1px 5px; border-radius: 3px;
   font-size: 11px; color: var(--upg-accent);
 }
 
 /* ---------- setup window ---------- */
-.upg-settings-app .window-content { padding: 0; }
-.upg-settings { display: flex; flex-direction: column; height: 100%; }
+.upg-settings-app .window-content { padding: 0; display: flex; min-height: 0; max-height: calc(100vh - 90px); }
+.upg-settings { display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; }
 .upg-settings-panes { display: flex; gap: 0; flex: 1; min-height: 0; }
 
 .upg-settings-form { flex: 1 1 46%; min-width: 0; overflow-y: auto; padding: 16px 18px; }

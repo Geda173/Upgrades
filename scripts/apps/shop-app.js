@@ -5,7 +5,7 @@ import { MODULE_ID, getUpgrades, getBalance, getVocabulary } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme, fitToViewport } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -74,6 +74,11 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
       selectedDescription: selected ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(selected.description ?? "") : null,
       vocab: getVocabulary()
     };
+  }
+
+  _onFirstRender(context, options) {
+    super._onFirstRender(context, options);
+    fitToViewport(this);
   }
 
   _onRender(context, options) {

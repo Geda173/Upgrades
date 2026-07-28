@@ -10,7 +10,7 @@
  */
 import { MODULE_ID, SETTINGS, THEMES } from "../data.js";
 import { emit, refreshOpenApps } from "../sockets.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme, fitToViewport } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -161,6 +161,11 @@ export class SettingsApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /* ---------- live preview ---------- */
+
+  _onFirstRender(context, options) {
+    super._onFirstRender(context, options);
+    fitToViewport(this);
+  }
 
   _onRender(context, options) {
     super._onRender(context, options);

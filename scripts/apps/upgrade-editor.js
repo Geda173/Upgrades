@@ -7,7 +7,7 @@
 import { MODULE_ID, SETTINGS, TARGET, getVocabulary } from "../data.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme, fitToViewport } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -200,6 +200,11 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       key: el.querySelector('[name="rowKey"]')?.value ?? "",
       mode: Number(el.querySelector('[name="rowMode"]')?.value ?? CONST.ACTIVE_EFFECT_MODES.ADD)
     }));
+  }
+
+  _onFirstRender(context, options) {
+    super._onFirstRender(context, options);
+    fitToViewport(this);
   }
 
   _onRender(context, options) {
