@@ -50,6 +50,10 @@ const shopCards = [
     { id: 'c', displayName: 'Ashen Fern', displayFlavor: 'Owned.', displayImg: '', cost: 2,
       purchased: true, soldOut: true, available: false, mystery: false, affordable: false,
       selected: false, targetLabel: null, effectLines: [], ownedCount: 0 },
+    { id: 'f', displayName: 'Connect to Lighthouse', displayFlavor: '', displayImg: '', cost: 10,
+      purchased: false, soldOut: false, available: true, mystery: false, affordable: false,
+      locked: true, onPath: true, requiresLabel: 'Activate Magelight',
+      selected: false, targetLabel: null, effectLines: [], ownedCount: 0 },
     { id: 'e', displayName: 'Healing Draught', displayFlavor: 'Bought again and again.', displayImg: '',
       cost: 1, purchased: true, soldOut: false, available: true, mystery: false, affordable: true,
       selected: false, targetLabel: 'Whoever buys it', effectLines: [],
@@ -96,6 +100,9 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   vocab, saveLabel: 'Save', systemId: 'dnd5e', builderSupported: true, isPf2e: false,
   hasCategories: true,
   categories: [{ id: 'c1', name: 'Lighthouse', isSelected: true }],
+  hasPrerequisiteCandidates: true,
+  prerequisites: [{ id: 'p1', name: 'Activate Magelight', isSelected: true },
+                  { id: 'p2', name: 'Talisman Permanency', isSelected: false }],
   targetOptions: [{ value: 'party', label: 'The whole party', isSelected: false },
                   { value: 'buyer', label: 'Whoever buys it', isSelected: false },
                   { value: 'actor', label: 'One specific character', isSelected: true }],
@@ -146,7 +153,17 @@ t('shop: a secret card says so instead of looking cosmetic',
   !!secret && secret.includes('upg-effect-secret') && !secret.includes('upg-effects'));
 
 t('shop: section heading rendered', shop.includes('upg-section-head') && shop.includes('Lighthouse'));
-t('shop: every card still rendered across sections', cards.length === 5);
+t('shop: every card still rendered across sections', cards.length === 6);
+(() => {
+  const lockedCard = cards.find(c => c.includes('Connect to Lighthouse'));
+  t('shop: a locked card is marked locked', !!lockedCard && lockedCard.includes('locked'));
+  t('shop: a locked card names what unlocks it',
+    !!lockedCard && lockedCard.includes('Requires Activate Magelight'));
+  t('shop: a locked card offers no purchase button',
+    !!lockedCard && lockedCard.includes('>Locked<') && !/data-action="buy"/.test(lockedCard));
+  t('shop: a card on a path is visually linked',
+    !!lockedCard && lockedCard.includes('on-path') && lockedCard.includes('upg-path-link'));
+})();
 t('shop: a sold-out card is stamped Owned', shop.includes('upg-stamp'));
 (() => {
   const repeat = cards.find(c => c.includes('Healing Draught'));
@@ -174,6 +191,10 @@ t('upgrade-editor: cost label uses the configured currency',
   upgradeEditor.includes('Cost (Sprigs)'));
 t('upgrade-editor: section dropdown marks the current section',
   /name="categoryId"[\s\S]*?value="c1" selected/.test(upgradeEditor));
+t('upgrade-editor: prerequisite picker lists candidates',
+  upgradeEditor.includes('name="requires"') && upgradeEditor.includes('Talisman Permanency'));
+t('upgrade-editor: an existing prerequisite is ticked',
+  /value="p1"[^>]*checked/.test(upgradeEditor));
 t('upgrade-editor: offers the effects-bar toggle', upgradeEditor.includes('showInEffectsBar'));
 t('upgrade-editor: offers the buyer target', upgradeEditor.includes('Whoever buys it'));
 t('upgrade-editor: repeatable checkbox is checked when set',

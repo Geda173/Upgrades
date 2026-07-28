@@ -4,7 +4,10 @@
  * Deliberately not a DialogV2: it needs drag & drop, a variable number of bonus rows,
  * and a form that reshapes itself as the GM picks a target or an effect mode.
  */
-import { MODULE_ID, SETTINGS, TARGET, getVocabulary, getCategories } from "../data.js";
+import {
+  MODULE_ID, SETTINGS, TARGET, getVocabulary, getCategories,
+  getUpgrades, eligiblePrerequisites
+} from "../data.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
@@ -69,6 +72,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       hideEffect: !!u.hideEffect,
       repeatable: !!u.repeatable,
       showInEffectsBar: !!u.showInEffectsBar,
+      requires: [...(u.requires ?? [])],
       categoryId: u.categoryId ?? "",
       purchased: !!u.purchased,
       target: u.target ?? TARGET.PARTY,
@@ -92,6 +96,11 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       vocab,
       saveLabel: this.isNew ? "Create" : "Save",
       categories: getCategories().map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
+      // Anything that already depends on this upgrade is withheld — picking it would close a loop
+      // and leave every upgrade in that loop permanently unbuyable.
+      prerequisites: eligiblePrerequisites({ id: draft.id, requires: draft.requires }, getUpgrades())
+        .map(u => ({ id: u.id, name: u.name, isSelected: draft.requires.includes(u.id) })),
+      hasPrerequisiteCandidates: eligiblePrerequisites({ id: draft.id, requires: draft.requires }, getUpgrades()).length > 0,
       hasCategories: getCategories().length > 0,
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
@@ -211,6 +220,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     this.draft.hideEffect = !!get("hideEffect")?.checked;
     this.draft.repeatable = !!get("repeatable")?.checked;
     this.draft.showInEffectsBar = !!get("showInEffectsBar")?.checked;
+    this.draft.requires = [...form.querySelectorAll('[name="requires"]:checked')].map(el => el.value);
     this.draft.categoryId = val("categoryId");
     this.draft.target = val("target") || TARGET.PARTY;
     this.draft.targetActorId = val("targetActorId");
@@ -344,6 +354,7 @@ export class UpgradeEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       hideEffect: d.hideEffect,
       repeatable: d.repeatable,
       showInEffectsBar: d.showInEffectsBar,
+      requires: d.requires,
       categoryId: d.categoryId || null,
       target: d.target,
       targetActorId: d.target === TARGET.ACTOR ? d.targetActorId : null,

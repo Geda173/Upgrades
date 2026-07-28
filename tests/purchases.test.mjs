@@ -71,6 +71,52 @@ await D.addPurchase('u1', { by: 'Pat' });
 t('a party purchase records no actor', D.getUpgrade('u1').purchases[0].actorId === null);
 t('a one-off becomes unavailable once bought', !D.isAvailable(D.getUpgrade('u1')));
 
+/* ---------- upgrade paths ---------- */
+const chain = [
+  { id: 'A', name: 'Activate Magelight', requires: [], purchases: [] },
+  { id: 'B', name: 'Connect to Lighthouse', requires: ['A'], purchases: [] },
+  { id: 'C', name: 'Beacon Network', requires: ['B'], purchases: [] },
+  { id: 'D', name: 'Dreamward', requires: ['A', 'B'], purchases: [] }
+];
+reset(chain);
+
+t('a root upgrade is unlocked', D.isUnlocked(chain[0], chain));
+t('a dependent upgrade is locked', !D.isUnlocked(chain[1], chain));
+t('the unmet requirement is named', D.unmetRequirements(chain[1], chain)[0].name === 'Activate Magelight');
+t('a two-step dependant is locked', !D.isUnlocked(chain[2], chain));
+
+const bought = chain.map(u => u.id === 'A' ? { ...u, purchases: [{ id: 'p' }] } : u);
+t('buying the prerequisite unlocks the next step', D.isUnlocked(bought[1], bought));
+t('but not the step after that', !D.isUnlocked(bought[2], bought));
+t('an upgrade needing two things reports only what is still missing',
+  D.unmetRequirements(bought[3], bought).map(u => u.id).join() === 'B');
+
+t('depth: a root is 0', D.pathDepth(chain[0], chain) === 0);
+t('depth: one step in is 1', D.pathDepth(chain[1], chain) === 1);
+t('depth: two steps in is 2', D.pathDepth(chain[2], chain) === 2);
+t('depth uses the longest route when requirements converge', D.pathDepth(chain[3], chain) === 2);
+t('prerequisites sort before the upgrades that need them',
+  D.sortByPath(chain, chain).map(u => u.id).join() === 'A,B,C,D');
+
+/* cycles must be impossible to create, not merely survived */
+t('an upgrade cannot be offered itself as a prerequisite',
+  !D.eligiblePrerequisites(chain[0], chain).some(u => u.id === 'A'));
+t('something that already depends on this one is not offered',
+  !D.eligiblePrerequisites(chain[0], chain).some(u => u.id === 'B'));
+t('an unrelated upgrade is still offered',
+  D.eligiblePrerequisites(chain[1], chain).some(u => u.id === 'A'));
+t('dependsOn follows a chain', D.dependsOn(chain[2], 'A', chain));
+t('dependsOn is false for an unrelated pair', !D.dependsOn(chain[0], 'C', chain));
+
+/* a cycle that somehow reached the data must not hang the module */
+const looped = [
+  { id: 'X', requires: ['Y'], purchases: [] },
+  { id: 'Y', requires: ['X'], purchases: [] }
+];
+t('a cycle does not hang pathDepth', typeof D.pathDepth(looped[0], looped) === 'number');
+t('a cycle does not hang dependsOn', D.dependsOn(looped[0], 'X', looped) === true);
+t('a cycle does not hang isUnlocked', D.isUnlocked(looped[0], looped) === false);
+
 /* ---------- sections ---------- */
 store.set('categories', [
   { id: 'c2', name: 'Runes', sort: 1 },

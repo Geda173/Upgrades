@@ -673,3 +673,23 @@
   font-size: 11px; line-height: 1.4; color: var(--upg-ink); margin-top: 5px;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
+
+/* ---------- upgrade paths ---------- */
+.upg-card.locked { opacity: 0.6; }
+.upg-card.locked .upg-art { filter: grayscale(0.7); }
+/* a rail down the left edge marks a card as continuing a path from the one before it */
+.upg-card.on-path { border-left: 3px solid var(--upg-line); }
+.upg-path-link {
+  position: absolute; top: 8px; left: 8px; z-index: 1;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--upg-bg-panel); border: 1px solid var(--upg-line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: var(--upg-gold);
+}
+.upg-card.on-path .upg-tally { left: 34px; }
+.upg-requires {
+  font-size: 10px; color: var(--upg-warn); margin-top: 5px;
+  display: flex; align-items: center; gap: 5px; line-height: 1.3;
+}
+.upg-prereqs { display: flex; flex-direction: column; gap: 4px; }
+.upg-prereqs label.checkbox { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }

@@ -49,6 +49,23 @@
     </div>
   </section>
 
+  {{#if hasPrerequisiteCandidates}}
+  <section class="upg-fieldset">
+    <h3>Comes after</h3>
+    <p class="upg-hint">
+      Tick anything that must be owned before this can be bought. It stays visible but locked
+      until then, and the two are shown as linked.
+    </p>
+    <div class="upg-prereqs">
+      {{#each prerequisites}}
+      <label class="checkbox">
+        <input type="checkbox" name="requires" value="{{id}}" {{#if isSelected}}checked{{/if}}> {{name}}
+      </label>
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
   <section class="upg-fieldset">
     <h3>Who does this apply to?</h3>
 

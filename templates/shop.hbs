@@ -29,10 +29,11 @@
   {{#if name}}<h2 class="upg-section-head"><i class="{{icon}}"></i> {{name}}</h2>{{/if}}
   <section class="upg-grid">
     {{#each upgrades}}
-    <div class="upg-card {{#if soldOut}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless soldOut}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
+    <div class="upg-card {{#if soldOut}}owned{{/if}} {{#if locked}}locked{{/if}} {{#if onPath}}on-path{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless soldOut}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
          data-action="selectCard" data-upgrade-id="{{id}}">
       {{#if soldOut}}<div class="upg-stamp">Owned</div>{{/if}}
       {{#if ownedCount}}<div class="upg-tally">×{{ownedCount}}</div>{{/if}}
+      {{#if onPath}}<div class="upg-path-link" title="Continues an upgrade path"><i class="fa-solid fa-link"></i></div>{{/if}}
       <div class="upg-art">
         {{#if displayImg}}<img src="{{displayImg}}" alt="">{{else}}<i class="fa-solid {{#if mystery}}fa-question{{else}}fa-wand-sparkles{{/if}}"></i>{{/if}}
       </div>
@@ -47,6 +48,7 @@
           {{#each effectLines}}<li>{{this}}</li>{{/each}}
         </ul>
         {{/if}}
+        {{#if requiresLabel}}<div class="upg-requires"><i class="fa-solid fa-lock"></i> Requires {{requiresLabel}}</div>{{/if}}
         {{#if effectSecret}}<div class="upg-effect-secret">Its gift is not yet known</div>{{/if}}
         {{#if effectSecretForGM}}<div class="upg-effect-secret gm">Hidden from players until owned</div>{{/if}}
         <div class="upg-cost">
@@ -58,6 +60,8 @@
           {{#unless soldOut}}{{#unless mystery}}
             {{#if affordable}}
               <button type="button" class="upg-buy" data-action="buy" data-upgrade-id="{{id}}">{{../../vocab.actionVerb}}</button>
+            {{else if locked}}
+              <button type="button" class="upg-buy disabled" disabled>Locked</button>
             {{else}}
               <button type="button" class="upg-buy disabled" disabled>Too costly</button>
             {{/if}}

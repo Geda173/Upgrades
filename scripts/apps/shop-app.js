@@ -1,7 +1,10 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import { MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory, isAvailable } from "../data.js";
+import {
+  MODULE_ID, getUpgrades, getBalance, getVocabulary, groupByCategory, isAvailable,
+  unmetRequirements, isUnlocked, sortByPath, pathDepth
+} from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
@@ -47,9 +50,11 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext(_options) {
     const isGM = game.user.isGM;
     const balance = getBalance();
-    const visible = getUpgrades()
-      .filter(u => isGM || !u.hidden || u.teaser !== false) // hidden upgrades appear as "???" teasers
-      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+    const all = getUpgrades();
+    const visible = sortByPath(
+      all.filter(u => isGM || !u.hidden || u.teaser !== false), // hidden upgrades appear as "???" teasers
+      all
+    );
 
     // Players should be able to read what an upgrade does *before* paying for it.
     // Teasers stay blank — the whole point of a "???" card is that it gives nothing away.
@@ -71,7 +76,11 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
           displayImg: mystery ? "" : u.img,
           available: isAvailable(u),
           soldOut: !isAvailable(u),
-          affordable: isAvailable(u) && balance >= u.cost,
+          locked: !isUnlocked(u, all),
+          // Named so a player can see what to buy first rather than just that they cannot buy this.
+          requiresLabel: mystery ? "" : unmetRequirements(u, all).map(r => r.name).join(", "),
+          onPath: !mystery && pathDepth(u, all) > 0,
+          affordable: isAvailable(u) && isUnlocked(u, all) && balance >= u.cost,
           ownedCount: u.repeatable ? (u.purchases?.length ?? 0) : 0,
           ownedBy: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", "),
           selected: u.id === this.#selectedId,

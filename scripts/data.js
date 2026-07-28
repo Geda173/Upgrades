@@ -215,7 +215,7 @@ export function getVocabulary() {
  * { id, name, cost, img, flavor, description (HTML), hidden, purchased,
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
- *   hideEffect, categoryId, repeatable, showInEffectsBar,
+ *   hideEffect, categoryId, repeatable, showInEffectsBar, requires: [upgradeId],
  *   purchases: [{ id, actorId, actorName, by, at }] }
  *
  * `purchases` is the record of every acquisition. `purchased` is derived from it and kept
@@ -239,6 +239,7 @@ function normalizeUpgrade(upgrade) {
     categoryId: null,
     repeatable: false,
     showInEffectsBar: false,
+    requires: [],
     ...upgrade
   };
 
@@ -276,7 +277,7 @@ export async function upsertUpgrade(data) {
     name: "New Upgrade", cost: 1, img: "", flavor: "", description: "",
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
-    categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false,
+    categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false, requires: [],
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
   });
@@ -285,6 +286,59 @@ export async function upsertUpgrade(data) {
 
 export async function deleteUpgrade(id) {
   return setUpgrades(getUpgrades().filter(u => u.id !== id));
+}
+
+/* ---------- Upgrade paths ---------- */
+
+/** Every prerequisite of this upgrade that has not been bought yet. */
+export function unmetRequirements(upgrade, all = getUpgrades()) {
+  const byId = new Map(all.map(u => [u.id, u]));
+  return (upgrade.requires ?? [])
+    .map(id => byId.get(id))
+    .filter(req => req && !req.purchases?.length);
+}
+
+export function isUnlocked(upgrade, all = getUpgrades()) {
+  return unmetRequirements(upgrade, all).length === 0;
+}
+
+/**
+ * Does `upgrade` depend on `targetId`, directly or through a chain?
+ * Used to keep the prerequisite picker from offering an option that would close a loop —
+ * a cycle would leave every upgrade in it permanently unbuyable.
+ */
+export function dependsOn(upgrade, targetId, all = getUpgrades(), seen = new Set()) {
+  if (!upgrade || seen.has(upgrade.id)) return false;
+  seen.add(upgrade.id);
+  const byId = new Map(all.map(u => [u.id, u]));
+  for (const id of upgrade.requires ?? []) {
+    if (id === targetId) return true;
+    if (dependsOn(byId.get(id), targetId, all, seen)) return true;
+  }
+  return false;
+}
+
+/** Which upgrades may safely be offered as prerequisites of this one. */
+export function eligiblePrerequisites(upgrade, all = getUpgrades()) {
+  return all.filter(u => u.id !== upgrade?.id && !dependsOn(u, upgrade?.id, all));
+}
+
+/** How deep into a path an upgrade sits; roots are 0. Cycles are clamped rather than hung on. */
+export function pathDepth(upgrade, all = getUpgrades(), seen = new Set()) {
+  if (!upgrade || seen.has(upgrade.id)) return 0;
+  seen.add(upgrade.id);
+  const byId = new Map(all.map(u => [u.id, u]));
+  const depths = (upgrade.requires ?? [])
+    .map(id => byId.get(id))
+    .filter(Boolean)
+    .map(req => 1 + pathDepth(req, all, new Set(seen)));
+  return depths.length ? Math.max(...depths) : 0;
+}
+
+/** Order so that a prerequisite always appears before the upgrades that need it. */
+export function sortByPath(upgrades, all = getUpgrades()) {
+  return [...upgrades].sort((a, b) =>
+    (pathDepth(a, all) - pathDepth(b, all)) || ((a.sort ?? 0) - (b.sort ?? 0)));
 }
 
 /** Can this still be bought? Repeatable upgrades never run out. */

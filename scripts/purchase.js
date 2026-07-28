@@ -4,7 +4,7 @@
  */
 import {
   MODULE_ID, SETTINGS, TARGET, getUpgrade, getBalance, adjustBalance,
-  addHistory, getVocabulary, isAvailable, addPurchase
+  addHistory, getVocabulary, isAvailable, addPurchase, unmetRequirements
 } from "./data.js";
 import { emit, refreshOpenApps } from "./sockets.js";
 import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
@@ -16,6 +16,12 @@ export async function handlePurchaseRequest({ upgradeId, userId }) {
   const vocab = getVocabulary();
   if (!upgrade || upgrade.hidden || !isAvailable(upgrade)) {
     return notifyUser(userId, "That upgrade is no longer available.");
+  }
+
+  // Checked here as well as in the UI: the socket request is the real entry point.
+  const unmet = unmetRequirements(upgrade);
+  if (unmet.length) {
+    return notifyUser(userId, `“${upgrade.name}” needs ${unmet.map(u => u.name).join(" and ")} first.`);
   }
 
   const balance = getBalance();

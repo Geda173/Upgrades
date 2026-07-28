@@ -84,6 +84,12 @@ for (const a of [...actions].sort()) t(`  setup action "${a}" is registered`, re
 t('preview can show a theme the surrounding window is not using',
   /class="upgrades upg-theme-\{\{draft\.theme\}\} upg-preview"/.test(settingsHbs));
 
+/* ---------- upgrade paths ---------- */
+t('a locked upgrade is refused at the socket entry point, not just in the UI',
+  /unmetRequirements\(upgrade\)/.test(read('scripts/purchase.js')));
+t('locked cards are visually distinct', /\.upg-card\.locked \{/.test(css));
+t('cards on a path carry a rail', /\.upg-card\.on-path \{[^}]*border-left/.test(css));
+
 /* ---------- effect visibility rules ---------- */
 const shopJs = read('scripts/apps/shop-app.js');
 t('teasers never compute effect lines', /u\.hidden && !isGM\) return;/.test(shopJs));
