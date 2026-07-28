@@ -1,0 +1,56 @@
+<div class="pu-editor-body">
+  <section class="pu-ledger">
+    <div class="pu-balance inline">
+      <span class="pu-pearl-icon"></span> <strong>{{pearls}}</strong> in the party pool
+    </div>
+    <button type="button" data-action="addPearls"><i class="fa-solid fa-plus-minus"></i> Adjust pearls</button>
+    <button type="button" data-action="resync" title="Ensure all purchased upgrade effects exist on every party member (late joiners)"><i class="fa-solid fa-rotate"></i> Re-sync effects</button>
+  </section>
+
+  <section class="pu-list">
+    <header>
+      <h3>Upgrades</h3>
+      <button type="button" data-action="addUpgrade"><i class="fa-solid fa-plus"></i> New upgrade</button>
+    </header>
+    <table>
+      <thead><tr><th></th><th>Name</th><th>Cost</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {{#each upgrades}}
+        <tr class="{{#if purchased}}owned{{/if}} {{#if hidden}}hidden-row{{/if}}">
+          <td class="pu-thumb">{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fa-solid fa-wand-sparkles"></i>{{/if}}</td>
+          <td>{{name}}{{#if effectUuid}} <i class="fa-solid fa-bolt" title="Has mechanical effect"></i>{{/if}}</td>
+          <td>{{cost}}</td>
+          <td>
+            {{#if purchased}}<span class="tag owned">Owned ({{purchasedBy}})</span>
+            {{else if hidden}}<span class="tag hidden">Hidden</span>
+            {{else}}<span class="tag">Available</span>{{/if}}
+          </td>
+          <td class="pu-actions">
+            <a data-action="editUpgrade" data-id="{{id}}" title="Edit"><i class="fa-solid fa-pen"></i></a>
+            <a data-action="toggleHidden" data-id="{{id}}" title="Toggle hidden"><i class="fa-solid {{#if hidden}}fa-eye{{else}}fa-eye-slash{{/if}}"></i></a>
+            {{#if purchased}}<a data-action="refund" data-id="{{id}}" title="Refund"><i class="fa-solid fa-rotate-left"></i></a>{{/if}}
+            <a data-action="deleteUpgrade" data-id="{{id}}" title="Delete"><i class="fa-solid fa-trash"></i></a>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="5" class="pu-empty">No upgrades yet — create your first one.</td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="pu-history">
+    <h3>Recent history</h3>
+    <ul>
+      {{#each history}}
+      <li>
+        <span class="when">{{when}}</span> —
+        {{#if isPurchase}}<strong>{{name}}</strong> purchased for {{cost}} (by {{by}})
+        {{else}}Pearls {{deltaStr}} ({{before}} → {{after}}){{#if reason}} — {{reason}}{{/if}}{{/if}}
+      </li>
+      {{else}}
+      <li class="pu-empty">Nothing yet.</li>
+      {{/each}}
+    </ul>
+  </section>
+</div>

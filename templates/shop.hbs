@@ -1,0 +1,65 @@
+<div class="pu-window">
+  <header class="pu-banner">
+    <div class="pu-npc">
+      {{#if merchantImg}}<img src="{{merchantImg}}" alt="{{merchantName}}">{{else}}<i class="fa-solid fa-gem"></i>{{/if}}
+    </div>
+    <div class="pu-title">
+      <h1>{{merchantName}}</h1>
+      <div class="pu-sub">“{{merchantGreeting}}”</div>
+    </div>
+    <div class="pu-balance">
+      <div class="pu-num"><span class="pu-pearl-icon"></span>{{pearls}}</div>
+      <div class="pu-lbl">{{currencyName}}</div>
+    </div>
+  </header>
+
+  {{#if isGM}}
+  <nav class="pu-gm-bar">
+    <button type="button" data-action="showToPlayers"><i class="fa-solid fa-eye"></i> Show to players</button>
+    <button type="button" data-action="openEditor"><i class="fa-solid fa-pen-to-square"></i> Manage upgrades &amp; pearls</button>
+  </nav>
+  {{/if}}
+
+  <section class="pu-grid">
+    {{#each upgrades}}
+    <div class="pu-card {{#if purchased}}owned{{/if}} {{#if mystery}}mystery{{/if}} {{#unless affordable}}{{#unless purchased}}{{#unless mystery}}poor{{/unless}}{{/unless}}{{/unless}} {{#if selected}}active{{/if}}"
+         data-action="selectCard" data-upgrade-id="{{id}}">
+      {{#if purchased}}<div class="pu-stamp">Owned</div>{{/if}}
+      <div class="pu-art">
+        {{#if displayImg}}<img src="{{displayImg}}" alt="">{{else}}<i class="fa-solid {{#if mystery}}fa-question{{else}}fa-wand-sparkles{{/if}}"></i>{{/if}}
+      </div>
+      <div class="pu-body">
+        <h3>{{displayName}}</h3>
+        <div class="pu-flavor"><em>{{displayFlavor}}</em></div>
+        <div class="pu-cost">
+          {{#unless mystery}}<span class="pu-pearl-icon"></span>{{cost}}{{else}}—{{/unless}}
+          {{#unless purchased}}{{#unless mystery}}
+            {{#if affordable}}
+              <button type="button" class="pu-buy" data-action="buy" data-upgrade-id="{{id}}">Request</button>
+            {{else}}
+              <button type="button" class="pu-buy disabled" disabled>Too costly</button>
+            {{/if}}
+          {{/unless}}{{/unless}}
+        </div>
+      </div>
+    </div>
+    {{else}}
+    <p class="pu-empty">The merchant's shelves are bare… (GM: add upgrades via “Manage upgrades”.)</p>
+    {{/each}}
+  </section>
+
+  {{#if selected}}
+  <section class="pu-detail">
+    <div class="pu-detail-art">
+      {{#if selected.img}}<img src="{{selected.img}}" alt="">{{else}}<i class="fa-solid fa-wand-sparkles"></i>{{/if}}
+    </div>
+    <div class="pu-detail-text">
+      <h4>{{selected.name}}</h4>
+      {{#if selected.flavor}}<p class="pu-flavor"><em>{{selected.flavor}}</em></p>{{/if}}
+      {{#if selectedDescription}}<div class="pu-desc">{{{selectedDescription}}}</div>{{/if}}
+    </div>
+  </section>
+  {{else}}
+  <footer class="pu-hint">Click a card to inspect it · Request to petition the merchant</footer>
+  {{/if}}
+</div>
