@@ -5,3 +5,5 @@ node_modules/
 # local agent context (not published)
 CLAUDE.md
 .claude/
+node_modules/
+tests/.cache/
