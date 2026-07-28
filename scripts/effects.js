@@ -197,6 +197,54 @@ export function buildChanges(rows = []) {
   return changes;
 }
 
+/**
+ * Human-readable lines describing what a built payload actually does, for players.
+ * Phrased as it reads on a card — "All weapon damage +1d4 cold" — rather than as data paths.
+ */
+export function describeRows(rows = []) {
+  const out = [];
+  for (const row of rows) {
+    const raw = String(row.value ?? "").trim();
+    if (!raw) continue;
+
+    if (row.preset === "custom") {
+      const key = String(row.key ?? "").trim();
+      if (key) out.push(`${key} ${raw}`);
+      continue;
+    }
+
+    const preset = getPreset(row.preset);
+    if (!preset) continue;
+
+    const parsed = splitDamageValue(raw);
+    const amount = preset.damage ? parsed.amount : raw;
+    const type = preset.damage ? (row.damageType ?? parsed.damageType ?? "").trim() : "";
+
+    if ((preset.mode ?? MODES.ADD) === MODES.UPGRADE) {
+      // "Darkvision (raise to, in feet)" reads badly on a card; drop the parenthetical.
+      out.push(`${preset.label.replace(/\s*\(.*\)$/, "")} raised to ${amount}`);
+    } else {
+      const signed = /^[+-]/.test(amount) ? amount : `+${amount}`;
+      out.push(`${preset.label} ${signed}${type ? ` ${type}` : ""}`);
+    }
+  }
+  return out;
+}
+
+/**
+ * What an upgrade will do, for the player-facing window.
+ * Async because a linked payload has to be resolved to get its name.
+ */
+export async function describeUpgradeEffect(upgrade) {
+  const mode = upgrade.effectMode ?? (upgrade.effectUuid ? EFFECT_MODE.LINK : EFFECT_MODE.NONE);
+  if (mode === EFFECT_MODE.BUILD) return describeRows(upgrade.effectBuild?.rows ?? []);
+  if (mode === EFFECT_MODE.LINK && upgrade.effectUuid) {
+    const doc = await fromUuid(upgrade.effectUuid).catch(() => null);
+    return doc ? [doc.name] : [];
+  }
+  return [];
+}
+
 /** One-line human summary of a built payload, for the GM console list. */
 export function describeBuild(rows = []) {
   const parts = [];

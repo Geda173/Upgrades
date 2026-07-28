@@ -613,3 +613,18 @@
 .upg-preview .upg-flavor { min-height: 0; }
 .upg-preview .upg-buy { cursor: default; }
 .upg-row .upg-damage-type { flex: 0 0 104px; }
+
+/* what an upgrade grants — shown before purchase, not after */
+.upg-effects { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.upg-effects li {
+  font-size: 11px; line-height: 1.35; color: var(--upg-accent);
+  padding-left: 12px; position: relative;
+}
+.upg-effects li::before {
+  content: "✦"; position: absolute; left: 0; top: 0; font-size: 9px; opacity: 0.8;
+}
+.upg-detail-effects { margin-top: 8px; }
+.upg-effects-label {
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--upg-ink-faint);
+}
+.upg-detail-effects .upg-effects li { font-size: 12px; }

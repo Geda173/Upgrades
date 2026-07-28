@@ -37,6 +37,11 @@
         <h3>{{displayName}}</h3>
         {{#if targetLabel}}<div class="upg-for"><i class="fa-solid fa-user"></i> {{targetLabel}}</div>{{/if}}
         <div class="upg-flavor"><em>{{displayFlavor}}</em></div>
+        {{#if effectLines}}
+        <ul class="upg-effects">
+          {{#each effectLines}}<li>{{this}}</li>{{/each}}
+        </ul>
+        {{/if}}
         <div class="upg-cost">
           {{#unless mystery}}
             {{#if ../vocab.currencyIconIsImg}}<img class="upg-currency-img" src="{{../vocab.currencyIcon}}" alt="">
@@ -67,6 +72,14 @@
       <h4>{{selected.name}}</h4>
       {{#if selected.targetLabel}}<div class="upg-for"><i class="fa-solid fa-user"></i> {{selected.targetLabel}}</div>{{/if}}
       {{#if selected.flavor}}<p class="upg-flavor"><em>{{selected.flavor}}</em></p>{{/if}}
+      {{#if selected.effectLines}}
+      <div class="upg-detail-effects">
+        <span class="upg-effects-label">What it grants</span>
+        <ul class="upg-effects">
+          {{#each selected.effectLines}}<li>{{this}}</li>{{/each}}
+        </ul>
+      </div>
+      {{/if}}
       {{#if selectedDescription}}<div class="upg-desc">{{{selectedDescription}}}</div>{{/if}}
     </div>
   </section>

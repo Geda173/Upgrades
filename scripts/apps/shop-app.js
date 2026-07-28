@@ -5,6 +5,7 @@ import { MODULE_ID, getUpgrades, getBalance, getVocabulary } from "../data.js";
 import { requestPurchase } from "../purchase.js";
 import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
+import { describeUpgradeEffect } from "../effects.js";
 import { applyTheme, fitToViewport } from "./theme.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -46,9 +47,19 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext(_options) {
     const isGM = game.user.isGM;
     const balance = getBalance();
-    const upgrades = getUpgrades()
+    const visible = getUpgrades()
       .filter(u => isGM || !u.hidden || u.teaser !== false) // hidden upgrades appear as "???" teasers
-      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+
+    // Players should be able to read what an upgrade does *before* paying for it.
+    // Teasers stay blank — the whole point of a "???" card is that it gives nothing away.
+    const effectLines = new Map();
+    await Promise.all(visible.map(async u => {
+      if (u.hidden && !isGM) return;
+      effectLines.set(u.id, await describeUpgradeEffect(u));
+    }));
+
+    const upgrades = visible
       .map(u => {
         const mystery = u.hidden && !isGM;
         return {
@@ -60,7 +71,8 @@ export class ShopApp extends HandlebarsApplicationMixin(ApplicationV2) {
           affordable: !u.purchased && balance >= u.cost,
           selected: u.id === this.#selectedId,
           // Only worth showing when it isn't the default "everyone" case.
-          targetLabel: (!mystery && u.target === "actor") ? describeTarget(u) : null
+          targetLabel: (!mystery && u.target === "actor") ? describeTarget(u) : null,
+          effectLines: mystery ? [] : (effectLines.get(u.id) ?? [])
         };
       });
 
