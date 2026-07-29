@@ -169,6 +169,27 @@ t('the exclusion list is part of the upgrade editor draft',
 
 t('a repeatable upgrade does not declare itself take-once',
   /maxTakable: upgrade\.repeatable/.test(read('scripts/systems/adapter.js')));
+/* ---------- the bonus-target picker ---------- */
+// It replaced a <select> of forty-odd options across seven optgroups, which is the same
+// scaling problem the prerequisite pickers had, in the one place a GM cannot avoid.
+t('the target picker filters in the DOM rather than re-rendering per keystroke',
+  /filter\.addEventListener\("input", apply\)/.test(read('scripts/apps/upgrade-editor.js')));
+t('only choosing a target re-renders, because only that reshapes the row',
+  /field\.value = option\.dataset\.presetPick;[\s\S]{0,120}this\.render\(\)/
+    .test(read('scripts/apps/upgrade-editor.js')));
+t('the open list is capped and scrolls inside itself',
+  /\.upg-preset-list \{[^}]*max-height: \d+px[^}]*overflow-y: auto/.test(css));
+// scrollIntoView walks every scrollable ancestor; that is how the form used to get dragged along.
+// Match a call, not the word — the comment explaining why it is avoided says it too.
+t('the list is scrolled by hand, not with scrollIntoView',
+  !/\.scrollIntoView\(/.test(read('scripts/apps/upgrade-editor.js'))
+  && /list\.scrollTop = Math\.max\(0, chosen\.offsetTop/.test(read('scripts/apps/upgrade-editor.js')));
+t('a heading whose options are all filtered away is hidden too',
+  /heading\.classList\.toggle\("filtered-out", !live\)/.test(read('scripts/apps/upgrade-editor.js')));
+t('the picker can be driven from the keyboard',
+  /event\.key === "Escape"/.test(read('scripts/apps/upgrade-editor.js'))
+  && /event\.key === "Enter"/.test(read('scripts/apps/upgrade-editor.js')));
+
 t('the bonus type is hidden on a dice row, where it would be discarded',
   /bonusType\.classList\.toggle\("hidden", isDice\)/.test(read('scripts/apps/upgrade-editor.js')));
 

@@ -506,6 +506,41 @@
 .upg-row .upg-key { flex: 1 1 auto; min-width: 0; font-size: 11px; }
 .upg-row .upg-mode { flex: 0 0 110px; }
 .upg-row .upg-value { flex: 0 0 110px; }
+
+/* The bonus-target picker: a filtered list standing in for a forty-option <select>. */
+.upg-preset-picker { position: relative; flex: 1 1 190px; min-width: 0; }
+.upg-preset-current {
+  width: 100%; display: flex; align-items: center; gap: 6px; cursor: pointer;
+  background: var(--upg-fill-soft); color: var(--upg-ink); font-family: inherit; font-size: 12px;
+  border: 1px solid var(--upg-line); border-radius: 5px; padding: 4px 8px; text-align: left;
+}
+.upg-preset-current span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upg-preset-current i { flex: none; font-size: 9px; color: var(--upg-ink-dim); }
+.upg-preset-current:hover { border-color: var(--upg-gold); }
+.upg-preset-menu {
+  position: absolute; z-index: 20; top: calc(100% + 3px); left: 0; right: 0;
+  background: var(--upg-bg-panel); border: 1px solid var(--upg-line);
+  border-radius: 6px; padding: 6px; box-shadow: 0 8px 20px rgba(0,0,0,.45);
+}
+.upg-preset-menu[hidden] { display: none; }
+.upg-preset-filter {
+  width: 100%; margin-bottom: 5px; font-family: inherit; font-size: 12px;
+  background: var(--upg-fill-soft); color: var(--upg-ink);
+  border: 1px solid var(--upg-line); border-radius: 4px; padding: 3px 7px;
+}
+.upg-preset-list { max-height: 230px; overflow-y: auto; overscroll-behavior: contain; }
+.upg-preset-group {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--upg-gold); padding: 6px 6px 2px;
+}
+.upg-preset-option {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: none; border-radius: 4px; padding: 4px 8px;
+  font-family: inherit; font-size: 12.5px; color: var(--upg-ink);
+}
+.upg-preset-option:hover { background: var(--upg-fill-soft); }
+.upg-preset-option.chosen { background: var(--upg-fill-soft); color: var(--upg-gold-bright); }
+.upg-preset-empty { font-size: 11px; color: var(--upg-ink-dim); padding: 6px 8px; margin: 0; }
 .upg-row button { flex: none; width: auto; padding: 0 8px; background: none; border: none; color: var(--upg-ink-dim); cursor: pointer; }
 .upg-row button:hover { color: var(--upg-warn); box-shadow: none; }
 .upg-add-row { align-self: flex-start; }

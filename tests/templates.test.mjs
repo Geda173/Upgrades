@@ -155,9 +155,12 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
            isDamage: true, isPf2e: false, placeholder: '+1d8',
            damageTypes: [{ id: 'cold', label: 'Cold', isSelected: true }],
            bonusTypes: [{ id: 'circumstance', label: 'Circumstance', isSelected: true }],
+           presetLabel: 'All weapon damage',
            presetGroups: [{ label: 'Attack & damage', presets: [
-             { id: 'weapon.damage', label: 'All weapon damage', isSelected: true },
-             { id: 'custom', label: 'Custom data path…', isSelected: false }] }],
+             { id: 'weapon.damage', label: 'All weapon damage', isSelected: true,
+               search: 'all weapon damage attack & damage' },
+             { id: 'custom', label: 'Custom data path…', isSelected: false,
+               search: 'custom data path… attack & damage' }] }],
            modeChoices: [{ value: 2, label: 'Add', isSelected: true }] },
          // the type IS the payload: a dnd5e trait set, or a PF2e immunity
          { index: 1, preset: 'resistance', value: 'fire', key: '', mode: 2, isCustom: false,
@@ -273,7 +276,19 @@ t('editor: no history line depends on an outer-context lookup any more',
 t('editor: target column', editor.includes('Galadon Stormwhisper'));
 t('editor: effect label', editor.includes('1d8[cold] all weapon damage'));
 
-t('upgrade-editor: row preset marked selected', /All weapon damage<\/option>/.test(upgradeEditor));
+/* the bonus-target picker replaced a forty-option <select> */
+t('upgrade-editor: the target picker is a filtered list, not a native dropdown',
+  upgradeEditor.includes('upg-preset-picker') && !/<select name="rowPreset"/.test(upgradeEditor));
+t('upgrade-editor: the value still lives in a field called rowPreset',
+  /<input type="hidden" name="rowPreset" value="weapon\.damage">/.test(upgradeEditor));
+t('upgrade-editor: the current target is shown on the closed picker',
+  /class="upg-preset-current"[\s\S]{0,140}All weapon damage/.test(upgradeEditor));
+t('upgrade-editor: the chosen option is marked', /upg-preset-option chosen"[^>]*data-preset-pick="weapon\.damage"/.test(upgradeEditor));
+t('upgrade-editor: each option carries what the filter matches on',
+  /data-search="all weapon damage attack &amp; damage"/.test(upgradeEditor));
+t('upgrade-editor: group headings survive the move off optgroup',
+  /upg-preset-group">Attack &amp; damage</.test(upgradeEditor));
+t('upgrade-editor: the menu starts closed', /class="upg-preset-menu" hidden/.test(upgradeEditor));
 t('upgrade-editor: row value', upgradeEditor.includes('value="1d8"'));
 t('upgrade-editor: damage type dropdown appears', upgradeEditor.includes('rowDamageType'));
 

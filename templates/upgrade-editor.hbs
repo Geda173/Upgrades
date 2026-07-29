@@ -184,15 +184,29 @@
       <div class="upg-rows">
         {{#each rows}}
         <div class="upg-row" data-index="{{index}}">
-          <select name="rowPreset" data-action="rerender">
-            {{#each presetGroups}}
-            <optgroup label="{{label}}">
-              {{#each presets}}
-              <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
-              {{/each}}
-            </optgroup>
-            {{/each}}
-          </select>
+          {{! A filtered list, not a <select>: both catalogues are long enough that a native
+              dropdown of forty options across seven groups is hard to get around. The value
+              still lives in a field called rowPreset, so nothing downstream changes. }}
+          <div class="upg-preset-picker">
+            <input type="hidden" name="rowPreset" value="{{preset}}">
+            <button type="button" class="upg-preset-current" data-preset-toggle
+                    title="Choose what this bonus applies to">
+              <span>{{presetLabel}}</span><i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="upg-preset-menu" hidden>
+              <input type="search" class="upg-preset-filter" placeholder="Filter targets…" autocomplete="off">
+              <div class="upg-preset-list">
+                {{#each presetGroups}}
+                <div class="upg-preset-group">{{label}}</div>
+                {{#each presets}}
+                <button type="button" class="upg-preset-option{{#if isSelected}} chosen{{/if}}"
+                        data-preset-pick="{{id}}" data-search="{{search}}">{{label}}</button>
+                {{/each}}
+                {{/each}}
+                <p class="upg-preset-empty filtered-out">Nothing matches that.</p>
+              </div>
+            </div>
+          </div>
 
           {{#if isCustom}}
           <input type="text" name="rowKey" value="{{key}}"

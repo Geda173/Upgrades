@@ -251,9 +251,16 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
         ...b, isSelected: b.id === (row.bonusType ?? "circumstance")
       })),
       placeholder: preset?.placeholder ?? "+1",
+      // The picker is a filtered list rather than a <select>: the catalogues are long, and a
+      // native dropdown of forty-odd options in seven groups is the thing it replaced.
+      presetLabel: preset?.label ?? row.preset ?? "Choose a target…",
       presetGroups: presetGroups.map(group => ({
         label: group.label,
-        presets: group.presets.map(p => ({ id: p.id, label: p.label, isSelected: p.id === row.preset }))
+        presets: group.presets.map(p => ({
+          id: p.id, label: p.label, isSelected: p.id === row.preset,
+          // Group name included, so "defence" finds everything under it.
+          search: `${p.label} ${group.label}`.toLowerCase()
+        }))
       })),
       modeChoices: MODE_CHOICES.map(m => ({ ...m, isSelected: m.value === Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD) }))
     };
@@ -399,6 +406,8 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       apply();
     }
 
+    this.#wirePresetPickers();
+
     // A dice value becomes a DamageDice rule, which has no bonus type, so the selector is
     // hidden rather than left there inviting a choice that is quietly discarded.
     for (const row of this.element.querySelectorAll(".upg-row")) {
@@ -428,6 +437,93 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     });
   }
 
+
+  /**
+   * The bonus-target picker: a filtered list standing in for a very long <select>.
+   *
+   * Opening and filtering are pure DOM — only *choosing* re-renders, because that is the only
+   * thing that reshapes the row. The chosen value lives in a hidden field still called
+   * `rowPreset`, so `#syncDraft()` and everything downstream are untouched.
+   */
+  #wirePresetPickers() {
+    const menus = [...this.element.querySelectorAll(".upg-preset-menu")];
+    const closeAll = except => menus.forEach(m => { if (m !== except) m.hidden = true; });
+
+    for (const picker of this.element.querySelectorAll(".upg-preset-picker")) {
+      const toggle = picker.querySelector("[data-preset-toggle]");
+      const menu = picker.querySelector(".upg-preset-menu");
+      const filter = picker.querySelector(".upg-preset-filter");
+      const list = picker.querySelector(".upg-preset-list");
+      const options = [...picker.querySelectorAll(".upg-preset-option")];
+      const headings = [...picker.querySelectorAll(".upg-preset-group")];
+      const empty = picker.querySelector(".upg-preset-empty");
+      const field = picker.querySelector('[name="rowPreset"]');
+      if (!toggle || !menu || !filter || !field) continue;
+
+      const apply = () => {
+        const needle = filter.value.trim().toLowerCase();
+        let shown = 0;
+        for (const option of options) {
+          const hit = !needle || (option.dataset.search ?? "").includes(needle);
+          option.classList.toggle("filtered-out", !hit);
+          if (hit) shown++;
+        }
+        // A heading with everything under it filtered away is just noise.
+        for (const heading of headings) {
+          let live = false;
+          for (let el = heading.nextElementSibling;
+               el && !el.classList.contains("upg-preset-group");
+               el = el.nextElementSibling) {
+            if (el.classList.contains("upg-preset-option") && !el.classList.contains("filtered-out")) {
+              live = true;
+              break;
+            }
+          }
+          heading.classList.toggle("filtered-out", !live);
+        }
+        empty?.classList.toggle("filtered-out", shown > 0);
+      };
+
+      toggle.addEventListener("click", event => {
+        event.preventDefault();
+        const opening = menu.hidden;
+        closeAll(menu);
+        menu.hidden = !opening;
+        if (!opening) return;
+        filter.value = "";
+        apply();
+        filter.focus({ preventScroll: true });
+        // Scroll the list by hand rather than scrollIntoView, which walks every scrollable
+        // ancestor and would drag the form body along with it.
+        const chosen = picker.querySelector(".upg-preset-option.chosen");
+        if (chosen && list) list.scrollTop = Math.max(0, chosen.offsetTop - (list.clientHeight / 2));
+      });
+
+      filter.addEventListener("input", apply);
+      filter.addEventListener("keydown", event => {
+        if (event.key === "Escape") { menu.hidden = true; toggle.focus({ preventScroll: true }); }
+        // Type a few letters and commit — the whole point of filtering is not to reach for a mouse.
+        if (event.key === "Enter") {
+          event.preventDefault();
+          options.find(o => !o.classList.contains("filtered-out"))?.click();
+        }
+      });
+
+      for (const option of options) {
+        option.addEventListener("click", () => {
+          field.value = option.dataset.presetPick;
+          menu.hidden = true;
+          this.#syncDraft();
+          this.render();
+        });
+      }
+    }
+
+    // Anywhere else in the window puts them away.
+    this.element.addEventListener("click", event => {
+      if (!event.target.closest(".upg-preset-picker")) closeAll(null);
+    });
+  }
 
   /* ---------- actions ---------- */
 
