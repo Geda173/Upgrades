@@ -66,6 +66,11 @@ const SCHEMA_5_3_3 = new Set([
   'system.attributes.hp.bonuses.overall',
   'system.attributes.movement.walk','system.attributes.movement.fly',
   'system.attributes.senses.ranges.darkvision',
+  // per-ability saves and per-skill checks, both FormulaFields — actor/templates/common.mjs and
+  // actor/templates/creature.mjs at release-5.3.3; skill keys are CONFIG.DND5E.skills
+  ...['str','dex','con','int','wis','cha'].map(a => `system.abilities.${a}.bonuses.save`),
+  ...['acr','ani','arc','ath','dec','his','ins','itm','inv','med','nat','prc','prf','per','rel',
+      'slt','ste','sur'].map(s => `system.skills.${s}.bonuses.check`),
   ...['str','dex','con','int','wis','cha'].map(a => `system.abilities.${a}.value`)
 ]);
 const allKeys = getPresetGroups().flatMap(g => g.presets).flatMap(p => p.keys);
@@ -102,6 +107,21 @@ t('custom value is left verbatim', custom[0].value === '1');
 t('rows accumulate', buildChanges([{preset:"ac",value:"1"},{preset:"weapon.damage",value:"1d4[fire]"}]).length === 3);
 t('describeBuild reads naturally',
   describeBuild([{preset:"weapon.damage", value:"1d8[cold]"}]) === '1d8[cold] all weapon damage');
+
+/* --- parity with PF2e: the individual skills and saves --- */
+t('every dnd5e skill has its own preset',
+  ['acr','ani','arc','ath','dec','his','ins','itm','inv','med','nat','prc','prf','per','rel','slt','ste','sur']
+    .every(s => getPreset(`skill.${s}`)));
+t('a skill preset writes the check bonus, not the passive one',
+  getPreset('skill.ste').keys[0] === 'system.skills.ste.bonuses.check');
+t('every ability has its own save preset',
+  ['str','dex','con','int','wis','cha'].every(a => getPreset(`save.${a}`)));
+t('a save preset writes that ability\'s save bonus',
+  getPreset('save.dex').keys[0] === 'system.abilities.dex.bonuses.save');
+// Both are FormulaFields, so they concatenate unless signed — the same trap as weapon damage.
+t('a skill bonus is signed', buildChanges([{preset:'skill.ste', value:'2'}])[0].value === '+2');
+t('a save bonus is signed', buildChanges([{preset:'save.dex', value:'1'}])[0].value === '+1');
+t('the blanket "all skills" preset still exists alongside them', !!getPreset('skill.all'));
 
 const all = getPresetGroups().flatMap(g => g.presets);
 t('catalog non-empty', all.length > 15);

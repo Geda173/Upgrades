@@ -69,6 +69,17 @@ const PRESETS_DND5E = [
   { group: "Defence", id: "vulnerability", label: "Vulnerability to a damage type", iwr: true,
     valueIsType: true, type: "set", keys: ["system.traits.dv.value"] },
 
+  // Per-ability saves. PF2e has had Fortitude/Reflex/Will separately since the builder shipped;
+  // dnd5e could only ever say "all saves". Verified against actor/templates/common.mjs
+  // (release-5.3.3): each ability carries bonuses.{check,save}, both FormulaFields — so they are
+  // signed like every other formula target, not treated as numbers.
+  ...[["str", "Strength"], ["dex", "Dexterity"], ["con", "Constitution"],
+      ["int", "Intelligence"], ["wis", "Wisdom"], ["cha", "Charisma"]]
+    .map(([key, label]) => ({
+      group: "Defence", id: `save.${key}`, label: `${label} saving throws`, placeholder: "+1",
+      keys: [`system.abilities.${key}.bonuses.save`]
+    })),
+
   { group: "Checks", id: "check.all", label: "All ability checks", placeholder: "+1",
     keys: ["system.bonuses.abilities.check"] },
   { group: "Checks", id: "skill.all", label: "All skill checks", placeholder: "+1",
@@ -89,6 +100,19 @@ const PRESETS_DND5E = [
     keys: ["system.abilities.wis.value"] },
   { group: "Ability scores", id: "ability.cha", label: "Charisma score", placeholder: "2", type: "number",
     keys: ["system.abilities.cha.value"] },
+
+  // The individual skills, to match what PF2e has always offered. Keys are the system's own
+  // three-letter ids from CONFIG.DND5E.skills; the bonus path is skills.<key>.bonuses.check,
+  // a FormulaField, verified against actor/templates/creature.mjs at release-5.3.3.
+  ...[["acr", "Acrobatics"], ["ani", "Animal Handling"], ["arc", "Arcana"], ["ath", "Athletics"],
+      ["dec", "Deception"], ["his", "History"], ["ins", "Insight"], ["itm", "Intimidation"],
+      ["inv", "Investigation"], ["med", "Medicine"], ["nat", "Nature"], ["prc", "Perception"],
+      ["prf", "Performance"], ["per", "Persuasion"], ["rel", "Religion"], ["slt", "Sleight of Hand"],
+      ["ste", "Stealth"], ["sur", "Survival"]]
+    .map(([key, label]) => ({
+      group: "Skills", id: `skill.${key}`, label, placeholder: "+2",
+      keys: [`system.skills.${key}.bonuses.check`]
+    })),
 
   { group: "Movement & senses", id: "speed.walk", label: "Walking speed", placeholder: "+10",
     keys: ["system.attributes.movement.walk"] },
@@ -153,7 +177,17 @@ const PRESETS_PF2E = [
   { group: "Spellcasting", id: "spell.dc", label: "Spell DC", selectors: ["spell-dc"], placeholder: "1" },
   { group: "Spellcasting", id: "class.dc", label: "Class DC", selectors: ["class-dc"], placeholder: "1" },
 
+  // Max HP is a real modifier domain here, extracted in the *character* document rather than the
+  // creature one — extractModifiers(synthetics, ["hp"]) — which is why it is easy to conclude it
+  // does not exist. Initiative and the per-type speeds are ordinary statistic domains.
+  { group: "Defence", id: "hp.max", label: "Maximum hit points", selectors: ["hp"], placeholder: "10" },
+  { group: "Checks", id: "init", label: "Initiative", selectors: ["initiative"], placeholder: "2" },
+
   { group: "Movement", id: "speed", label: "All speeds", selectors: ["all-speeds"], placeholder: "5" },
+  // Speeds are filtered on ["all-speeds", `${type}-speed`], so a per-type selector is the type's
+  // own name with -speed appended.
+  { group: "Movement", id: "speed.walk", label: "Walking speed", selectors: ["land-speed"], placeholder: "5" },
+  { group: "Movement", id: "speed.fly", label: "Flying speed", selectors: ["fly-speed"], placeholder: "5" },
 
   { group: "Advanced", id: "custom", label: "Custom selector…", placeholder: "1", custom: true, selectors: [] }
 ];

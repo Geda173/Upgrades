@@ -7,6 +7,10 @@ let bad=0; const t=(n,c)=>{if(!c)bad=1;console.log((c?'PASS ':'FAIL ')+n)};
 // selectors verified against pf2e-8.3.0 source
 const VALID = new Set(["attack","damage","melee-damage","ranged-damage","ac","saving-throw",
   "fortitude","reflex","will","perception","skill-check","spell-attack","spell-dc","class-dc","all-speeds",
+  // hp: extractModifiers(synthetics, ["hp"]) in actor/character/document.ts
+  // initiative: domains: ["initiative"] in actor/initiative.ts
+  // land-speed / fly-speed: speeds filter on ["all-speeds", `${type}-speed`] in actor/creature/document.ts
+  "hp","initiative","land-speed","fly-speed",
   "acrobatics","arcana","athletics","crafting","deception","diplomacy","intimidation","medicine",
   "nature","occultism","performance","religion","society","stealth","survival","thievery"]);
 const all = E.getPresetGroups().flatMap(g=>g.presets);
