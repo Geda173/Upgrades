@@ -69,7 +69,7 @@ const shopCards = [
       selected: false, targetLabel: null, effectLines: [], ownedCount: 0 },
     { id: 'h', displayName: 'Oath of Bone', displayFlavor: 'Still open.', displayImg: '', cost: 5,
       purchased: false, soldOut: false, available: true, mystery: false, affordable: true,
-      locked: false, excluded: false, excludedBy: '', exclusiveLabel: 'The Three Oaths',
+      locked: false, excluded: false, excludedBy: '', exclusiveLabel: 'Oath of Ash, 1 more',
       selected: false, targetLabel: null, effectLines: [], ownedCount: 0 }
 ];
 
@@ -94,20 +94,24 @@ const editor = Handlebars.compile(tpl('editor.hbs'))({
   vocab, balance: 7,
   categories: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation' }],
   hasCategories: true,
-  exclusiveGroups: [{ id: 'g1', name: 'The Three Oaths', members: 'Oath of Ash, Oath of Salt' },
-                    { id: 'g2', name: 'Patrons', members: '' }],
-  hasExclusiveGroups: true,
   groups: [{ id: 'c1', name: 'Lighthouse', icon: 'fa-solid fa-tower-observation', upgrades: [
-    { id: 'a', name: 'Nightbloom', img: '', cost: 3, purchased: true, purchasedBy: 'Pat',
+    { id: 'a', name: 'Nightbloom', img: '', costLabel: '3 Sprigs, 1 Pearl of Power',
+      purchased: true, purchasedBy: 'Pat',
       hidden: false, targetLabel: 'Galadon Stormwhisper', ownedCount: 1,
-      exclusiveLabel: 'The Three Oaths',
+      exclusiveLabel: 'Oath of Salt',
       effectLabel: '1d8[cold] all weapon damage' },
-    { id: 'e', name: 'Healing Draught', img: '', cost: 1, purchased: true, isRepeatable: true,
+    { id: 'e', name: 'Healing Draught', img: '', costLabel: '1 Sprigs', purchased: true,
+      isRepeatable: true,
       ownedCount: 3, ownedNames: 'Ander Raventail', hidden: false,
       targetLabel: 'Whoever buys it', effectLabel: '' }] }],
-  history: [{ when: 'today', isPurchase: true, name: 'Nightbloom', cost: 3, by: 'Pat' },
-            { when: 'today', isPurchase: false, deltaStr: '+5', before: 2, after: 7,
-              reason: 'Cleared the grove' }]
+  hasHistory: true,
+  historyTotal: 2,
+  // `price` is the field a purchase entry actually stores; a fixture using `cost` hid the fact
+  // that the template read the wrong one and rendered the price as nothing at all.
+  history: [{ id: 'h1', when: 'today', isPurchase: true, name: 'Nightbloom', price: '3 Sprigs',
+              by: 'Pat', canReword: false },
+            { id: 'h2', when: 'today', isPurchase: false, deltaStr: '+5', before: 2, after: 7,
+              currencyName: 'Pearls of Power', reason: 'Cleared the grove', canReword: true }]
 });
 
 const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
@@ -124,10 +128,11 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   hasPrerequisiteCandidates: true,
   prerequisites: [{ id: 'p1', name: 'Activate Magelight', isSelected: true },
                   { id: 'p2', name: 'Talisman Permanency', isSelected: false }],
-  hasExclusiveGroups: true,
-  exclusiveGroups: [{ id: 'g1', name: 'The Three Oaths', isSelected: true },
-                    { id: 'g2', name: 'Patrons', isSelected: false }],
-  exclusiveNote: 'Buying this rules out Oath of Salt — and any of them rules out this one.',
+  hasExclusionCandidates: true,
+  exclusions: [{ id: 'x1', name: 'Oath of Salt', isSelected: true },
+               { id: 'x2', name: 'Fair Winds', isSelected: false }],
+  exclusiveNote: 'Only one of this and Oath of Salt, Oath of Bone can ever be taken. '
+    + 'Oath of Bone joins the set because it is already exclusive with something ticked here.',
   targetOptions: [{ value: 'party', label: 'The whole party', isSelected: false },
                   { value: 'buyer', label: 'Whoever buys it', isSelected: false },
                   { value: 'actor', label: 'One specific character', isSelected: true }],
@@ -195,8 +200,10 @@ t('shop: every card still rendered across sections', cards.length === 8);
     !!ruled && ruled.includes('>Ruled out<') && !/data-action="buy"/.test(ruled));
   // The exclusivity has to be visible while the choice is still open, or the only player who
   // learns about it is the one who finds their card closed.
-  t('shop: an open choice announces the set it belongs to',
-    !!open && open.includes('The Three Oaths — only one'));
+  t('shop: an open choice names what it is a choice against',
+    !!open && open.includes('Choose this or Oath of Ash'));
+  // A "???" rival is counted, never named — the set's size is not a secret, its contents are.
+  t('shop: a hidden rival is counted rather than named', !!open && open.includes('1 more'));
   t('shop: an open choice can still be bought',
     !!open && /data-action="buy"/.test(open) && !open.includes('Ruled out'));
 })();
@@ -223,14 +230,27 @@ t('editor: repeatable upgrade shows a purchase tally', editor.includes('Bought \
 t('editor: repeatable upgrade lists its owners', editor.includes('Ander Raventail'));
 t('editor: section heading row rendered', editor.includes('upg-group-row') && editor.includes('Lighthouse'));
 t('editor: section management list rendered', editor.includes('upg-category-list'));
-t('editor: exclusive choices are managed alongside sections',
-  editor.includes('upg-exclusive-groups') && editor.includes('The Three Oaths'));
-t('editor: a choice lists what is competing in it', editor.includes('Oath of Ash, Oath of Salt'));
-t('editor: an empty choice says so rather than looking configured',
-  /upg-group-members empty/.test(editor));
-t('editor: the upgrade table shows which choice an upgrade belongs to',
-  /fa-code-branch[\s\S]{0,40}The Three Oaths/.test(editor));
-t('editor: currency name reaches the history loop', editor.includes('Sprigs +5'));
+// Exclusivity is authored on the upgrade, so the console has nothing to configure for it.
+t('editor: there is no exclusive-group registry to keep in step',
+  !/exclusiveGroup/i.test(editor) && !/data-action="addExclusiveGroup"/.test(editor));
+t('editor: the upgrade table names what an upgrade cannot be taken with',
+  /fa-code-branch[\s\S]{0,40}Not with Oath of Salt/.test(editor));
+t('editor: a purchase line shows the price it actually stores',
+  editor.includes('acquired for 3 Sprigs'));
+t('editor: an adjustment names the resource that moved, not the default one',
+  editor.includes('Pearls of Power +5'));
+t('editor: the ledger can be swept', /data-action="clearHistory"/.test(editor));
+t('editor: each line can be removed', (editor.match(/data-action="removeHistoryEntry"/g) || []).length === 2);
+t('editor: only an adjustment offers a reword',
+  (editor.match(/data-action="editHistoryEntry"/g) || []).length === 1);
+t('editor: the upgrade table prices multi-resource upgrades',
+  editor.includes('3 Sprigs, 1 Pearl of Power'));
+// This guarded `{{../vocab.currencyName}}` reaching into the history loop at the right depth.
+// That lookup is gone — it named every adjustment after the *first* resource whichever one had
+// actually moved — replaced by a precomputed per-entry name, asserted above. The one remaining
+// `../` in the templates is the shop's action verb, covered by its own case.
+t('editor: no history line depends on an outer-context lookup any more',
+  !/\{\{\.\.\/[\s\S]*?\}\}/.test(editor.slice(editor.indexOf('upg-history'))));
 t('editor: target column', editor.includes('Galadon Stormwhisper'));
 t('editor: effect label', editor.includes('1d8[cold] all weapon damage'));
 
@@ -252,14 +272,15 @@ t('upgrade-editor: prerequisite picker lists candidates',
   upgradeEditor.includes('name="requires"') && upgradeEditor.includes('Talisman Permanency'));
 t('upgrade-editor: an existing prerequisite is ticked',
   /value="p1"[^>]*checked/.test(upgradeEditor));
-t('upgrade-editor: offers an exclusive-choice picker',
-  upgradeEditor.includes('name="exclusiveGroupId"') && upgradeEditor.includes('Patrons'));
-t('upgrade-editor: the current exclusive choice is marked selected',
-  /name="exclusiveGroupId"[\s\S]*?value="g1" selected/.test(upgradeEditor));
-t('upgrade-editor: opting out of every choice stays available',
-  /<option value="">— None/.test(upgradeEditor));
-t('upgrade-editor: names what the choice would rule out',
-  upgradeEditor.includes('rules out Oath of Salt'));
+t('upgrade-editor: the exclusion picker lists the upgrades that already exist',
+  upgradeEditor.includes('name="excludes"') && upgradeEditor.includes('Fair Winds'));
+t('upgrade-editor: an existing exclusion is ticked',
+  /name="excludes" value="x1"[^>]*checked/.test(upgradeEditor));
+t('upgrade-editor: an unticked one is not',
+  /name="excludes" value="x2"(?![^>]*checked)/.test(upgradeEditor));
+// The set is closed transitively, so the note has to name members nobody ticked here.
+t('upgrade-editor: names the whole resulting set, not just the ticks',
+  upgradeEditor.includes('Oath of Bone joins the set'));
 t('upgrade-editor: offers the buyer-choice prompt', upgradeEditor.includes('name="choiceEnabled"'));
 t('upgrade-editor: the prompt question is editable when enabled',
   upgradeEditor.includes('value="Which spell?"'));

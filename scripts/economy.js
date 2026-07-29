@@ -142,12 +142,71 @@ export async function adjustBalance(currencyId, delta, reason = "") {
 
 /* ---------- History ---------- */
 
+/**
+ * The ledger is a *record of what happened*, not the source of truth for anything. Balances live
+ * in their own setting and purchases in the catalogue, so editing or clearing a line here changes
+ * only what is displayed. That is the whole reason it is safe to let the GM tidy it: a world's
+ * worth of trial-and-error adjustments can be swept away without a single balance moving.
+ */
 export async function addHistory(entry) {
-  const history = foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.HISTORY)) ?? [];
-  history.push({ ts: Date.now(), user: game.user?.name ?? "GM", ...entry });
-  return game.settings.set(MODULE_ID, SETTINGS.HISTORY, history);
+  const history = readHistory();
+  history.push({ id: foundry.utils.randomID(), ts: Date.now(), user: game.user?.name ?? "GM", ...entry });
+  return writeHistory(history);
+}
+
+function readHistory() {
+  return foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.HISTORY)) ?? [];
+}
+
+/**
+ * Lines written before the ledger could be edited carry no id, so position stands in for one.
+ * Any write stamps a real id on those, which is what keeps a positional id from ever being
+ * confused with a stored one after the list shifts underneath it.
+ */
+function withIds(entries) {
+  return entries.map((e, i) => (e.id ? e : { ...e, id: `pos-${i}` }));
+}
+
+async function writeHistory(entries) {
+  return game.settings.set(MODULE_ID, SETTINGS.HISTORY, entries.map(e =>
+    (!e.id || String(e.id).startsWith("pos-")) ? { ...e, id: foundry.utils.randomID() } : e));
 }
 
 export function getHistory() {
-  return foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.HISTORY)) ?? [];
+  return withIds(readHistory());
+}
+
+/** Drop one line. Balances and purchase records are deliberately left exactly as they are. */
+export async function removeHistory(id) {
+  const entries = getHistory();
+  const idx = entries.findIndex(e => e.id === id);
+  if (idx < 0) return null;
+  const [removed] = entries.splice(idx, 1);
+  await writeHistory(entries);
+  return removed;
+}
+
+/**
+ * Sweep the ledger. `kind` is "all", or an entry type ("adjust", "purchase") to keep the rest —
+ * a GM tidying away a currency experiment wants the purchases that surround it left alone.
+ * Returns how many lines went, so the caller can say.
+ */
+export async function clearHistory(kind = "all") {
+  const entries = getHistory();
+  const kept = kind === "all" ? [] : entries.filter(e => e.type !== kind);
+  await writeHistory(kept);
+  return entries.length - kept.length;
+}
+
+/**
+ * Reword one line. Only the reason is editable: the amounts are what actually happened, and a
+ * ledger that can be made to disagree with the balance it describes is worse than no ledger.
+ */
+export async function editHistoryReason(id, reason) {
+  const entries = getHistory();
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return null;
+  entry.reason = reason;
+  await writeHistory(entries);
+  return entry;
 }

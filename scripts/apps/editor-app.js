@@ -1,10 +1,11 @@
 /**
  * GM console: upgrade CRUD, currency ledger, history. (ApplicationV2 + Handlebars)
  */
-import { deleteCategory, deleteExclusiveGroup, deleteUpgrade, getCategories, getExclusiveGroups,
-         getUpgrade, getUpgrades, groupByCategory, moveCategory, removePurchase, upsertCategory,
-         upsertExclusiveGroup, upsertUpgrade } from "../catalog.js";
-import { adjustBalance, describeCosts, getBalance, getBalances, getCosts, getCurrencies, getCurrency, getHistory, hasMultipleCurrencies } from "../economy.js";
+import { deleteCategory, deleteUpgrade, exclusiveSiblings, getCategories, getUpgrade, getUpgrades,
+         groupByCategory, moveCategory, removePurchase, upsertCategory, upsertUpgrade } from "../catalog.js";
+import { adjustBalance, clearHistory, describeCosts, editHistoryReason, getBalance, getBalances,
+         getCosts, getCurrencies, getCurrency, getHistory, hasMultipleCurrencies,
+         removeHistory } from "../economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary, isImagePath } from "../settings.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarget } from "../systems/adapter.js";
@@ -37,9 +38,9 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
       removeCategory: EditorApp.#onRemoveCategory,
       moveCategoryUp: EditorApp.#onMoveCategoryUp,
       moveCategoryDown: EditorApp.#onMoveCategoryDown,
-      addExclusiveGroup: EditorApp.#onAddExclusiveGroup,
-      editExclusiveGroup: EditorApp.#onEditExclusiveGroup,
-      removeExclusiveGroup: EditorApp.#onRemoveExclusiveGroup
+      clearHistory: EditorApp.#onClearHistory,
+      removeHistoryEntry: EditorApp.#onRemoveHistoryEntry,
+      editHistoryEntry: EditorApp.#onEditHistoryEntry
     }
   };
 
@@ -57,8 +58,6 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
   async _prepareContext(_options) {
     const vocab = getVocabulary();
     const upgrades = getUpgrades();
-    const exclusiveGroups = getExclusiveGroups();
-    const groupNames = new Map(exclusiveGroups.map(g => [g.id, g.name]));
     return {
       vocab,
       balance: getBalance(),
@@ -69,13 +68,6 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
       hasCurrencyItem: !!game.settings.get(MODULE_ID, SETTINGS.CURRENCY_ITEM),
       categories: getCategories(),
       hasCategories: getCategories().length > 0,
-      // Each group carries its members, so the GM can see what actually competes before
-      // deleting the thing that makes them compete.
-      exclusiveGroups: exclusiveGroups.map(g => ({
-        ...g,
-        members: upgrades.filter(u => u.exclusiveGroupId === g.id).map(u => u.name).join(", ")
-      })),
-      hasExclusiveGroups: exclusiveGroups.length > 0,
       groups: groupByCategory(
         upgrades
           .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
@@ -83,7 +75,12 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
             ...u,
             targetLabel: describeTarget(u),
             effectLabel: EditorApp.#effectLabel(u),
-            exclusiveLabel: groupNames.get(u.exclusiveGroupId) ?? "",
+            // Named rather than counted: the whole question when reading the table is *which*
+            // upgrade taking this one would close off.
+            exclusiveLabel: exclusiveSiblings(u, upgrades).map(o => o.name).join(", "),
+            // The raw `cost` field only ever holds a legacy bare number, so anything priced since
+            // multiple resources arrived rendered an empty cell here.
+            costLabel: describeCosts(u).map(c => `${c.amount} ${c.currency.name}`).join(", ") || "—",
             ownedCount: u.purchases?.length ?? 0,
             isRepeatable: !!u.repeatable,
             ownedNames: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", ")
@@ -93,8 +90,16 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
         ...h,
         when: new Date(h.ts).toLocaleString(),
         isPurchase: h.type === "purchase",
+        // Each line names the resource it actually moved. Falling back to the vocabulary setting
+        // labelled every adjustment with the *first* resource's name, whichever one had moved.
+        currencyName: getCurrency(h.currencyId)?.name ?? getVocabulary().currencyName,
+        // Only an adjustment carries a reason; a purchase line is a statement of what happened.
+        canReword: h.type !== "purchase",
         deltaStr: (h.delta > 0 ? "+" : "") + h.delta
-      }))
+      })),
+      hasHistory: getHistory().length > 0,
+      // The list is capped at 25, so a Clear button has to say what it is really about to remove.
+      historyTotal: getHistory().length
     };
   }
 
@@ -291,50 +296,64 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     EditorApp.#afterMutation();
   }
 
-  static async #onAddExclusiveGroup() {
-    const name = await EditorApp.#promptName("New exclusive choice", "", "The Three Oaths");
-    if (!name) return;
-    await upsertExclusiveGroup({ name });
+  /**
+   * Sweep the ledger. Offered as a choice rather than a single "delete everything" because the
+   * usual reason to want this is a run of currency experiments sitting among purchases that are
+   * worth keeping.
+   */
+  static async #onClearHistory() {
+    const entries = getHistory();
+    const adjusts = entries.filter(e => e.type !== "purchase").length;
+    const purchases = entries.length - adjusts;
+
+    const result = await DialogV2.prompt({
+      window: { title: "Clear history" },
+      content: `<p>The history is a record of what happened — it is not what the balances or the
+          owned upgrades are read from. Clearing it moves no ${foundry.utils.escapeHTML(getVocabulary().currencyName)},
+          and un-buys nothing.</p>
+        <div class="form-group"><label>Remove</label>
+          <select name="kind" autofocus>
+            <option value="adjust">Balance adjustments only (${adjusts})</option>
+            <option value="purchase">Purchase records only (${purchases})</option>
+            <option value="all">Everything (${entries.length})</option>
+          </select></div>`,
+      ok: { label: "Clear", callback: (_e, button) => button.form.elements.kind.value }
+    }).catch(() => null);
+    if (!result) return;
+
+    const removed = await clearHistory(result);
+    ui.notifications.info(removed ? `Upgrades: cleared ${removed} history line(s).` : "Nothing to clear.");
     EditorApp.#afterMutation();
   }
 
-  static async #onEditExclusiveGroup(_event, target) {
-    const group = getExclusiveGroups().find(g => g.id === target.dataset.id);
-    if (!group) return;
-    const name = await EditorApp.#promptName("Rename exclusive choice", group.name);
-    if (!name) return;
-    await upsertExclusiveGroup({ id: group.id, name });
+  static async #onRemoveHistoryEntry(_event, target) {
+    if (!(await removeHistory(target.dataset.id))) return;
     EditorApp.#afterMutation();
   }
 
-  static async #onRemoveExclusiveGroup(_event, target) {
-    const group = getExclusiveGroups().find(g => g.id === target.dataset.id);
-    if (!group) return;
-    const inside = getUpgrades().filter(u => u.exclusiveGroupId === group.id);
-    const taken = inside.filter(u => u.purchases?.length).map(u => u.name);
-    const ok = await DialogV2.confirm({
-      window: { title: "Delete exclusive choice" },
-      content: `<p>Delete <strong>${foundry.utils.escapeHTML(group.name)}</strong>?</p>`
-        + (inside.length
-            ? `<p>Its ${inside.length} upgrade(s) are kept — they simply stop ruling each other out`
-              + (taken.length
-                  ? `, so the ones passed over become buyable again alongside `
-                    + `${foundry.utils.escapeHTML(taken.join(", "))}.`
-                  : `.`)
-              + `</p>`
-            : "")
-    });
-    if (!ok) return;
-    await deleteExclusiveGroup(group.id);
+  static async #onEditHistoryEntry(_event, target) {
+    const entry = getHistory().find(e => e.id === target.dataset.id);
+    if (!entry) return;
+    const reason = await DialogV2.prompt({
+      window: { title: "Edit reason" },
+      content: `<p class="notes">The amount stays as it is — a ledger that can be made to disagree
+          with the balance it describes is worse than none.</p>
+        <div class="form-group"><label>Reason</label>
+          <input type="text" name="reason" value="${foundry.utils.escapeHTML(entry.reason ?? "")}"
+                 placeholder="Cleared the blighted grove" autofocus></div>`,
+      ok: { label: "Save", callback: (_e, button) => button.form.elements.reason.value }
+    }).catch(() => null);
+    if (reason === null) return;   // cancelled; an emptied reason is a real edit
+    await editHistoryReason(entry.id, reason.trim());
     EditorApp.#afterMutation();
   }
 
-  static async #promptName(title, initial, placeholder = "Lighthouse") {
+  static async #promptName(title, initial) {
     const result = await DialogV2.prompt({
       window: { title },
       content: `<div class="form-group"><label>Name</label>
         <input type="text" name="name" value="${foundry.utils.escapeHTML(initial ?? "")}"
-               placeholder="${foundry.utils.escapeHTML(placeholder)}" autofocus></div>`,
+               placeholder="Lighthouse" autofocus></div>`,
       ok: { label: "Save", callback: (_e, button) => button.form.elements.name.value.trim() }
     });
     return result || null;

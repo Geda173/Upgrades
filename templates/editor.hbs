@@ -38,32 +38,6 @@
     {{/if}}
   </section>
 
-  <section class="upg-categories upg-exclusive-groups">
-    <header>
-      <h3>Exclusive choices</h3>
-      <button type="button" data-action="addExclusiveGroup"><i class="fa-solid fa-plus"></i> New choice</button>
-    </header>
-    {{#if hasExclusiveGroups}}
-    <ul class="upg-category-list">
-      {{#each exclusiveGroups}}
-      <li>
-        <i class="fa-solid fa-code-branch"></i>
-        <span class="upg-category-name">{{name}}</span>
-        {{#if members}}<span class="upg-group-members">{{members}}</span>
-        {{else}}<span class="upg-group-members empty">no upgrades assigned yet</span>{{/if}}
-        <a data-action="editExclusiveGroup" data-id="{{id}}" title="Rename"><i class="fa-solid fa-pen"></i></a>
-        <a data-action="removeExclusiveGroup" data-id="{{id}}" title="Delete"><i class="fa-solid fa-trash"></i></a>
-      </li>
-      {{/each}}
-    </ul>
-    {{else}}
-    <p class="upg-hint">
-      None yet. Make a set of upgrades mutually exclusive — buying one rules out the rest —
-      by adding a choice here, then picking it on each upgrade.
-    </p>
-    {{/if}}
-  </section>
-
   <section class="upg-list">
     <header>
       <h3>Upgrades</h3>
@@ -83,10 +57,10 @@
             {{name}}
             {{#if effectLabel}}<div class="upg-effect-label"><i class="fa-solid fa-bolt"></i> {{effectLabel}}</div>{{/if}}
             {{#if ownedNames}}<div class="upg-effect-label"><i class="fa-solid fa-user-check"></i> {{ownedNames}}</div>{{/if}}
-            {{#if exclusiveLabel}}<div class="upg-effect-label"><i class="fa-solid fa-code-branch"></i> {{exclusiveLabel}}</div>{{/if}}
+            {{#if exclusiveLabel}}<div class="upg-effect-label"><i class="fa-solid fa-code-branch"></i> Not with {{exclusiveLabel}}</div>{{/if}}
           </td>
           <td class="upg-target">{{targetLabel}}</td>
-          <td>{{cost}}</td>
+          <td>{{costLabel}}</td>
           <td>
             {{#if isRepeatable}}<span class="tag owned">Bought ×{{ownedCount}}</span>
             {{else if purchased}}<span class="tag owned">Owned ({{purchasedBy}})</span>
@@ -109,13 +83,25 @@
   </section>
 
   <section class="upg-history">
-    <h3>Recent history</h3>
+    <header>
+      <h3>Recent history</h3>
+      {{#if hasHistory}}
+      <button type="button" data-action="clearHistory"
+              title="Sweep the log. Balances and owned upgrades are not read from it and do not change."><i class="fa-solid fa-broom"></i> Clear ({{historyTotal}})</button>
+      {{/if}}
+    </header>
     <ul>
       {{#each history}}
       <li>
         <span class="when">{{when}}</span> —
-        {{#if isPurchase}}<strong>{{name}}</strong> acquired for {{cost}} (by {{by}})
-        {{else}}{{../vocab.currencyName}} {{deltaStr}} ({{before}} → {{after}}){{#if reason}} — {{reason}}{{/if}}{{/if}}
+        <span class="upg-history-line">
+          {{#if isPurchase}}<strong>{{name}}</strong> acquired for {{price}} (by {{by}})
+          {{else}}{{currencyName}} {{deltaStr}} ({{before}} → {{after}}){{#if reason}} — {{reason}}{{/if}}{{/if}}
+        </span>
+        <span class="upg-history-actions">
+          {{#if canReword}}<a data-action="editHistoryEntry" data-id="{{id}}" title="Edit the reason"><i class="fa-solid fa-pen"></i></a>{{/if}}
+          <a data-action="removeHistoryEntry" data-id="{{id}}" title="Remove this line from the log"><i class="fa-solid fa-trash"></i></a>
+        </span>
       </li>
       {{else}}
       <li class="upg-empty">Nothing yet.</li>

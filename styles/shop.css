@@ -347,6 +347,7 @@
 /* ---------- GM bar / console buttons ---------- */
 .upg-gm-bar { display: flex; gap: 10px; padding: 10px 26px 0; }
 .upg-gm-bar button, .upg-ledger button, .upg-list header button,
+.upg-categories header button, .upg-history header button,
 .upg-add-row, .upg-form-footer button {
   background: var(--upg-fill-soft); color: var(--upg-gold-bright);
   border: 1px solid var(--upg-line); border-radius: 6px;
@@ -354,6 +355,7 @@
   width: auto; line-height: 1.4;
 }
 .upg-gm-bar button:hover, .upg-ledger button:hover, .upg-list header button:hover,
+.upg-categories header button:hover, .upg-history header button:hover,
 .upg-add-row:hover, .upg-form-footer button:hover {
   background: var(--upg-fill-hover); box-shadow: none; border-color: var(--upg-gold);
 }
@@ -655,12 +657,15 @@
 }
 .upg-category-list li > i { color: var(--upg-accent); }
 .upg-category-name { flex: 1; }
-/* who is actually competing is the whole point of an exclusive choice, so it sits in the row */
-.upg-group-members {
-  font-size: 11px; color: var(--upg-ink-dim); max-width: 45%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.upg-group-members.empty { font-style: italic; opacity: 0.7; }
+/* the ledger's per-line controls sit at the end of the row and stay out of the way until hovered */
+.upg-history header { display: flex; align-items: center; justify-content: space-between; }
+.upg-history li { display: flex; align-items: baseline; gap: 6px; }
+.upg-history-line { flex: 1; }
+/* dimmed rather than hidden: a control nobody can see is a control nobody finds */
+.upg-history-actions { flex: none; opacity: 0.35; transition: opacity 120ms; }
+.upg-history li:hover .upg-history-actions { opacity: 1; }
+.upg-history-actions a { margin-left: 8px; color: var(--upg-ink-dim); }
+.upg-history-actions a:hover { color: var(--upg-gold-bright); }
 .upg-category-list a { color: var(--upg-ink-dim); }
 .upg-category-list a:hover { color: var(--upg-gold-bright); }
 .upg-group-row td {

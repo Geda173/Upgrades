@@ -1,7 +1,7 @@
 /**
  * Player-facing shop window (ApplicationV2 + Handlebars).
  */
-import { exclusiveClaim, getExclusiveGroup, getUpgrades, groupByCategory, isAvailable, isUnlocked,
+import { exclusiveClaim, exclusiveSiblings, getUpgrades, groupByCategory, isAvailable, isUnlocked,
          pathDepth, sortByPath, unmetRequirements } from "../catalog.js";
 import { canAfford, describeCosts, getBalance, getBalances, getCurrencies, hasMultipleCurrencies } from "../economy.js";
 import { MODULE_ID, getVocabulary, isImagePath } from "../settings.js";
@@ -72,7 +72,11 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
         // A mutually exclusive set has to announce itself *before* anyone commits, or the
         // exclusivity is only ever discovered by the player who finds their card closed.
         const claim = exclusiveClaim(u, all);
-        const group = getExclusiveGroup(u.exclusiveGroupId);
+        // A "???" rival must not be named even while the choice is open, so teasers are counted
+        // rather than listed — the set's size is not a secret, its contents are.
+        const rivals = exclusiveSiblings(u, all);
+        const namedRivals = rivals.filter(r => !(r.hidden && !isGM)).map(r => r.name);
+        const secretRivals = rivals.length - namedRivals.length;
         return {
           ...u,
           mystery,
@@ -92,7 +96,9 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
             ? ((claim.hidden && !isGM) ? "a choice already made" : claim.name)
             : "",
           // Shown while the choice is still open, so the cost of taking one is visible up front.
-          exclusiveLabel: (!mystery && group && !claim) ? group.name : "",
+          exclusiveLabel: (!mystery && rivals.length && !claim)
+            ? [...namedRivals, ...(secretRivals ? [`${secretRivals} more`] : [])].join(", ")
+            : "",
           affordable: isAvailable(u) && isUnlocked(u, all) && !claim && canAfford(u),
           // One entry per resource the upgrade is priced in; with a single resource this is
           // exactly the one icon-and-number the card always showed.

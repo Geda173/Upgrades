@@ -122,31 +122,53 @@ t('a cycle does not hang pathDepth', typeof D.pathDepth(looped[0], looped) === '
 t('a cycle does not hang dependsOn', D.dependsOn(looped[0], 'X', looped) === true);
 t('a cycle does not hang isUnlocked', D.isUnlocked(looped[0], looped) === false);
 
-/* ---------- mutually exclusive choices ---------- */
-// Exclusion is derived from the purchase record, never written down, so a refund has to reopen
-// the alternatives without anything having been told to undo itself.
+/* ---------- mutually exclusive upgrades ---------- */
+// Authored on the upgrade itself: no registry, one side only, and closed transitively so a whole
+// "choose one of these" can be written from a single upgrade.
 const oaths = [
-  { id: 'O1', name: 'Oath of Ash', exclusiveGroupId: 'g1', requires: [], purchases: [] },
-  { id: 'O2', name: 'Oath of Salt', exclusiveGroupId: 'g1', requires: [], purchases: [] },
-  { id: 'O3', name: 'Oath of Bone', exclusiveGroupId: 'g1', requires: [], purchases: [] },
-  { id: 'F1', name: 'Fair Winds', exclusiveGroupId: null, requires: [], purchases: [] }
+  { id: 'O1', name: 'Oath of Ash', excludes: ['O2', 'O3'], requires: [], purchases: [] },
+  { id: 'O2', name: 'Oath of Salt', excludes: [], requires: [], purchases: [] },
+  { id: 'O3', name: 'Oath of Bone', excludes: [], requires: [], purchases: [] },
+  { id: 'F1', name: 'Fair Winds', excludes: [], requires: [], purchases: [] }
 ];
 reset(oaths);
-store.set('exclusions', [{ id: 'g1', name: 'The Three Oaths', sort: 0 }]);
 
-t('an upgrade in no group has no rivals', D.exclusiveSiblings(oaths[3], oaths).length === 0);
-t('a group member competes with the rest of its group',
-  D.exclusiveSiblings(oaths[0], oaths).map(u => u.id).join() === 'O2,O3');
+t('an upgrade naming nothing has no rivals', D.exclusiveSiblings(oaths[3], oaths).length === 0);
+t('what an upgrade names is exclusive with it',
+  D.exclusiveSiblings(oaths[0], oaths).map(u => u.id).sort().join() === 'O2,O3');
+// the whole point of storing one side: the GM ticks it once, on whichever upgrade they are editing
+t('the relation reads back the other way too',
+  D.exclusiveSiblings(oaths[1], oaths).some(u => u.id === 'O1'));
+t('and is closed transitively, so a set authored from one upgrade holds together',
+  D.exclusiveSiblings(oaths[1], oaths).map(u => u.id).sort().join() === 'O1,O3');
 t('a member never counts as its own rival',
   !D.exclusiveSiblings(oaths[0], oaths).some(u => u.id === 'O1'));
+t('an unrelated upgrade is dragged into nothing', D.exclusiveSiblings(oaths[3], oaths).length === 0);
 t('nothing is ruled out while the choice is open', oaths.every(u => !D.isExcluded(u, oaths)));
 
+// a chain must fuse into one set: A–B and B–C means only one of the three
+const chain3 = [
+  { id: 'A', name: 'A', excludes: ['B'], requires: [], purchases: [] },
+  { id: 'B', name: 'B', excludes: ['C'], requires: [], purchases: [] },
+  { id: 'C', name: 'C', excludes: [], requires: [], purchases: [] }
+];
+t('a chain of links is one set, not two pairs',
+  D.exclusiveSet(chain3[0], chain3).map(u => u.id).sort().join() === 'A,B,C');
+t('the far end of a chain sees the near end',
+  D.exclusiveSiblings(chain3[2], chain3).map(u => u.id).sort().join() === 'A,B');
+
+// a link naming an upgrade that has since been deleted must not break the set
+const dangling = [{ id: 'A', name: 'A', excludes: ['gone'], requires: [], purchases: [] }];
+t('a link to a deleted upgrade is ignored rather than thrown on',
+  D.exclusiveSiblings(dangling[0], dangling).length === 0);
+
 const chosen = oaths.map(u => u.id === 'O2' ? { ...u, purchases: [{ id: 'p' }] } : u);
-t('taking one rules out the others', D.isExcluded(chosen[0], chosen) && D.isExcluded(chosen[2], chosen));
+t('taking one rules out the rest of the set',
+  D.isExcluded(chosen[0], chosen) && D.isExcluded(chosen[2], chosen));
 t('the taken one is not ruled out by itself', !D.isExcluded(chosen[1], chosen));
 t('the rival is named, so a card can say why', D.exclusiveClaim(chosen[0], chosen).name === 'Oath of Salt');
-t('an upgrade outside the group is untouched', !D.isExcluded(chosen[3], chosen));
-t('a claim on an unrelated group does not leak', D.exclusiveClaim(chosen[3], chosen) === null);
+t('an upgrade outside the set is untouched', !D.isExcluded(chosen[3], chosen));
+t('a claim does not leak to an unrelated upgrade', D.exclusiveClaim(chosen[3], chosen) === null);
 
 // a repeatable member must not rule itself out on its second purchase
 const twice = oaths.map(u => u.id === 'O2'
@@ -158,35 +180,31 @@ reset(oaths.map(u => u.id === 'O2' ? { ...u, purchases: [] } : u));
 t('refunding the taken one reopens its rivals',
   D.getUpgrades().every(u => !D.isExcluded(u, D.getUpgrades())));
 
-// a prerequisite inside your own group can never be met — taking it is what closes you off
+// a prerequisite you are exclusive with can never be met — taking it is what closes you off
 reset(oaths);
-t('a same-group upgrade is not offered as a prerequisite',
-  !D.eligiblePrerequisites(oaths[0], oaths).some(u => u.exclusiveGroupId === 'g1'));
-t('an upgrade outside the group is still offered',
+t('an upgrade in the same exclusive set is not offered as a prerequisite',
+  !D.eligiblePrerequisites(oaths[0], oaths).some(u => ['O2', 'O3'].includes(u.id)));
+t('the withholding is symmetric, like the relation itself',
+  !D.eligiblePrerequisites(oaths[1], oaths).some(u => u.id === 'O1'));
+t('an upgrade outside the set is still offered',
   D.eligiblePrerequisites(oaths[0], oaths).some(u => u.id === 'F1'));
-t('an ungrouped upgrade may still require a grouped one',
+t('an unrelated upgrade may still require one of them',
   D.eligiblePrerequisites(oaths[3], oaths).some(u => u.id === 'O1'));
 
-/* the group registry */
-t('groups come back in sort order',
-  (store.set('exclusions', [{ id: 'b', name: 'Second', sort: 1 }, { id: 'a', name: 'First', sort: 0 }]),
-   D.getExclusiveGroups().map(g => g.name).join() === 'First,Second'));
-t('a group can be looked up by id', D.getExclusiveGroup('a').name === 'First');
-t('an unknown group id resolves to nothing', D.getExclusiveGroup('gone') === null);
-t('no id at all resolves to nothing', D.getExclusiveGroup(null) === null);
+t('anything but itself may be named as exclusive',
+  D.eligibleExclusions(oaths[0], oaths).map(u => u.id).sort().join() === 'F1,O2,O3');
 
-reset(oaths);   // reset clears the whole store, so the registry is seeded after it
-store.set('exclusions', [{ id: 'g1', name: 'The Three Oaths', sort: 0 }]);
-await D.upsertExclusiveGroup({ id: 'g1', name: 'The Oaths' });
-t('renaming a group keeps its id', D.getExclusiveGroups()[0].id === 'g1' && D.getExclusiveGroups()[0].name === 'The Oaths');
-await D.upsertExclusiveGroup({ name: 'Patrons' });
-t('a new group is appended', D.getExclusiveGroups().length === 2);
-
-await D.deleteExclusiveGroup('g1');
-t('deleting a group removes it', !D.getExclusiveGroups().some(g => g.id === 'g1'));
-t('its upgrades survive', D.getUpgrades().length === 4);
-t('and stop ruling each other out',
-  D.getUpgrades().every(u => u.exclusiveGroupId === null));
+// upgrades authored against the short-lived named-group model must not lose their pairing
+reset([
+  { id: 'G1', name: 'Ash', exclusiveGroupId: 'g1', excludes: [], requires: [], purchases: [] },
+  { id: 'G2', name: 'Salt', exclusiveGroupId: 'g1', excludes: [], requires: [], purchases: [] },
+  { id: 'G3', name: 'Loose', exclusiveGroupId: null, excludes: [], requires: [], purchases: [] }
+]);
+const migrated = D.getUpgrades();
+t('a former group becomes direct links',
+  D.exclusiveSiblings(migrated[0], migrated).map(u => u.id).join() === 'G2');
+t('and an upgrade that was in no group stays free',
+  D.exclusiveSiblings(migrated[2], migrated).length === 0);
 
 /* ---------- resources ---------- */
 // A world that predates multiple resources must keep working with nothing configured.
@@ -236,6 +254,54 @@ await D.adjustBalance('pearls', -99, 'test');
 t('a balance cannot go negative', D.getBalance('pearls') === 0);
 await D.adjustBalance(3, 'legacy call');
 t('the old two-argument adjustBalance still targets the first resource', D.getBalance('sprigs') === 8);
+
+/* ---------- the ledger is editable, and is only a record ---------- */
+// A world's worth of trial-and-error adjustments has to be sweepable without a balance moving.
+store.clear();
+store.set('currencies', [{ id: 'sprigs', name: 'Sprigs', icon: 'i', sort: 0 }]);
+store.set('balances', { sprigs: 10 });
+await D.adjustBalance('sprigs', 5, 'first trial');
+await D.adjustBalance('sprigs', -2, 'second trial');
+await D.addHistory({ type: 'purchase', name: 'Nightbloom', price: '3 Sprigs', by: 'Pat' });
+
+let log = D.getHistory();
+t('every line carries an id to address it by', log.every(e => !!e.id));
+t('ids are distinct', new Set(log.map(e => e.id)).size === log.length);
+
+const balanceBefore = D.getBalance('sprigs');
+await D.removeHistory(log[0].id);
+t('a line can be removed', D.getHistory().length === log.length - 1);
+t('removing one leaves the others', D.getHistory().some(e => e.reason === 'second trial'));
+t('and moves no balance — the ledger is a record, not the source of truth',
+  D.getBalance('sprigs') === balanceBefore);
+t('removing an unknown line is a no-op', (await D.removeHistory('nope')) === null);
+
+await D.editHistoryReason(D.getHistory().find(e => e.reason === 'second trial').id, 'Cleared the grove');
+t('a reason can be reworded', D.getHistory().some(e => e.reason === 'Cleared the grove'));
+t('rewording changes nothing else',
+  D.getHistory().find(e => e.reason === 'Cleared the grove').delta === -2);
+t('rewording an unknown line is a no-op', (await D.editHistoryReason('nope', 'x')) === null);
+
+// the usual reason to want this is currency experiments sitting among purchases worth keeping
+t('adjustments can be swept without touching purchases',
+  (await D.clearHistory('adjust'), D.getHistory().every(e => e.type === 'purchase')));
+t('the purchase record survives it', D.getHistory().length === 1);
+t('and the balance is still untouched', D.getBalance('sprigs') === balanceBefore);
+t('clearing reports how many lines went',
+  (await D.addHistory({ type: 'adjust', delta: 1 }), await D.clearHistory('all')) === 2);
+t('everything is gone', D.getHistory().length === 0);
+t('clearing an empty ledger removes nothing', (await D.clearHistory('all')) === 0);
+
+// lines written before the ledger could be edited carry no id; they must still be addressable
+store.set('history', [{ ts: 1, type: 'adjust', delta: 3, reason: 'ancient' },
+                      { ts: 2, type: 'adjust', delta: 4, reason: 'also ancient' }]);
+const legacy = D.getHistory();
+t('an id stands in for a line that never had one', legacy.every(e => !!e.id));
+await D.removeHistory(legacy[1].id);
+t('an id-less line can still be removed', D.getHistory().length === 1);
+t('and exactly the right one went', D.getHistory()[0].reason === 'ancient');
+t('the write stamps a real id, so position can never be mistaken for one',
+  !String(D.getHistory()[0].id).startsWith('pos-'));
 
 /* ---------- sections ---------- */
 store.set('categories', [

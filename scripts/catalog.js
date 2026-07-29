@@ -22,7 +22,7 @@ export const TARGET = {
  *   purchasedBy, purchasedAt, target, targetActorId, sort,
  *   effectMode, effectUuid, effectBuild: { rows: [{preset, value, damageType?, key?, mode?}] },
  *   hideEffect, categoryId, repeatable, showInEffectsBar, requires: [upgradeId],
- *   exclusiveGroupId,
+ *   excludes: [upgradeId],
  *   choice: { enabled, label, hint },
  *   purchases: [{ id, actorId, actorName, by, at }] }
  *
@@ -34,7 +34,23 @@ export const TARGET = {
  */
 export function getUpgrades() {
   const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.UPGRADES)) ?? [];
-  return stored.map(normalizeUpgrade);
+  return linkFormerGroups(stored.map(normalizeUpgrade));
+}
+
+/**
+ * v0.16.0 briefly modelled mutual exclusion as a named group in a registry of its own. Upgrades
+ * authored then carry `exclusiveGroupId`; shared membership is turned into the direct links the
+ * catalogue now uses, so nothing configured in that version is lost.
+ */
+function linkFormerGroups(upgrades) {
+  const grouped = upgrades.filter(u => u.exclusiveGroupId);
+  for (const u of grouped) {
+    const rivals = grouped
+      .filter(o => o.id !== u.id && o.exclusiveGroupId === u.exclusiveGroupId)
+      .map(o => o.id);
+    u.excludes = [...new Set([...u.excludes, ...rivals])];
+  }
+  return upgrades;
 }
 
 /** Fill in fields added after an upgrade was first authored. */
@@ -48,7 +64,7 @@ function normalizeUpgrade(upgrade) {
     repeatable: false,
     showInEffectsBar: false,
     requires: [],
-    exclusiveGroupId: null,
+    excludes: [],
     choice: { enabled: false, label: "", hint: "" },
     ...upgrade
   };
@@ -88,7 +104,7 @@ export async function upsertUpgrade(data) {
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
     categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false, requires: [],
-    exclusiveGroupId: null,
+    excludes: [],
     choice: { enabled: false, label: "", hint: "" },
     target: TARGET.PARTY, targetActorId: null, sort: upgrades.length,
     ...data
@@ -130,12 +146,11 @@ export function dependsOn(upgrade, targetId, all = getUpgrades(), seen = new Set
 
 /** Which upgrades may safely be offered as prerequisites of this one. */
 export function eligiblePrerequisites(upgrade, all = getUpgrades()) {
+  // A prerequisite this upgrade is mutually exclusive with can never be met: buying it is exactly
+  // what rules this one out, so the pair would sit locked forever.
+  const rivals = new Set(exclusiveSiblings(upgrade, all).map(u => u.id));
   return all.filter(u =>
-    u.id !== upgrade?.id
-    && !dependsOn(u, upgrade?.id, all)
-    // A prerequisite from this upgrade's own exclusive group can never be met: buying it is
-    // exactly what rules this one out, so the pair would sit locked forever.
-    && !(upgrade?.exclusiveGroupId && u.exclusiveGroupId === upgrade.exclusiveGroupId));
+    u.id !== upgrade?.id && !dependsOn(u, upgrade?.id, all) && !rivals.has(u.id));
 }
 
 /** How deep into a path an upgrade sits; roots are 0. Cycles are clamped rather than hung on. */
@@ -191,56 +206,50 @@ export async function removePurchase(upgradeId, purchaseId = null) {
   return removed;
 }
 
-/* ---------- Exclusive groups ---------- */
+/* ---------- Mutually exclusive upgrades ---------- */
 
 /**
- * Sets the party may only ever take one of — "The Three Oaths", "Choose a patron".
- * Shape: { id, name, sort }. An upgrade names one by id, or null to compete with nothing.
+ * An upgrade names the others it cannot be taken alongside, on the upgrade itself — there is no
+ * registry of named sets to keep in step with the catalogue.
  *
- * Exclusion is *derived* from the purchase record rather than written down when the choice is
- * made. Refunding the taken one therefore reopens the rest with nothing having to remember that
- * it should — the same reason `purchased` is derived from `purchases`.
+ * The relation is stored on one side but read as **symmetric**: ticking B on A says the same
+ * thing as ticking A on B, so the GM only ever authors it once. It is also closed
+ * **transitively**, so A–B plus B–C makes one set of three the party picks from once; a whole
+ * "choose one of five" can be authored from a single upgrade rather than as ten pairs.
+ *
+ * Which one was taken is *derived* from the purchase records of the set, never written down.
+ * Refunding it therefore reopens the rest with nothing having to remember that it should — the
+ * same reason `purchased` is derived from `purchases`.
  */
-export function getExclusiveGroups() {
-  const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, SETTINGS.EXCLUSIONS)) ?? [];
-  return stored.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
-}
-
-export async function setExclusiveGroups(groups) {
-  return game.settings.set(MODULE_ID, SETTINGS.EXCLUSIONS, groups);
-}
-
-export function getExclusiveGroup(id) {
-  return id ? (getExclusiveGroups().find(g => g.id === id) ?? null) : null;
-}
-
-export async function upsertExclusiveGroup(data) {
-  const groups = getExclusiveGroups();
-  const idx = groups.findIndex(g => g.id === data.id);
-  if (idx >= 0) groups[idx] = { ...groups[idx], ...data };
-  else groups.push({
-    id: data.id ?? foundry.utils.randomID(),
-    name: "New choice", sort: groups.length,
-    ...data
-  });
-  return setExclusiveGroups(groups);
-}
-
-/** Deleting a group keeps its upgrades — they simply stop ruling each other out. */
-export async function deleteExclusiveGroup(id) {
-  await setExclusiveGroups(getExclusiveGroups().filter(g => g.id !== id));
-  const upgrades = getUpgrades();
-  let touched = false;
-  for (const u of upgrades) {
-    if (u.exclusiveGroupId === id) { u.exclusiveGroupId = null; touched = true; }
+export function exclusiveSet(upgrade, all = getUpgrades()) {
+  if (!upgrade) return [];
+  const byId = new Map(all.map(u => [u.id, u]));
+  const seen = new Set([upgrade.id]);
+  const queue = [upgrade];
+  while (queue.length) {
+    const current = queue.shift();
+    // Both directions: what this one names, and what names it.
+    const linked = [
+      ...(current.excludes ?? []),
+      ...all.filter(u => (u.excludes ?? []).includes(current.id)).map(u => u.id)
+    ];
+    for (const id of linked) {
+      if (seen.has(id) || !byId.has(id)) continue;
+      seen.add(id);
+      queue.push(byId.get(id));
+    }
   }
-  if (touched) await setUpgrades(upgrades);
+  return [...seen].map(id => byId.get(id)).filter(Boolean);
 }
 
 /** The other upgrades competing for the same slot. */
 export function exclusiveSiblings(upgrade, all = getUpgrades()) {
-  if (!upgrade?.exclusiveGroupId) return [];
-  return all.filter(u => u.id !== upgrade.id && u.exclusiveGroupId === upgrade.exclusiveGroupId);
+  return exclusiveSet(upgrade, all).filter(u => u.id !== upgrade?.id);
+}
+
+/** Anything but itself can be named as mutually exclusive; no pairing is ever illegal. */
+export function eligibleExclusions(upgrade, all = getUpgrades()) {
+  return all.filter(u => u.id !== upgrade?.id);
 }
 
 /**

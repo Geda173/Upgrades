@@ -4,7 +4,8 @@
  * Deliberately not a DialogV2: it needs drag & drop, a variable number of bonus rows,
  * and a form that reshapes itself as the GM picks a target or an effect mode.
  */
-import { TARGET, eligiblePrerequisites, getCategories, getExclusiveGroups, getUpgrades } from "../catalog.js";
+import { TARGET, eligibleExclusions, eligiblePrerequisites, exclusiveSiblings, getCategories,
+         getUpgrades } from "../catalog.js";
 import { getCosts, getCurrencies } from "../economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary, isImagePath } from "../settings.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
@@ -76,7 +77,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       repeatable: !!u.repeatable,
       showInEffectsBar: !!u.showInEffectsBar,
       requires: [...(u.requires ?? [])],
-      exclusiveGroupId: u.exclusiveGroupId ?? "",
+      excludes: [...(u.excludes ?? [])],
       choiceEnabled: !!u.choice?.enabled,
       choiceLabel: u.choice?.label ?? "",
       choiceHint: u.choice?.hint ?? "",
@@ -98,13 +99,11 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     const linked = draft.effectUuid ? await fromUuid(draft.effectUuid).catch(() => null) : null;
     const presetGroups = getPresetGroups();
     const all = getUpgrades();
-    // The exclusive group is part of what makes a prerequisite legal, so the picker is rebuilt
-    // from the live draft rather than from what was saved.
-    const candidates = eligiblePrerequisites(
-      { id: draft.id, requires: draft.requires, exclusiveGroupId: draft.exclusiveGroupId || null },
-      all
-    );
-    const exclusiveGroups = getExclusiveGroups();
+    // What this upgrade is exclusive with decides which prerequisites are legal, so both pickers
+    // are rebuilt from the live draft rather than from what was last saved.
+    const live = { id: draft.id, requires: draft.requires, excludes: draft.excludes };
+    const candidates = eligiblePrerequisites(live, all);
+    const rivals = exclusiveSiblings(live, all);
 
     return {
       upgrade: draft,
@@ -121,11 +120,10 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       prerequisites: candidates
         .map(u => ({ id: u.id, name: u.name, isSelected: draft.requires.includes(u.id) })),
       hasPrerequisiteCandidates: candidates.length > 0,
-      exclusiveGroups: exclusiveGroups.map(g => ({
-        id: g.id, name: g.name, isSelected: g.id === draft.exclusiveGroupId
-      })),
-      hasExclusiveGroups: exclusiveGroups.length > 0,
-      exclusiveNote: this.#exclusiveNote(all, exclusiveGroups),
+      exclusions: eligibleExclusions(live, all)
+        .map(u => ({ id: u.id, name: u.name, isSelected: draft.excludes.includes(u.id) })),
+      hasExclusionCandidates: eligibleExclusions(live, all).length > 0,
+      exclusiveNote: this.#exclusiveNote(rivals),
       hasCategories: getCategories().length > 0,
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
@@ -208,17 +206,19 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     return groups;
   }
 
-  /** Names what this upgrade would be competing with, so the choice is visible while authoring it. */
-  #exclusiveNote(all, groups) {
-    const id = this.draft.exclusiveGroupId;
-    if (!id) return "";
-    const group = groups.find(g => g.id === id);
-    if (!group) return "";
-    const rivals = all
-      .filter(u => u.id !== this.draft.id && u.exclusiveGroupId === id)
-      .map(u => u.name);
-    if (!rivals.length) return `Nothing else is in “${group.name}” yet, so this rules out nothing so far.`;
-    return `Buying this rules out ${rivals.join(", ")} — and any of them rules out this one.`;
+  /**
+   * Names the whole set, not merely what was ticked. Exclusivity is closed transitively, so
+   * ticking one upgrade can pull in whatever *it* was already exclusive with — said here, while
+   * authoring, rather than discovered later on the board.
+   */
+  #exclusiveNote(rivals) {
+    if (!rivals.length) return "";
+    const ticked = new Set(this.draft.excludes);
+    const pulled = rivals.filter(u => !ticked.has(u.id)).map(u => u.name);
+    const base = `Only one of this and ${rivals.map(u => u.name).join(", ")} can ever be taken.`;
+    if (!pulled.length) return base;
+    return `${base} ${pulled.join(", ")} ${pulled.length === 1 ? "joins" : "join"} the set because `
+         + `${pulled.length === 1 ? "it is" : "they are"} already exclusive with something ticked here.`;
   }
 
   #partyNote() {
@@ -264,7 +264,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     this.draft.repeatable = !!get("repeatable")?.checked;
     this.draft.showInEffectsBar = !!get("showInEffectsBar")?.checked;
     this.draft.requires = [...form.querySelectorAll('[name="requires"]:checked')].map(el => el.value);
-    this.draft.exclusiveGroupId = val("exclusiveGroupId");
+    this.draft.excludes = [...form.querySelectorAll('[name="excludes"]:checked')].map(el => el.value);
     this.draft.choiceEnabled = !!get("choiceEnabled")?.checked;
     this.draft.choiceLabel = val("choiceLabel");
     this.draft.choiceHint = val("choiceHint");
@@ -393,7 +393,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       repeatable: d.repeatable,
       showInEffectsBar: d.showInEffectsBar,
       requires: d.requires,
-      exclusiveGroupId: d.exclusiveGroupId || null,
+      excludes: d.excludes,
       choice: { enabled: d.choiceEnabled, label: d.choiceLabel, hint: d.choiceHint },
       categoryId: d.categoryId || null,
       target: d.target,

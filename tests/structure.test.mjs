@@ -116,16 +116,29 @@ t('a hidden rival is not named to players',
   /claim\.hidden && !isGM\) \? "a choice already made"/.test(read('scripts/apps/shop-app.js')));
 t('an open choice announces itself before anyone commits',
   /\{\{#if exclusiveLabel\}\}/.test(read('templates/shop.hbs'))
-  && /exclusiveLabel: \(!mystery && group && !claim\)/.test(read('scripts/apps/shop-app.js')));
+  && /exclusiveLabel: \(!mystery && rivals\.length && !claim\)/.test(read('scripts/apps/shop-app.js')));
+// Exclusivity is authored on the upgrade, not in a registry the GM has to keep in step: there is
+// no world setting behind it and nothing in the console to configure first.
+t('exclusivity needs no setup step of its own',
+  !/EXCLUSIONS/.test(read('scripts/settings.js'))
+  && !/exclusiveGroup/i.test(read('templates/editor.hbs')));
+t('the picker offers the upgrades that already exist',
+  /name="excludes"/.test(read('templates/upgrade-editor.hbs'))
+  && /eligibleExclusions\(live, all\)/.test(read('scripts/apps/upgrade-editor.js')));
+// Ticking one upgrade can pull in whatever it was already exclusive with, so the note has to be
+// built from the closed set — reading back only the ticked boxes would understate it.
+t('the editor names the whole set, not just what was ticked',
+  /const rivals = exclusiveSiblings\(live, all\)/.test(read('scripts/apps/upgrade-editor.js'))
+  && /#exclusiveNote\(rivals\)/.test(read('scripts/apps/upgrade-editor.js')));
 t('being ruled out also withdraws the buy button',
   /affordable: isAvailable\(u\) && isUnlocked\(u, all\) && !claim/.test(read('scripts/apps/shop-app.js')));
 // Buying the prerequisite is exactly what rules the dependant out, so the pair would sit
 // locked forever; the picker must never offer it.
-t('a prerequisite from the same exclusive group cannot be authored',
-  /upgrade\?\.exclusiveGroupId && u\.exclusiveGroupId === upgrade\.exclusiveGroupId/
-    .test(read('scripts/catalog.js')));
-t('the exclusive group is part of the upgrade editor draft',
-  /this\.draft\.exclusiveGroupId = val\("exclusiveGroupId"\)/.test(read('scripts/apps/upgrade-editor.js')));
+t('a prerequisite from the same exclusive set cannot be authored',
+  /const rivals = new Set\(exclusiveSiblings\(upgrade, all\)/.test(read('scripts/catalog.js')));
+t('the exclusion list is part of the upgrade editor draft',
+  /this\.draft\.excludes = \[\.\.\.form\.querySelectorAll\('\[name="excludes"\]:checked'\)\]/
+    .test(read('scripts/apps/upgrade-editor.js')));
 
 t('a repeatable upgrade does not declare itself take-once',
   /maxTakable: upgrade\.repeatable/.test(read('scripts/systems/adapter.js')));

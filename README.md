@@ -23,11 +23,13 @@ Supports **PF2e** and **dnd5e** for mechanical effects. The cosmetic layer works
 - **Upgrade paths** — an upgrade can require others. Until they are owned it stays visible but locked,
   *naming what unlocks it* rather than merely refusing. Cards on a path are ordered so a prerequisite
   always appears before what needs it, and are marked as linked. Cycles cannot be authored.
-- **Mutually exclusive choices** — name a set ("The Three Oaths") and assign upgrades to it; the party
-  may take only one. Every card in an open set says so *before* anyone commits, and the ones passed over
-  say which rival closed them. Refunding the choice reopens the rest, because exclusion is read from the
-  purchase record rather than written down. Buying one is checked on the GM's client, so two players
-  cannot take opposite sides of the same choice at once.
+- **Mutually exclusive upgrades** — on any upgrade, tick the others it cannot be taken alongside; the
+  party gets one of them. Nothing to set up first, and it only needs ticking on one side. Links close
+  transitively, so A–B plus B–C is a single set of three, and the editor names the whole set as you
+  build it. Every card in an open set says so *before* anyone commits; the ones passed over say which
+  rival closed them. Refunding the choice reopens the rest, because exclusion is read from the purchase
+  record rather than written down. Buying one is checked on the GM's client, so two players cannot take
+  opposite sides of the same choice at once.
 - **Sixteen themes.** *Fantasy:* Abyss, Grove, Ember, Arcane, Frost, Ossuary, Bloodmoon, Golden Hall,
   Mycelium, Tempest, Parchment. *Sci-fi:* Holo, Neon, Starship, Rust, Phosphor. A theme is a palette
   swap, not a layout fork; Parchment and Starship are light, the rest dark.
@@ -85,7 +87,10 @@ Other systems get the custom-target row plus link mode.
   deleting, or editing an upgrade removes or rebuilds exactly what it created. Nothing is orphaned.
 - **Re-sync** — re-creates anything missing on current targets, for late joiners, roster changes, or an
   effect someone deleted off a sheet by hand.
-- **History** — every purchase and adjustment logged with a reason.
+- **History** — every purchase and adjustment logged with a reason, and editable: reword a line, drop
+  one, or sweep the log — all of it, just the balance adjustments, or just the purchases. It is a record
+  and nothing is read from it, so clearing a run of trial-and-error moves no currency and un-buys
+  nothing.
 
 ---
 
