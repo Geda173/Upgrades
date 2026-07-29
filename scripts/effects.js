@@ -272,11 +272,31 @@ export function buildRules(rows = [], { label = "Upgrade" } = {}) {
 export function getDamageTypes() {
   const live = CONFIG?.DND5E?.damageTypes;
   if (live && Object.keys(live).length) {
-    return Object.entries(live).map(([id, v]) => ({ id, label: v?.label ?? id }));
+    return sortByLabel(dropNullTypes(Object.entries(live).map(([id, v]) => ({ id, label: v?.label ?? id }))));
   }
   return ["acid","bludgeoning","cold","fire","force","lightning","necrotic",
           "piercing","poison","psychic","radiant","slashing","thunder"]
     .map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }));
+}
+
+/**
+ * Drop the "no type at all" sentinels other modules add to the system's damage-type config.
+ *
+ * Reading that config live is deliberate — a system update must not leave this list stale — but
+ * it is shared, and modules write into it. Midi-QOL contributes `none` ("No Type") and
+ * `midi-none` ("No Damage"), which are markers for the *absence* of a type and read as nonsense
+ * in a list of things to resist.
+ *
+ * Deliberately narrow: match only ids that literally say "none", never a hardcoded roster of the
+ * system's own types. A world that adds a real type — `vitality`, say — must keep it, because
+ * resisting it is a perfectly sensible thing to want.
+ */
+function dropNullTypes(entries) {
+  return entries.filter(e => e.id && !/^(none|.*-none)$/.test(e.id));
+}
+
+function sortByLabel(entries) {
+  return [...entries].sort((a, b) => String(a.label).localeCompare(String(b.label)));
 }
 
 /**
@@ -292,7 +312,8 @@ export function getResistanceTypes() {
   if (isPf2e()) {
     const live = CONFIG?.PF2E?.resistanceTypes;
     if (live && Object.keys(live).length) {
-      return Object.entries(live).map(([id, v]) => ({ id, label: labelOf(v, id) }));
+      // Same passenger problem as the dnd5e list: the config is shared with every other module.
+      return sortByLabel(dropNullTypes(Object.entries(live).map(([id, v]) => ({ id, label: labelOf(v, id) }))));
     }
     return ["acid","air","all-damage","bleed","bludgeoning","cold","earth","electricity","energy",
             "fire","force","light","magical","mental","metal","non-magical","physical","piercing",

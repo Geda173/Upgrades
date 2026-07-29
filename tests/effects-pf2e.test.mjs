@@ -104,6 +104,15 @@ const bogus = offered.filter(id => !PF2E_RESIST.has(id));
 t('every offered resistance type exists in pf2e 8.3.0'
   + (bogus.length ? ` (unknown: ${bogus.join(", ")})` : ''), bogus.length === 0);
 t('the fallback list is not empty', offered.length > 20);
+// The PF2e config is shared with every other module too, so the same guard applies there.
+globalThis.CONFIG = { PF2E: { resistanceTypes: {
+  fire: 'Fire', physical: 'Physical', none: 'No Type', 'midi-none': 'No Damage'
+} } };
+const live = E.getResistanceTypes().map(x => x.id);
+t('null-type sentinels are dropped from the PF2e list too',
+  !live.includes('none') && !live.includes('midi-none'));
+t('and the real ones survive', live.includes('fire') && live.includes('physical'));
+globalThis.CONFIG = {};
 t('resistance types are not merely the damage types — physical is offered', offered.includes("physical"));
 
 t('describes a resistance as a statement, not a bonus',

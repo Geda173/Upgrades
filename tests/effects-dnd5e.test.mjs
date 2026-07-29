@@ -17,6 +17,24 @@ t('spell attack hits msak + rsak only', spell.length === 2);
 t('spell attack does NOT write the nonexistent bonuses.spell.attack',
   !spell.some(c => c.key === 'system.bonuses.spell.attack'));
 
+/* --- the damage-type list is read from a config other modules write into ---
+   Observed in a real world running Midi-QOL: 16 entries where dnd5e 5.3.3 ships 13. Two are
+   markers for the *absence* of a type and read as nonsense in a list of things to resist; the
+   third is a genuine extra type and must survive. */
+globalThis.CONFIG = { DND5E: { damageTypes: {
+  acid: { label: 'Acid' }, fire: { label: 'Fire' }, cold: { label: 'Cold' },
+  'midi-none': { label: 'No Damage' },   // Midi-QOL
+  none: { label: 'No Type' },            // Midi-QOL
+  vitality: { label: 'Vitality' }        // a third-party type that is real
+} } };
+const { getDamageTypes } = await import(new URL('../scripts/effects.js', import.meta.url));
+const typeIds = getDamageTypes().map(t => t.id);
+t('the "no damage" sentinel is dropped', !typeIds.includes('midi-none'));
+t('the "no type" sentinel is dropped', !typeIds.includes('none'));
+t('a real third-party damage type survives', typeIds.includes('vitality'));
+t('the system\'s own types survive', ['acid','fire','cold'].every(id => typeIds.includes(id)));
+t('the list is sorted by label', getDamageTypes().map(t => t.label).join() === 'Acid,Cold,Fire,Vitality');
+
 /* --- resistance, immunity, vulnerability ---
    `system.traits.dr` is a DamageTraitField whose `value` is a SetField of damage types
    (release-5.3.3 module/data/actor/templates/traits.mjs), so the change adds the *type* and
