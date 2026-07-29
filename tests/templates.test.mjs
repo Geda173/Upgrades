@@ -158,7 +158,19 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
            presetGroups: [{ label: 'Attack & damage', presets: [
              { id: 'weapon.damage', label: 'All weapon damage', isSelected: true },
              { id: 'custom', label: 'Custom data path…', isSelected: false }] }],
-           modeChoices: [{ value: 2, label: 'Add', isSelected: true }] }],
+           modeChoices: [{ value: 2, label: 'Add', isSelected: true }] },
+         // the type IS the payload: a dnd5e trait set, or a PF2e immunity
+         { index: 1, preset: 'resistance', value: 'fire', key: '', mode: 2, isCustom: false,
+           isDamage: false, isIwr: true, valueIsType: true, isPf2e: false, placeholder: '',
+           kinds: [{ id: 'fire', label: 'Fire', isSelected: true },
+                   { id: 'cold', label: 'Cold', isSelected: false }],
+           damageTypes: [], bonusTypes: [], presetGroups: [], modeChoices: [] },
+         // an amount AND a type, and — being a rule element, not a modifier — no bonus type
+         { index: 2, preset: 'resistance', value: '5', key: '', mode: 2, isCustom: false,
+           isDamage: false, isIwr: true, valueIsType: false, isPf2e: true, placeholder: '5',
+           kinds: [{ id: 'physical', label: 'Physical', isSelected: true }],
+           damageTypes: [], bonusTypes: [{ id: 'circumstance', label: 'Circumstance', isSelected: true }],
+           presetGroups: [], modeChoices: [] }],
   linkedName: null, linkedImg: null, linkedType: null, linkMissing: false,
   showsGrantNote: true, grantNote: 'Granted as a feature.'
 });
@@ -264,6 +276,26 @@ t('editor: effect label', editor.includes('1d8[cold] all weapon damage'));
 t('upgrade-editor: row preset marked selected', /All weapon damage<\/option>/.test(upgradeEditor));
 t('upgrade-editor: row value', upgradeEditor.includes('value="1d8"'));
 t('upgrade-editor: damage type dropdown appears', upgradeEditor.includes('rowDamageType'));
+
+/* a resistance row asks for a kind, not a bonus */
+(() => {
+  const rows = upgradeEditor.split('<div class="upg-row"').slice(1);
+  const traitRow = rows.find(r => r.includes('data-index="1"'));
+  const amountRow = rows.find(r => r.includes('data-index="2"'));
+  t('upgrade-editor: a trait row offers a type dropdown instead of a value field',
+    !!traitRow && /<select name="rowValue"/.test(traitRow) && !/<input type="text" name="rowValue"/.test(traitRow));
+  t('upgrade-editor: the chosen trait type is selected',
+    !!traitRow && /value="fire" selected/.test(traitRow));
+  t('upgrade-editor: a trait row needs no separate damage-type dropdown',
+    !!traitRow && !traitRow.includes('rowDamageType'));
+  t('upgrade-editor: a resistance with an amount keeps its value field',
+    !!amountRow && /<input type="text" name="rowValue"/.test(amountRow));
+  t('upgrade-editor: and gains a resistance-type dropdown',
+    !!amountRow && /name="rowDamageType" class="upg-resist-type"/.test(amountRow));
+  // A resistance is not a modifier, so PF2e's stacking type would be meaningless on it.
+  t('upgrade-editor: a PF2e resistance row offers no bonus type',
+    !!amountRow && !amountRow.includes('rowBonusType'));
+})();
 t('upgrade-editor: dnd5e does NOT get the pf2e bonus-type dropdown',
   !upgradeEditor.includes('rowBonusType'));
 t('upgrade-editor: target actor marked selected', upgradeEditor.includes('Galadon Stormwhisper'));

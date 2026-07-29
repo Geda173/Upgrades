@@ -11,8 +11,17 @@ const VALID = new Set(["attack","damage","melee-damage","ranged-damage","ac","sa
   "nature","occultism","performance","religion","society","stealth","survival","thievery"]);
 const all = E.getPresetGroups().flatMap(g=>g.presets);
 t('pf2e catalogue is populated', all.length > 25);
-const unknown = all.filter(p=>p.id!=="custom").flatMap(p=>p.selectors).filter(sel=>!VALID.has(sel));
+// Resistance and its relatives are rule elements in their own right and carry no selector at all,
+// so they are held to a different contract — a ruleKey — rather than skipped quietly.
+const selectorPresets = all.filter(p => p.id !== "custom" && !p.iwr);
+const unknown = selectorPresets.flatMap(p=>p.selectors).filter(sel=>!VALID.has(sel));
 t('every selector exists in pf2e 8.3.0'+(unknown.length?` (unknown: ${unknown.join(", ")})`:''), unknown.length===0);
+t('every non-IWR preset actually has a selector',
+  selectorPresets.every(p => Array.isArray(p.selectors) && p.selectors.length > 0));
+const iwrPresets = all.filter(p => p.iwr);
+t('the IWR presets name a real rule element',
+  iwrPresets.length === 3 && iwrPresets.every(p => ["Resistance","Weakness","Immunity"].includes(p.ruleKey)));
+t('no IWR preset also claims a selector', iwrPresets.every(p => !p.selectors));
 t('builder is supported on pf2e', E.systemSupportsBuilder());
 
 // the lighthouse: +1 circumstance to hit
@@ -52,6 +61,55 @@ t('describes a flat bonus with its type',
   E.describeRows([{preset:"attack", value:"1", bonusType:"item"}])[0] === "Attack rolls +1 item");
 t('describes dice without a bonus type',
   E.describeRows([{preset:"damage", value:"1d6", damageType:"fire"}])[0] === "Damage +1d6 fire");
+
+/* ---------- resistance, weakness, immunity ----------
+   These are rule elements in their own right, not modifiers. Verified against
+   src/module/rules/rule-element/iwr/{resistance,immunity}.ts and the RuleElements registry in
+   src/module/rules/index.ts at pf2e-8.3.0: `type` is an array even for one entry, Resistance and
+   Weakness carry a numeric `value`, and Immunity declares `readonly value = null`. */
+const resist = E.buildRules([{ preset: "resistance", value: "5", damageType: "fire" }]);
+t('resistance is its own rule element, not a FlatModifier', resist[0].key === "Resistance");
+t('resistance type is an array even for one type', Array.isArray(resist[0].type));
+t('resistance names the type', resist[0].type[0] === "fire");
+t('resistance value is numeric', resist[0].value === 5);
+t('resistance carries no selector', resist[0].selector === undefined);
+// A resistance has no stacking type; emitting one would be meaningless at best.
+t('resistance carries no bonus type', resist[0].type[0] !== "circumstance" && resist[0].bonusType === undefined);
+
+const weak = E.buildRules([{ preset: "weakness", value: "5", damageType: "cold" }]);
+t('weakness uses the Weakness rule element', weak[0].key === "Weakness" && weak[0].value === 5);
+
+const immune = E.buildRules([{ preset: "immunity", value: "poison" }]);
+t('immunity uses the Immunity rule element', immune[0].key === "Immunity");
+t('immunity takes the type as its whole payload', immune[0].type[0] === "poison");
+t('immunity emits no value, because the rule element has none', !("value" in immune[0]));
+
+t('a resistance with no type is skipped rather than written half-formed',
+  E.buildRules([{ preset: "resistance", value: "5" }]).length === 0);
+t('a resistance with no amount is skipped',
+  E.buildRules([{ preset: "resistance", value: "", damageType: "fire" }]).length === 0);
+t('a non-numeric resistance amount is skipped',
+  E.buildRules([{ preset: "resistance", value: "1d6", damageType: "fire" }]).length === 0);
+
+// the type list must be real: checked against resistanceTypes in src/scripts/config/iwr.ts
+const PF2E_RESIST = new Set(["acid","air","alchemical","all-damage","area-damage","axes","bleed",
+  "bludgeoning","cold","critical-hits","custom","damage-from-spells","earth","electricity","energy",
+  "fire","force","ghost-touch","light","magical","mental","metal","mythic","non-magical","nonlethal",
+  "nonlethal-attacks","persistent-damage","physical","piercing","plant","poison","precision",
+  "protean-anatomy","radiation","salt","salt-water","slashing","sonic","spells","spirit","time",
+  "unarmed-attacks","vitality","void","vorpal","vorpal-adamantine","water","weapons",
+  "weapons-shedding-bright-light","wood"]);
+const offered = E.getResistanceTypes().map(x => x.id);
+const bogus = offered.filter(id => !PF2E_RESIST.has(id));
+t('every offered resistance type exists in pf2e 8.3.0'
+  + (bogus.length ? ` (unknown: ${bogus.join(", ")})` : ''), bogus.length === 0);
+t('the fallback list is not empty', offered.length > 20);
+t('resistance types are not merely the damage types — physical is offered', offered.includes("physical"));
+
+t('describes a resistance as a statement, not a bonus',
+  E.describeRows([{ preset: "resistance", value: "5", damageType: "fire" }])[0] === "Resistance 5 to fire");
+t('describes an immunity without an amount',
+  E.describeRows([{ preset: "immunity", value: "poison" }])[0] === "Immunity to poison");
 
 // dnd5e must be untouched by all of this
 globalThis.game.system.id = "dnd5e";

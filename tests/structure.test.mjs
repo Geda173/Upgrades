@@ -183,6 +183,14 @@ t('cancelling the prompt spends nothing', /if \(!choice\) return;/.test(read('sc
 t('the choice is remembered on the purchase so re-sync can rebuild it',
   /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
 t('re-renders restore scroll position', /restoreViewState\(this, selector/.test(read('scripts/apps/ui.js')));
+// A bare focus() scrolls the element into view in every scrollable ancestor, overriding the
+// scrollTop restored moments earlier. Because the browser only ever scrolls *towards* the focused
+// element, a form that re-renders on each dropdown change ratchets downwards and never comes back.
+t('restoring focus does not drag the scroll container with it',
+  /field\.focus\(\{ preventScroll: true \}\)/.test(read('scripts/apps/ui.js')));
+t('and the scroll position is reasserted after focus, for engines that ignore the hint',
+  /focus\(\{ preventScroll: true \}\);[\s\S]{0,220}scroller\.scrollTop = state\.scrollTop/
+    .test(read('scripts/apps/ui.js')));
 
 /* ---------- the merchant token has to be reachable by players ---------- */
 const dataJs = read('scripts/settings.js');

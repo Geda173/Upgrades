@@ -64,7 +64,16 @@ export function restoreViewState(app, scrollSelector, state) {
     : app.element;
   const field = scope.querySelector(`[name="${state.name}"]`);
   if (!field) return;
-  field.focus();
+
+  // `preventScroll` is load-bearing. A bare focus() scrolls the element into view inside every
+  // scrollable ancestor, which silently overrode the scrollTop restored two lines above. Because
+  // the browser only ever scrolls *towards* the focused element and these forms re-render on
+  // every dropdown change, the body ratcheted downwards a little on each one and never came
+  // back — the form appeared to scroll down but never up.
+  field.focus({ preventScroll: true });
+  // Restore again afterwards: focus can still move the scroller on engines that ignore the hint.
+  if (scroller) scroller.scrollTop = state.scrollTop;
+
   // Putting the caret back matters most in the value fields, where a re-render lands mid-typing.
   if (state.caret !== null && typeof field.setSelectionRange === "function") {
     try { field.setSelectionRange(state.caret, state.caret); } catch { /* not a text field */ }

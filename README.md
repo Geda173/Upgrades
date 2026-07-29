@@ -71,6 +71,11 @@ The bonus builder is system-aware:
 - **dnd5e** — produces ActiveEffect changes across the usual paths, with the melee/ranged fan-out handled
   for you and a damage-type dropdown so nobody types `[cold]` by hand.
 
+**Resistance, immunity and vulnerability** are offered as plain choices in both systems, not left to the
+custom row: pick the type from a dropdown, and an amount too where the system takes one. PF2e emits real
+`Resistance` / `Weakness` / `Immunity` rule elements; dnd5e adds the type to `system.traits.dr` and its
+siblings. Neither is a bonus, so neither asks for a stacking type.
+
 Other systems get the custom-target row plus link mode.
 
 ### Where it lives in the world

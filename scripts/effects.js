@@ -59,6 +59,16 @@ const PRESETS_DND5E = [
   { group: "Defence", id: "save.all", label: "All saving throws", placeholder: "+1",
     keys: ["system.bonuses.abilities.save"] },
 
+  // dnd5e keeps these as *sets of damage types*, not numbers: `system.traits.dr` is a
+  // DamageTraitField whose `value` is a SetField, so the change adds the type itself and there
+  // is no amount to give. Verified against release-5.3.3 module/data/actor/templates/traits.mjs.
+  { group: "Defence", id: "resistance", label: "Resistance to a damage type", iwr: true,
+    valueIsType: true, type: "set", keys: ["system.traits.dr.value"] },
+  { group: "Defence", id: "immunity", label: "Immunity to a damage type", iwr: true,
+    valueIsType: true, type: "set", keys: ["system.traits.di.value"] },
+  { group: "Defence", id: "vulnerability", label: "Vulnerability to a damage type", iwr: true,
+    valueIsType: true, type: "set", keys: ["system.traits.dv.value"] },
+
   { group: "Checks", id: "check.all", label: "All ability checks", placeholder: "+1",
     keys: ["system.bonuses.abilities.check"] },
   { group: "Checks", id: "skill.all", label: "All skill checks", placeholder: "+1",
@@ -96,9 +106,10 @@ const PRESETS_DND5E = [
 /**
  * PF2e presets. Verified against pf2e-8.3.0.
  *
- * PF2e is a much better fit for this module than dnd5e. Bonuses are structured rule elements
- * rather than formula strings appended to a field, so the whole concatenation problem above
- * simply does not exist. Targets are semantic selectors ("attack", "ac", "fortitude") taken from
+ * The two catalogues are peers and are kept at parity; what follows is a note on how PF2e differs,
+ * not on which system matters more. Bonuses here are structured rule elements rather than formula
+ * strings appended to a field, so the whole concatenation problem above simply does not exist.
+ * Targets are semantic selectors ("attack", "ac", "fortitude") taken from
  * getStrikeAttackDomains/getAttackDamageDomains and the statistic domains, not data paths that
  * can silently not exist. And PF2e enforces its own stacking rules — only the highest bonus of
  * each type counts — so a +1 item bonus from an upgrade correctly refuses to stack with a
@@ -115,6 +126,18 @@ const PRESETS_PF2E = [
   { group: "Defence", id: "save.fortitude", label: "Fortitude saves", selectors: ["fortitude"], placeholder: "1" },
   { group: "Defence", id: "save.reflex", label: "Reflex saves", selectors: ["reflex"], placeholder: "1" },
   { group: "Defence", id: "save.will", label: "Will saves", selectors: ["will"], placeholder: "1" },
+
+  // Not modifiers at all: PF2e expresses these as their own rule elements, whose `type` is an
+  // *array* of resistance types even when it names one. Resistance and Weakness carry an amount;
+  // Immunity declares `readonly value = null` and takes none, so its row asks only for the type.
+  // Verified against src/module/rules/rule-element/iwr/{resistance,immunity}.ts and the
+  // RuleElements registry in src/module/rules/index.ts at pf2e-8.3.0.
+  { group: "Defence", id: "resistance", label: "Resistance to a damage type", iwr: true,
+    ruleKey: "Resistance", placeholder: "5" },
+  { group: "Defence", id: "weakness", label: "Weakness to a damage type", iwr: true,
+    ruleKey: "Weakness", placeholder: "5" },
+  { group: "Defence", id: "immunity", label: "Immunity to a damage type", iwr: true,
+    valueIsType: true, ruleKey: "Immunity" },
 
   { group: "Checks", id: "perception", label: "Perception", selectors: ["perception"], placeholder: "1" },
   { group: "Checks", id: "skill.all", label: "All skill checks", selectors: ["skill-check"], placeholder: "1" },
@@ -192,6 +215,25 @@ export function buildRules(rows = [], { label = "Upgrade" } = {}) {
       continue;
     }
 
+    // Resistance and Weakness are their own rule elements rather than modifiers: no selector, no
+    // bonus type, and `type` is an array even when it names exactly one thing. Checked before the
+    // selector guard below, which they would otherwise fall foul of by having none.
+    if (preset.iwr) {
+      // Immunity has no amount, so the row's one field holds the type itself.
+      if (preset.valueIsType) {
+        rules.push({ key: preset.ruleKey, type: [raw] });
+        continue;
+      }
+      const kind = String(row.damageType ?? "").trim();
+      const amount = Number(splitDamageValue(raw).amount.replace(/^\+/, ""));
+      if (!kind || !Number.isFinite(amount)) {
+        console.warn(`${MODULE_ID} | ${preset.ruleKey} row needs a type and a number — row skipped.`);
+        continue;
+      }
+      rules.push({ key: preset.ruleKey, type: [kind], value: amount });
+      continue;
+    }
+
     const selectors = row.preset === "custom"
       ? String(row.key ?? "").trim().split(/[\s,]+/).filter(Boolean)
       : preset.selectors ?? [];
@@ -235,6 +277,40 @@ export function getDamageTypes() {
   return ["acid","bludgeoning","cold","fire","force","lightning","necrotic",
           "piercing","poison","psychic","radiant","slashing","thunder"]
     .map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }));
+}
+
+/**
+ * What a resistance, weakness, immunity or vulnerability can be *to*.
+ *
+ * Read from the live config first so a system update cannot leave this stale — PF2e's list is
+ * long and includes things that are not damage types at all (physical, precision, all-damage,
+ * every material). The frozen fallbacks are the common subset, each checked against
+ * `resistanceTypes` in src/scripts/config/iwr.ts (pf2e-8.3.0) and CONFIG.DND5E.damageTypes
+ * (release-5.3.3).
+ */
+export function getResistanceTypes() {
+  if (isPf2e()) {
+    const live = CONFIG?.PF2E?.resistanceTypes;
+    if (live && Object.keys(live).length) {
+      return Object.entries(live).map(([id, v]) => ({ id, label: labelOf(v, id) }));
+    }
+    return ["acid","air","all-damage","bleed","bludgeoning","cold","earth","electricity","energy",
+            "fire","force","light","magical","mental","metal","non-magical","physical","piercing",
+            "plant","poison","precision","slashing","sonic","spirit","vitality","void","water","wood"]
+      .map(id => ({ id, label: titleCase(id) }));
+  }
+  // dnd5e resists damage types and nothing else, so the damage list is the whole answer.
+  return getDamageTypes();
+}
+
+/** PF2e config values are localisation keys; dnd5e's are objects carrying a label. */
+function labelOf(value, id) {
+  if (typeof value === "string") return titleCase(id);
+  return value?.label ?? titleCase(id);
+}
+
+function titleCase(id) {
+  return String(id).replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /** Split "1d8[cold]" into its amount and type; tolerates a plain "1d8". */
@@ -308,7 +384,11 @@ export function buildChanges(rows = []) {
     }
     const mode = preset.mode ?? MODES.ADD;
     let value;
-    if (preset.damage) {
+    if (preset.valueIsType) {
+      // `system.traits.dr.value` is a SetField, and ADD on a set adds the member. The value is
+      // the damage type verbatim — signing it would write "+fire" into the set.
+      value = raw;
+    } else if (preset.damage) {
       // The amount and the type are edited separately; older rows kept "1d8[cold]" in one field.
       const parsed = splitDamageValue(raw);
       const type = (row.damageType ?? parsed.damageType ?? "").trim();
@@ -342,6 +422,14 @@ export function describeRows(rows = []) {
 
     const preset = getPreset(row.preset);
     if (!preset) continue;
+
+    // Resistance and its relatives read as a statement, not as a bonus to something.
+    if (preset.iwr) {
+      const kind = preset.valueIsType ? raw : (row.damageType || "");
+      const noun = preset.label.replace(/ to a damage type$/, "");
+      out.push(preset.valueIsType ? `${noun} to ${kind}` : `${noun} ${raw} to ${kind}`);
+      continue;
+    }
 
     // PF2e names the bonus type, because the type is what decides whether it stacks.
     if (isPf2e()) {
@@ -390,6 +478,12 @@ export function describeBuild(rows = []) {
     if (!raw) continue;
     const preset = getPreset(row.preset);
     const label = row.preset === "custom" ? (row.key || "custom") : (preset?.label ?? row.preset);
+    if (preset?.iwr) {
+      const kind = preset.valueIsType ? raw : (row.damageType || "");
+      const noun = preset.label.replace(/ to a damage type$/, "").toLowerCase();
+      parts.push(preset.valueIsType ? `${noun} to ${kind}` : `${noun} ${raw} to ${kind}`);
+      continue;
+    }
     const parsed = splitDamageValue(raw);
     const type = preset?.damage ? ((row.damageType ?? parsed.damageType ?? "").trim()) : "";
     parts.push(`${parsed.amount || raw}${type ? `[${type}]` : ""} ${label.toLowerCase()}`);

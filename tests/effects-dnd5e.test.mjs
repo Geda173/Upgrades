@@ -17,8 +17,27 @@ t('spell attack hits msak + rsak only', spell.length === 2);
 t('spell attack does NOT write the nonexistent bonuses.spell.attack',
   !spell.some(c => c.key === 'system.bonuses.spell.attack'));
 
+/* --- resistance, immunity, vulnerability ---
+   `system.traits.dr` is a DamageTraitField whose `value` is a SetField of damage types
+   (release-5.3.3 module/data/actor/templates/traits.mjs), so the change adds the *type* and
+   there is no amount. Signing it would put "+fire" into the set. */
+const res = buildChanges([{ preset: "resistance", value: "fire" }]);
+t('resistance writes the trait set path', res[0].key === 'system.traits.dr.value');
+t('resistance adds to the set', res[0].mode === 2);
+t('resistance value is the bare damage type', res[0].value === 'fire');
+t('resistance value is NOT signed like a formula', res[0].value !== '+fire');
+t('immunity writes the di path',
+  buildChanges([{ preset: "immunity", value: "poison" }])[0].key === 'system.traits.di.value');
+t('vulnerability writes the dv path',
+  buildChanges([{ preset: "vulnerability", value: "cold" }])[0].key === 'system.traits.dv.value');
+t('a resistance with no type chosen is skipped',
+  buildChanges([{ preset: "resistance", value: "" }]).length === 0);
+t('describes a resistance as a statement, not a bonus',
+  describeBuild([{ preset: "resistance", value: "fire" }]) === 'resistance to fire');
+
 /* --- verified against dnd5e 5.3.3 release source --- */
 const SCHEMA_5_3_3 = new Set([
+  'system.traits.dr.value','system.traits.di.value','system.traits.dv.value',
   'system.bonuses.mwak.attack','system.bonuses.mwak.damage',
   'system.bonuses.rwak.attack','system.bonuses.rwak.damage',
   'system.bonuses.msak.attack','system.bonuses.msak.damage',

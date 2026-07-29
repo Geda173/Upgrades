@@ -206,15 +206,26 @@
           {{/unless}}
           {{/if}}
 
+          {{#if valueIsType}}
+          {{! the type is the whole payload — an immunity, or any dnd5e trait set }}
+          <select name="rowValue" class="upg-resist-type">
+            <option value="">— choose a type —</option>
+            {{#each kinds}}
+            <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+          {{else}}
           <input type="text" name="rowValue" value="{{value}}" placeholder="{{placeholder}}" class="upg-value">
+          {{/if}}
 
-          {{#if isPf2e}}
+          {{#if isPf2e}}{{#unless isIwr}}
+          {{! a resistance is not a modifier, so it has no bonus type and no stacking rule }}
           <select name="rowBonusType" class="upg-bonus-type" title="PF2e counts only the highest bonus of each type">
             {{#each bonusTypes}}
             <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
           </select>
-          {{/if}}
+          {{/unless}}{{/if}}
 
           {{#if isDamage}}
           <select name="rowDamageType" class="upg-damage-type">
@@ -224,6 +235,15 @@
             {{/each}}
           </select>
           {{/if}}
+
+          {{#if isIwr}}{{#unless valueIsType}}
+          <select name="rowDamageType" class="upg-resist-type">
+            <option value="">— choose a type —</option>
+            {{#each kinds}}
+            <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+          {{/unless}}{{/if}}
           <button type="button" data-action="removeRow" data-index="{{index}}" title="Remove"><i class="fa-solid fa-xmark"></i></button>
         </div>
         {{else}}

@@ -9,7 +9,7 @@ import { TARGET, eligibleExclusions, eligiblePrerequisites, exclusiveSiblings, g
 import { getCosts, getCurrencies } from "../economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary, isImagePath } from "../settings.js";
 import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
-         getDamageTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
+         getDamageTypes, getResistanceTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
 import { UpgradesWindow, wireDropZone } from "./ui.js";
 
@@ -225,11 +225,22 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     // in one field — split it so an upgrade authored before this still opens correctly.
     const parsed = splitDamageValue(row.value);
     const damageType = row.damageType ?? parsed.damageType ?? "";
+    // A resistance row asks for a *kind*, not a bonus: sometimes with an amount (PF2e's
+    // Resistance and Weakness), sometimes as the whole payload (an immunity, and every dnd5e
+    // trait — those are sets of damage types with no number to give).
+    const isIwr = !!preset?.iwr;
+    const valueIsType = !!preset?.valueIsType;
+    const kinds = isIwr ? getResistanceTypes() : getDamageTypes();
+
     return {
       index,
       preset: row.preset,
       value: preset?.damage ? parsed.amount : (row.value ?? ""),
       isDamage: !!preset?.damage,
+      isIwr,
+      valueIsType,
+      // When the type *is* the value it rides in rowValue, so the row keeps one field either way.
+      kinds: kinds.map(t => ({ ...t, isSelected: t.id === (valueIsType ? (row.value ?? "") : damageType) })),
       damageTypes: getDamageTypes().map(t => ({ ...t, isSelected: t.id === damageType })),
       key: row.key ?? "",
       mode: Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD),
