@@ -125,6 +125,33 @@ t('exclusivity needs no setup step of its own',
 t('the picker offers the upgrades that already exist',
   /name="excludes"/.test(read('templates/upgrade-editor.hbs'))
   && /eligibleExclusions\(live, all\)/.test(read('scripts/apps/upgrade-editor.js')));
+
+/* ---------- the pickers survive a large catalogue ---------- */
+// Both "comes after" and "cannot be taken with" list every other upgrade, so a world with a few
+// dozen of them turns each into a wall of checkboxes taller than the form.
+t('a picker list is capped and scrolls inside itself',
+  /\.upg-picker-list \{[^}]*max-height: \d+px/.test(css)
+  && /\.upg-picker-list \{[^}]*overflow-y: auto/.test(css));
+t('a filtered-out row is actually hidden', /\.filtered-out \{ display: none/.test(css));
+// Typing must narrow the list without rebuilding the form — a re-render per keystroke would
+// fight the caret — but the text still has to survive the re-render that ticking a box triggers.
+t('filtering happens in the DOM, not by re-rendering',
+  /input\.addEventListener\("input", apply\)/.test(read('scripts/apps/upgrade-editor.js')));
+t('the filter text is part of the draft, so a tick does not clear it',
+  /this\.draft\.requiresFilter = val\("requiresFilter"\)/.test(read('scripts/apps/upgrade-editor.js'))
+  && /this\.draft\.excludesFilter = val\("excludesFilter"\)/.test(read('scripts/apps/upgrade-editor.js')));
+t('both pickers are the same widget rather than two that can drift',
+  (read('templates/upgrade-editor.hbs').match(/class="upg-picker upg-prereqs" data-picker="\w+"/g) || []).length === 2);
+// Ticking re-renders the form, and the list scrolls inside itself — outside what the shared
+// mixin restores — so without this you are thrown to the top of the list after every tick.
+t('a picker keeps its scroll position across the re-render a tick causes',
+  /list\.scrollTop = this\.#pickerScroll\[key\]/.test(read('scripts/apps/upgrade-editor.js')));
+// Ticked rows float to the top so the current state reads without scrolling — but on what was
+// ticked when the window opened, not the live set, which would pull each row out from under the
+// cursor as it is clicked.
+t('ticked rows float to the top, in an order fixed when the window opens',
+  /Number\(b\.wasSelected\) - Number\(a\.wasSelected\)/.test(read('scripts/apps/upgrade-editor.js'))
+  && /#pinned = \{\s*requires: new Set/.test(read('scripts/apps/upgrade-editor.js')));
 // Ticking one upgrade can pull in whatever it was already exclusive with, so the note has to be
 // built from the closed set — reading back only the ticked boxes would understate it.
 t('the editor names the whole set, not just what was ticked',

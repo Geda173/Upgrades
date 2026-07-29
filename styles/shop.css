@@ -718,6 +718,20 @@
 }
 .upg-prereqs { display: flex; flex-direction: column; gap: 4px; }
 .upg-prereqs label.checkbox { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+/* A catalogue of any size turns either picker into a wall of checkboxes, so the list is capped
+   and scrolls inside itself rather than pushing the rest of the form down the page. */
+.upg-picker-list {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+}
+.upg-picker-filter {
+  width: 100%; margin-bottom: 6px; font-family: inherit; font-size: 12px;
+  background: var(--upg-fill-soft); color: var(--upg-ink);
+  border: 1px solid var(--upg-line); border-radius: 5px; padding: 4px 8px;
+}
+.upg-picker-section { color: var(--upg-ink-dim); font-size: 11px; }
+.upg-picker-count { color: var(--upg-accent); font-size: 11px; font-variant: normal; letter-spacing: 0; }
+.filtered-out { display: none; }
 .upg-legend dl { margin: 6px 0 8px; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
 .upg-legend dt { color: var(--upg-accent); white-space: nowrap; }
 .upg-legend dd { margin: 0; color: var(--upg-ink-dim); }

@@ -126,11 +126,18 @@ const upgradeEditor = Handlebars.compile(tpl('upgrade-editor.hbs'))({
   bonusTypeLegend: [],
   choiceEnabled: true,
   hasPrerequisiteCandidates: true,
-  prerequisites: [{ id: 'p1', name: 'Activate Magelight', isSelected: true },
-                  { id: 'p2', name: 'Talisman Permanency', isSelected: false }],
+  prerequisites: [{ id: 'p1', name: 'Activate Magelight', section: 'Lighthouse',
+                    search: 'activate magelight lighthouse', isSelected: true },
+                  { id: 'p2', name: 'Talisman Permanency', section: '',
+                    search: 'talisman permanency', isSelected: false }],
+  requiresCount: 1, requiresFilter: '', showRequiresFilter: false,
   hasExclusionCandidates: true,
-  exclusions: [{ id: 'x1', name: 'Oath of Salt', isSelected: true },
-               { id: 'x2', name: 'Fair Winds', isSelected: false }],
+  // Long enough to earn a filter box, which is what a real catalogue looks like.
+  exclusions: [{ id: 'x1', name: 'Oath of Salt', section: 'Oaths',
+                 search: 'oath of salt oaths', isSelected: true },
+               { id: 'x2', name: 'Fair Winds', section: '',
+                 search: 'fair winds', isSelected: false }],
+  excludesCount: 1, excludesFilter: 'oath', showExcludesFilter: true,
   exclusiveNote: 'Only one of this and Oath of Salt, Oath of Bone can ever be taken. '
     + 'Oath of Bone joins the set because it is already exclusive with something ticked here.',
   targetOptions: [{ value: 'party', label: 'The whole party', isSelected: false },
@@ -281,6 +288,21 @@ t('upgrade-editor: an unticked one is not',
 // The set is closed transitively, so the note has to name members nobody ticked here.
 t('upgrade-editor: names the whole resulting set, not just the ticks',
   upgradeEditor.includes('Oath of Bone joins the set'));
+
+/* the pickers have to stay usable once a world has a real catalogue in it */
+t('upgrade-editor: a long picker gets a filter box',
+  /name="excludesFilter"[^>]*value="oath"/.test(upgradeEditor));
+t('upgrade-editor: a short one does not', !upgradeEditor.includes('name="requiresFilter"'));
+t('upgrade-editor: each row carries what the filter matches on',
+  /data-search="oath of salt oaths"/.test(upgradeEditor));
+t('upgrade-editor: a row names its section, so near-identical names are tellable apart',
+  /upg-picker-section">Lighthouse</.test(upgradeEditor));
+t('upgrade-editor: a row with no section renders no empty label',
+  !/upg-picker-section"><\/span>/.test(upgradeEditor));
+t('upgrade-editor: how many are ticked is visible without counting boxes',
+  upgradeEditor.includes('1 ticked'));
+t('upgrade-editor: the no-matches line starts hidden and is not left showing',
+  /upg-picker-empty[^"]*filtered-out/.test(upgradeEditor));
 t('upgrade-editor: offers the buyer-choice prompt', upgradeEditor.includes('name="choiceEnabled"'));
 t('upgrade-editor: the prompt question is editable when enabled',
   upgradeEditor.includes('value="Which spell?"'));

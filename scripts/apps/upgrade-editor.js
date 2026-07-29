@@ -15,6 +15,9 @@ import { UpgradesWindow, wireDropZone } from "./ui.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+/** How many candidates a picker needs before a filter box earns its place. */
+const FILTER_FROM = 8;
+
 const MODE_CHOICES = [
   { value: CONST.ACTIVE_EFFECT_MODES.ADD, label: "Add" },
   { value: CONST.ACTIVE_EFFECT_MODES.OVERRIDE, label: "Override" },
@@ -49,12 +52,26 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     main: { template: `modules/${MODULE_ID}/templates/upgrade-editor.hbs` }
   };
 
+  /**
+   * Where each picker was scrolled to, and what was ticked when the window opened.
+   *
+   * Both exist because ticking a box re-renders the form. Without the first you are thrown back
+   * to the top of a long list after every tick; without the second the row you just ticked jumps
+   * out from under the cursor, which makes ticking several in a row a game of chase.
+   */
+  #pickerScroll = {};
+  #pinned = { requires: new Set(), excludes: new Set() };
+
   /** @param {object|null} upgrade  @param {(data:object)=>Promise<void>} onSave */
   constructor(upgrade, onSave, options = {}) {
     super(options);
     this.isNew = !upgrade;
     this.onSave = onSave;
     this.draft = UpgradeEditor.#toDraft(upgrade);
+    this.#pinned = {
+      requires: new Set(this.draft.requires),
+      excludes: new Set(this.draft.excludes)
+    };
   }
 
   get title() {
@@ -78,6 +95,10 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       showInEffectsBar: !!u.showInEffectsBar,
       requires: [...(u.requires ?? [])],
       excludes: [...(u.excludes ?? [])],
+      // Filtering happens in the DOM, but the text has to survive the re-render that ticking a
+      // box triggers — so it lives in the draft like every other field.
+      requiresFilter: "",
+      excludesFilter: "",
       choiceEnabled: !!u.choice?.enabled,
       choiceLabel: u.choice?.label ?? "",
       choiceHint: u.choice?.hint ?? "",
@@ -104,6 +125,11 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     const live = { id: draft.id, requires: draft.requires, excludes: draft.excludes };
     const candidates = eligiblePrerequisites(live, all);
     const rivals = exclusiveSiblings(live, all);
+    const sections = getCategories();
+    const prereqEntries = UpgradeEditor.#pickerEntries(
+      candidates, draft.requires, this.#pinned.requires, sections);
+    const exclusionEntries = UpgradeEditor.#pickerEntries(
+      eligibleExclusions(live, all), draft.excludes, this.#pinned.excludes, sections);
 
     return {
       upgrade: draft,
@@ -117,12 +143,16 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       categories: getCategories().map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
       // Anything that already depends on this upgrade is withheld — picking it would close a loop
       // and leave every upgrade in that loop permanently unbuyable.
-      prerequisites: candidates
-        .map(u => ({ id: u.id, name: u.name, isSelected: draft.requires.includes(u.id) })),
-      hasPrerequisiteCandidates: candidates.length > 0,
-      exclusions: eligibleExclusions(live, all)
-        .map(u => ({ id: u.id, name: u.name, isSelected: draft.excludes.includes(u.id) })),
-      hasExclusionCandidates: eligibleExclusions(live, all).length > 0,
+      prerequisites: prereqEntries,
+      hasPrerequisiteCandidates: prereqEntries.length > 0,
+      requiresFilter: draft.requiresFilter,
+      showRequiresFilter: prereqEntries.length > FILTER_FROM,
+      requiresCount: draft.requires.length,
+      exclusions: exclusionEntries,
+      hasExclusionCandidates: exclusionEntries.length > 0,
+      excludesFilter: draft.excludesFilter,
+      showExcludesFilter: exclusionEntries.length > FILTER_FROM,
+      excludesCount: draft.excludes.length,
       exclusiveNote: this.#exclusiveNote(rivals),
       hasCategories: getCategories().length > 0,
       systemId: game.system.id,
@@ -160,6 +190,33 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       showsGrantNote: draft.effectMode !== EFFECT_MODE.NONE,
       grantNote: this.#grantNote()
     };
+  }
+
+  /**
+   * One row per upgrade for the two pickers — "comes after" and "cannot be taken with".
+   *
+   * Rows ticked *when the window opened* float to the top. Past a couple of dozen upgrades a flat
+   * alphabetical list makes the current state the one thing you cannot see without scrolling, and
+   * it is the first thing the GM looks for. Ordering on the pinned set rather than the live one is
+   * deliberate: sorting on every tick would pull each row you click out from under the cursor.
+   *
+   * The section name rides along so two similarly-named upgrades are tellable apart, and `search`
+   * is what the filter box matches against.
+   */
+  static #pickerEntries(upgrades, selected, pinned, sections) {
+    const sectionNames = new Map(sections.map(c => [c.id, c.name]));
+    return upgrades
+      .map(u => {
+        const name = u.name || "Unnamed upgrade";
+        const section = sectionNames.get(u.categoryId) ?? "";
+        return {
+          id: u.id, name, section,
+          isSelected: selected.includes(u.id),
+          wasSelected: pinned.has(u.id),
+          search: `${name} ${section}`.toLowerCase()
+        };
+      })
+      .sort((a, b) => (Number(b.wasSelected) - Number(a.wasSelected)) || a.name.localeCompare(b.name));
   }
 
   #rowContext(row, index, presetGroups) {
@@ -265,6 +322,8 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     this.draft.showInEffectsBar = !!get("showInEffectsBar")?.checked;
     this.draft.requires = [...form.querySelectorAll('[name="requires"]:checked')].map(el => el.value);
     this.draft.excludes = [...form.querySelectorAll('[name="excludes"]:checked')].map(el => el.value);
+    this.draft.requiresFilter = val("requiresFilter");
+    this.draft.excludesFilter = val("excludesFilter");
     this.draft.choiceEnabled = !!get("choiceEnabled")?.checked;
     this.draft.choiceLabel = val("choiceLabel");
     this.draft.choiceHint = val("choiceHint");
@@ -297,6 +356,36 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
         this.#syncDraft();
         this.render();
       });
+    }
+
+    // Narrowing a long picker happens here in the DOM rather than by re-rendering: typing must
+    // not rebuild the form on every keystroke. The text itself is kept in the draft, so the
+    // re-render that ticking a box *does* trigger comes back with the filter still applied.
+    for (const box of this.element.querySelectorAll(".upg-picker")) {
+      // The list scrolls inside itself, so the mixin's form-body restore does not reach it.
+      const key = box.dataset.picker;
+      const list = box.querySelector(".upg-picker-list");
+      if (list && key) {
+        list.scrollTop = this.#pickerScroll[key] ?? 0;
+        list.addEventListener("scroll", () => { this.#pickerScroll[key] = list.scrollTop; });
+      }
+
+      const input = box.querySelector(".upg-picker-filter");
+      if (!input) continue;
+      const rows = [...box.querySelectorAll("label.checkbox")];
+      const empty = box.querySelector(".upg-picker-empty");
+      const apply = () => {
+        const needle = input.value.trim().toLowerCase();
+        let shown = 0;
+        for (const row of rows) {
+          const hit = !needle || (row.dataset.search ?? "").includes(needle);
+          row.classList.toggle("filtered-out", !hit);
+          if (hit) shown++;
+        }
+        empty?.classList.toggle("filtered-out", shown > 0);
+      };
+      input.addEventListener("input", apply);
+      apply();
     }
 
     // A dice value becomes a DamageDice rule, which has no bonus type, so the selector is

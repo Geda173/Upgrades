@@ -26,7 +26,9 @@ Supports **PF2e** and **dnd5e** for mechanical effects. The cosmetic layer works
 - **Mutually exclusive upgrades** — on any upgrade, tick the others it cannot be taken alongside; the
   party gets one of them. Nothing to set up first, and it only needs ticking on one side. Links close
   transitively, so A–B plus B–C is a single set of three, and the editor names the whole set as you
-  build it. Every card in an open set says so *before* anyone commits; the ones passed over say which
+  build it. Both this and the prerequisite picker cap and scroll rather than growing with the
+  catalogue, gain a filter box once there is enough to warrant one, and list what is already ticked
+  first. Every card in an open set says so *before* anyone commits; the ones passed over say which
   rival closed them. Refunding the choice reopens the rest, because exclusion is read from the purchase
   record rather than written down. Buying one is checked on the GM's client, so two players cannot take
   opposite sides of the same choice at once.

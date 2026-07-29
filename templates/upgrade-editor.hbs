@@ -62,35 +62,51 @@
 
   {{#if hasPrerequisiteCandidates}}
   <section class="upg-fieldset">
-    <h3>Comes after</h3>
+    <h3>Comes after{{#if requiresCount}} <span class="upg-picker-count">{{requiresCount}} ticked</span>{{/if}}</h3>
     <p class="upg-hint">
       Tick anything that must be owned before this can be bought. It stays visible but locked
       until then, and the two are shown as linked.
     </p>
-    <div class="upg-prereqs">
-      {{#each prerequisites}}
-      <label class="checkbox">
-        <input type="checkbox" name="requires" value="{{id}}" {{#if isSelected}}checked{{/if}}> {{name}}
-      </label>
-      {{/each}}
+    <div class="upg-picker upg-prereqs" data-picker="requires">
+      {{#if showRequiresFilter}}
+      <input type="search" class="upg-picker-filter" name="requiresFilter" value="{{requiresFilter}}"
+             placeholder="Filter by name or section…" autocomplete="off">
+      {{/if}}
+      <div class="upg-picker-list">
+        {{#each prerequisites}}
+        <label class="checkbox" data-search="{{search}}">
+          <input type="checkbox" name="requires" value="{{id}}" {{#if isSelected}}checked{{/if}}>
+          {{name}}{{#if section}} <span class="upg-picker-section">{{section}}</span>{{/if}}
+        </label>
+        {{/each}}
+        <p class="upg-picker-empty upg-hint filtered-out">Nothing matches that.</p>
+      </div>
     </div>
   </section>
   {{/if}}
 
   {{#if hasExclusionCandidates}}
   <section class="upg-fieldset">
-    <h3>Cannot be taken with</h3>
+    <h3>Cannot be taken with{{#if excludesCount}} <span class="upg-picker-count">{{excludesCount}} ticked</span>{{/if}}</h3>
     <p class="upg-hint">
       Tick anything the party must choose between. Buying either one rules out the other —
       refunding it opens the choice again. Ticking here says the same thing as ticking this
       upgrade over there, so it only needs doing once.
     </p>
-    <div class="upg-prereqs">
-      {{#each exclusions}}
-      <label class="checkbox">
-        <input type="checkbox" name="excludes" value="{{id}}" data-action="rerender" {{#if isSelected}}checked{{/if}}> {{name}}
-      </label>
-      {{/each}}
+    <div class="upg-picker upg-prereqs" data-picker="excludes">
+      {{#if showExcludesFilter}}
+      <input type="search" class="upg-picker-filter" name="excludesFilter" value="{{excludesFilter}}"
+             placeholder="Filter by name or section…" autocomplete="off">
+      {{/if}}
+      <div class="upg-picker-list">
+        {{#each exclusions}}
+        <label class="checkbox" data-search="{{search}}">
+          <input type="checkbox" name="excludes" value="{{id}}" data-action="rerender" {{#if isSelected}}checked{{/if}}>
+          {{name}}{{#if section}} <span class="upg-picker-section">{{section}}</span>{{/if}}
+        </label>
+        {{/each}}
+        <p class="upg-picker-empty upg-hint filtered-out">Nothing matches that.</p>
+      </div>
     </div>
     {{#if exclusiveNote}}<p class="upg-hint">{{exclusiveNote}}</p>{{/if}}
   </section>
