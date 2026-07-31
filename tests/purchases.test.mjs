@@ -303,6 +303,53 @@ t('and exactly the right one went', D.getHistory()[0].reason === 'ancient');
 t('the write stamps a real id, so position can never be mistaken for one',
   !String(D.getHistory()[0].id).startsWith('pos-'));
 
+/* ---------- spend lines travel with their purchase ---------- */
+// A purchase's own deductions are typed "spend": sweeping the GM's manual adjustments must
+// leave them standing next to their purchase, and sweeping purchases must take them along.
+store.clear();
+store.set('currencies', [{ id: 'sprigs', name: 'Sprigs', icon: 'i', sort: 0 }]);
+store.set('balances', { sprigs: 10 });
+await D.adjustBalance('sprigs', 2, 'a trial', { type: 'adjust' });
+await D.adjustBalance('sprigs', -3, 'Acquired: Nightbloom', { type: 'spend' });
+await D.addHistory({ type: 'purchase', name: 'Nightbloom', price: '3 Sprigs', by: 'Pat' });
+t('a purchase deduction is recorded as a spend line',
+  D.getHistory().some(e => e.type === 'spend' && e.delta === -3));
+t('adjustBalance still defaults to a plain adjustment',
+  D.getHistory().some(e => e.type === 'adjust' && e.delta === 2));
+await D.clearHistory('adjust');
+t('an adjustment sweep leaves spend lines with their purchase',
+  D.getHistory().map(e => e.type).sort().join() === 'purchase,spend');
+await D.clearHistory('purchase');
+t('a purchase sweep takes the spend lines too', D.getHistory().length === 0);
+
+/* ---------- deleting things leaves no debris ---------- */
+// Removing a resource discards its balance key along with it.
+store.clear();
+store.set('currencies', [
+  { id: 'sprigs', name: 'Sprigs', icon: 'i', sort: 0 },
+  { id: 'pearls', name: 'Pearls', icon: 'i', sort: 1 }
+]);
+store.set('balances', { sprigs: 5, pearls: 2 });
+store.set('upgrades', []);
+await D.deleteCurrency('pearls');
+t('deleting a resource removes its currency', D.getCurrencies().length === 1);
+t('and discards its balance key rather than stranding it',
+  !('pearls' in store.get('balances')));
+t('the surviving balance is untouched', D.getBalance('sprigs') === 5);
+
+// Deleting an upgrade strips it out of the relations that named it.
+reset([
+  { id: 'A', name: 'A', requires: [], excludes: ['B'], purchases: [] },
+  { id: 'B', name: 'B', requires: ['A'], excludes: [], purchases: [] },
+  { id: 'C', name: 'C', requires: ['A'], excludes: ['A'], purchases: [] }
+]);
+await D.deleteUpgrade('A');
+t('deleting an upgrade removes it', D.getUpgrades().length === 2);
+t('and strips it from every requires list',
+  D.getUpgrades().every(u => !(u.requires ?? []).includes('A')));
+t('and from every excludes list',
+  D.getUpgrades().every(u => !(u.excludes ?? []).includes('A')));
+
 /* ---------- sections ---------- */
 store.set('categories', [
   { id: 'c2', name: 'Runes', sort: 1 },

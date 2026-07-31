@@ -140,7 +140,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
         isImage: isImagePath(c.icon ?? ""),
         amount: draft.costs[c.id] ?? 0
       })),
-      categories: getCategories().map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
+      categories: sections.map(c => ({ ...c, isSelected: c.id === draft.categoryId })),
       // Anything that already depends on this upgrade is withheld — picking it would close a loop
       // and leave every upgrade in that loop permanently unbuyable.
       prerequisites: prereqEntries,
@@ -154,7 +154,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       showExcludesFilter: exclusionEntries.length > FILTER_FROM,
       excludesCount: draft.excludes.length,
       exclusiveNote: this.#exclusiveNote(rivals),
-      hasCategories: getCategories().length > 0,
+      hasCategories: sections.length > 0,
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
       isPf2e: isPf2e(),

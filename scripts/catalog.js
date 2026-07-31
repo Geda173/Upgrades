@@ -113,7 +113,14 @@ export async function upsertUpgrade(data) {
 }
 
 export async function deleteUpgrade(id) {
-  return setUpgrades(getUpgrades().filter(u => u.id !== id));
+  const remaining = getUpgrades().filter(u => u.id !== id);
+  // Every reader tolerates a dangling id, but there is no reason to keep one: strip the deleted
+  // upgrade out of the relations that named it.
+  for (const u of remaining) {
+    u.requires = (u.requires ?? []).filter(r => r !== id);
+    u.excludes = (u.excludes ?? []).filter(r => r !== id);
+  }
+  return setUpgrades(remaining);
 }
 
 /** Every prerequisite of this upgrade that has not been bought yet. */

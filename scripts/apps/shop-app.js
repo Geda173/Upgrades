@@ -31,6 +31,10 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
     }
   };
 
+  // Selecting a card re-renders the window, and a socket refresh can arrive at any moment —
+  // without this, either one throws the reader back to the top of the board.
+  static SCROLL_SELECTOR = ".window-content";
+
   static PARTS = {
     main: { template: `modules/${MODULE_ID}/templates/shop.hbs` }
   };
@@ -52,10 +56,8 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
     const isGM = game.user.isGM;
     const balance = getBalance();
     const all = getUpgrades();
-    const visible = sortByPath(
-      all.filter(u => isGM || !u.hidden || u.teaser !== false), // hidden upgrades appear as "???" teasers
-      all
-    );
+    // Everyone sees every upgrade: hidden ones appear to players as "???" teasers below.
+    const visible = sortByPath(all, all);
 
     // Players should be able to read what an upgrade does *before* paying for it.
     // Teasers stay blank — the whole point of a "???" card is that it gives nothing away.

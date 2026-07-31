@@ -107,10 +107,8 @@ export function registerSettings() {
     hint: "The Group (dnd5e) or Party (PF2e) actor whose members count as “the party” for party-wide upgrades. "
         + "Strongly recommended: without it the module falls back to every player-owned character, which in a world "
         + "full of loot, summon and wildshape actors is rarely what you want.",
-    // Choices start empty and are filled in on "ready": game.actors does not exist yet at "init",
-    // and Foundry reads this object as-is rather than calling it, so a lazy function would render blank.
+    // No choices here: the dropdown lives in the setup window, which builds its own.
     scope: "world", config: false, type: String, default: "",
-    choices: {},
     onChange: () => refreshWindows()
   });
 
@@ -185,15 +183,6 @@ export function registerSettings() {
     default: "Well met. Shall we see what can be made of this?",
     onChange: () => refreshWindows()
   });
-}
-
-/** Group/Party actors offered by the "Party actor" setting. */
-function partyActorChoices() {
-  const choices = { "": "— Fall back to all player-owned characters —" };
-  for (const actor of game.actors ?? []) {
-    if (actor.type === "group" || actor.type === "party") choices[actor.id] = actor.name;
-  }
-  return choices;
 }
 
 /**

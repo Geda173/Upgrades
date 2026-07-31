@@ -60,8 +60,10 @@ for (const app of ['shop-app', 'editor-app', 'settings-app', 'upgrade-editor']) 
   t(`${app} is built on the shared window mixin`,
     /extends UpgradesWindow\(/.test(read(`scripts/apps/${app}.js`)));
 }
-// A window that re-renders itself must name its scrolling element, or the mixin has nothing to restore.
-for (const app of ['settings-app', 'upgrade-editor']) {
+// A window that re-renders itself must name its scrolling element, or the mixin has nothing to
+// restore. That is all four: the shop re-renders on card select and on every socket refresh, and
+// the GM console after every mutation — both used to snap back to the top.
+for (const app of ['shop-app', 'editor-app', 'settings-app', 'upgrade-editor']) {
   t(`${app} declares which element scrolls`,
     /static SCROLL_SELECTOR = "\.[\w-]+"/.test(read(`scripts/apps/${app}.js`)));
 }
@@ -99,6 +101,22 @@ t('preview can show a theme the surrounding window is not using',
 /* ---------- upgrade paths ---------- */
 t('a locked upgrade is refused at the socket entry point, not just in the UI',
   /unmetRequirements\(upgrade\)/.test(read('scripts/purchase.js')));
+
+/* ---------- the checks cannot go stale inside a dialog ---------- */
+// The approval and buyer dialogs can sit open while other purchases commit; whatever was true
+// when they opened proves nothing about the moment the commit runs. v0.20.0's fix: the request
+// is validated once on arrival and again — against a re-read upgrade — right before committing.
+{
+  const purchaseJs = read('scripts/purchase.js');
+  t('the request is validated when it arrives',
+    /const refused = refusalReason\(upgrade\);/.test(purchaseJs));
+  t('and validated again immediately before the commit',
+    /const stale = refusalReason\(upgrade\);[\s\S]{0,80}commitPurchase/.test(purchaseJs));
+  t('the second pass re-reads the upgrade rather than trusting the stale one',
+    /upgrade = getUpgrade\(upgradeId\);\s*\n\s*const stale/.test(purchaseJs));
+  t('a request with no GM connected is refused up front, not silently dropped',
+    /anyGMOnline\(\)/.test(purchaseJs));
+}
 t('locked cards are visually distinct', /\.upg-card\.locked \{/.test(css));
 t('cards on a path carry a rail', /\.upg-card\.on-path \{[^}]*border-left/.test(css));
 
@@ -203,6 +221,12 @@ t('the buyer is asked on their own client, before the request is sent',
 t('cancelling the prompt spends nothing', /if \(!choice\) return;/.test(read('scripts/purchase.js')));
 t('the choice is remembered on the purchase so re-sync can rebuild it',
   /choice: purchase\.choice/.test(read('scripts/systems/adapter.js')));
+// The dnd5e quiet grant wraps the effect in a feat; the wrapper is what the sheet shows, so the
+// nomination has to reach it — carried only by the embedded effect it was invisible.
+t('the wrapped feat carries the choice in its name',
+  /name: `\$\{upgrade\.name \|\| payload\.data\.name\}\$\{suffix\}`/.test(read('scripts/systems/adapter.js')));
+t('and the chosen document is linked from the wrapper description',
+  /description: \{ value: `\$\{upgrade\.description \|\| upgrade\.flavor \|\| ""\}\$\{link\}` \}/.test(read('scripts/systems/adapter.js')));
 t('re-renders restore scroll position', /restoreViewState\(this, selector/.test(read('scripts/apps/ui.js')));
 // A bare focus() scrolls the element into view in every scrollable ancestor, overriding the
 // scrollTop restored moments earlier. Because the browser only ever scrolls *towards* the focused

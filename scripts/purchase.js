@@ -5,38 +5,46 @@
 import { TARGET, addPurchase, exclusiveClaim, getUpgrade, isAvailable, unmetRequirements } from "./catalog.js";
 import { addHistory, adjustBalance, canAfford, describeCosts, getBalance, getCosts } from "./economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary } from "./settings.js";
-import { emit, refreshOpenApps } from "./sockets.js";
+import { anyGMOnline, emit, refreshOpenApps } from "./sockets.js";
 import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
 
-/** Entry point for a player's purchase request (or a GM's direct purchase). */
-export async function handlePurchaseRequest({ upgradeId, userId, choice = null }) {
-  const upgrade = getUpgrade(upgradeId);
-  const user = game.users.get(userId);
-  const vocab = getVocabulary();
+/**
+ * Why this purchase cannot go ahead right now, or null when it can.
+ *
+ * Checked here as well as in the UI: the socket request is the real entry point. Two clients can
+ * request opposite sides of the same choice at once, so this is decided here — on the one client
+ * that commits — rather than trusted from whatever the shop last rendered.
+ */
+function refusalReason(upgrade) {
   if (!upgrade || upgrade.hidden || !isAvailable(upgrade)) {
-    return notifyUser(userId, "That upgrade is no longer available.");
+    return "That upgrade is no longer available.";
   }
-
-  // Checked here as well as in the UI: the socket request is the real entry point.
   const unmet = unmetRequirements(upgrade);
   if (unmet.length) {
-    return notifyUser(userId, `“${upgrade.name}” needs ${unmet.map(u => u.name).join(" and ")} first.`);
+    return `“${upgrade.name}” needs ${unmet.map(u => u.name).join(" and ")} first.`;
   }
-
-  // Two clients can request opposite sides of the same choice at once, so this is decided here —
-  // on the one client that commits — rather than trusted from whatever the shop last rendered.
   const claim = exclusiveClaim(upgrade);
   if (claim) {
-    return notifyUser(userId, `“${upgrade.name}” is ruled out — “${claim.name}” was chosen instead.`);
+    return `“${upgrade.name}” is ruled out — “${claim.name}” was chosen instead.`;
   }
-
   if (!canAfford(upgrade)) {
     const short = describeCosts(upgrade)
       .filter(c => getBalance(c.currencyId) < c.amount)
       .map(c => `${getBalance(c.currencyId)}/${c.amount} ${c.currency.name}`)
       .join(", ");
-    return notifyUser(userId, `Not enough for that (${short}).`);
+    return `Not enough for that (${short}).`;
   }
+  return null;
+}
+
+/** Entry point for a player's purchase request (or a GM's direct purchase). */
+export async function handlePurchaseRequest({ upgradeId, userId, choice = null }) {
+  let upgrade = getUpgrade(upgradeId);
+  const user = game.users.get(userId);
+  const vocab = getVocabulary();
+
+  const refused = refusalReason(upgrade);
+  if (refused) return notifyUser(userId, refused);
 
   const requireApproval = game.settings.get(MODULE_ID, SETTINGS.REQUIRE_APPROVAL);
   const isGMDirect = user?.isGM;
@@ -67,6 +75,14 @@ export async function handlePurchaseRequest({ upgradeId, userId, choice = null }
         : "You have no assigned character, so this cannot be granted. Ask your GM.");
     }
   }
+
+  // The dialogs above can sit open for minutes while other requests commit. Re-read and re-check
+  // immediately before committing: the first pass answered "may this be asked", this one answers
+  // "may this still happen" — otherwise two approved rivals both go through, and the second
+  // purchase of an emptied pot under-pays silently (the balance clamps at zero rather than erring).
+  upgrade = getUpgrade(upgradeId);
+  const stale = refusalReason(upgrade);
+  if (stale) return notifyUser(userId, stale);
 
   await commitPurchase(upgrade, user, buyerActor, choice);
 }
@@ -105,8 +121,10 @@ function priceLabel(upgrade) {
 }
 
 async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
+  // Typed "spend", not "adjust": these lines belong to their purchase, so sweeping the GM's
+  // manual adjustments out of the ledger leaves them standing next to it.
   for (const cost of getCosts(upgrade)) {
-    await adjustBalance(cost.currencyId, -cost.amount, `Acquired: ${upgrade.name}`);
+    await adjustBalance(cost.currencyId, -cost.amount, `Acquired: ${upgrade.name}`, { type: "spend" });
   }
 
   const purchase = await addPurchase(upgrade.id, {
@@ -156,6 +174,12 @@ async function notifyUser(userId, message) {
 
 /** Called from the shop UI on any client. Routes to the GM. */
 export async function requestPurchase(upgradeId) {
+  // Without a GM client there is nothing to receive the request — it would vanish into the
+  // socket while the player is told it was sent. Better to say so before asking anything.
+  if (!game.user.isGM && !anyGMOnline()) {
+    return ui.notifications.warn("Upgrades: no GM is connected right now — try again when one is.");
+  }
+
   const upgrade = getUpgrade(upgradeId);
 
   // Asked here, on the buyer's own client, so the answer can travel with the request instead of

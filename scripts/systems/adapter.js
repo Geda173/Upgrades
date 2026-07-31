@@ -173,12 +173,13 @@ export async function resolveEffectPayload(upgrade) {
  */
 async function createFromPayload(actor, payload, upgrade, purchaseId = null, choice = null) {
   const data = foundry.utils.deepClone(payload.data);
+  const suffix = choice?.name ? ` (${choice.name})` : "";
+  const link = choice?.name ? `<p>Chosen: @UUID[${choice.uuid}]{${choice.name}}</p>` : "";
 
   // A nominated document names the grant, so "Temporary Scroll" on the sheet reads
   // "Temporary Scroll (Fireball)" and links back to what was chosen.
   if (choice?.name) {
-    data.name = `${data.name} (${choice.name})`;
-    const link = `<p>Chosen: @UUID[${choice.uuid}]{${choice.name}}</p>`;
+    data.name = `${data.name}${suffix}`;
     const path = payload.documentName === "Item" ? "system.description.value" : "description";
     const existing = foundry.utils.getProperty(data, path) ?? "";
     foundry.utils.setProperty(data, path, `${existing}${link}`);
@@ -193,11 +194,13 @@ async function createFromPayload(actor, payload, upgrade, purchaseId = null, cho
     && game.system.id === "dnd5e";
 
   if (wrap) {
+    // The wrapper is what the sheet shows, so the choice suffix and link go on it too — carried
+    // only by the embedded effect they would be invisible without opening it.
     const item = {
-      name: upgrade.name || data.name,
+      name: `${upgrade.name || payload.data.name}${suffix}`,
       type: "feat",
       img: upgrade.img || data.img || "icons/svg/upgrade.svg",
-      system: { description: { value: upgrade.description || upgrade.flavor || "" } },
+      system: { description: { value: `${upgrade.description || upgrade.flavor || ""}${link}` } },
       effects: [{ ...data, transfer: true, disabled: false }],
       flags: { [MODULE_ID]: { upgradeId: upgrade.id, ...(purchaseId ? { purchaseId } : {}) } }
     };

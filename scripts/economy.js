@@ -72,6 +72,12 @@ export async function deleteCurrency(id) {
   const remaining = getCurrencies().filter(c => c.id !== id);
   if (!remaining.length) return;                       // never leave a world with none
   await setCurrencies(remaining);
+  // The discarded balance goes with it, or the setting accretes keys no currency can ever read.
+  const balances = getBalances();
+  if (id in balances) {
+    delete balances[id];
+    await game.settings.set(MODULE_ID, SETTINGS.BALANCES, balances);
+  }
   const upgrades = getUpgrades();
   let touched = false;
   for (const u of upgrades) {
@@ -125,7 +131,7 @@ export function getBalance(currencyId = null) {
   return getBalances()[id] ?? 0;
 }
 
-export async function adjustBalance(currencyId, delta, reason = "") {
+export async function adjustBalance(currencyId, delta, reason = "", { type = "adjust" } = {}) {
   // Called as adjustBalance(delta, reason) before multiple currencies existed.
   if (typeof currencyId === "number") {
     [currencyId, delta, reason] = [null, currencyId, delta ?? ""];
@@ -136,7 +142,9 @@ export async function adjustBalance(currencyId, delta, reason = "") {
   const after = Math.max(0, before + delta);
   balances[id] = after;
   await game.settings.set(MODULE_ID, SETTINGS.BALANCES, balances);
-  await addHistory({ type: "adjust", currencyId: id, delta, before, after, reason });
+  // `type` distinguishes a GM's manual adjustment from a movement that belongs to a purchase
+  // ("spend"), so sweeping one kind out of the ledger leaves the other intact.
+  await addHistory({ type, currencyId: id, delta, before, after, reason });
   return after;
 }
 
@@ -189,11 +197,14 @@ export async function removeHistory(id) {
 /**
  * Sweep the ledger. `kind` is "all", or an entry type ("adjust", "purchase") to keep the rest —
  * a GM tidying away a currency experiment wants the purchases that surround it left alone.
+ * A purchase's deduction lines are typed "spend" and travel with their purchase: sweeping
+ * adjustments leaves them, sweeping purchases takes them too.
  * Returns how many lines went, so the caller can say.
  */
 export async function clearHistory(kind = "all") {
   const entries = getHistory();
-  const kept = kind === "all" ? [] : entries.filter(e => e.type !== kind);
+  const swept = kind === "purchase" ? ["purchase", "spend"] : [kind];
+  const kept = kind === "all" ? [] : entries.filter(e => !swept.includes(e.type));
   await writeHistory(kept);
   return entries.length - kept.length;
 }

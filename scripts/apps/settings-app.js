@@ -445,6 +445,7 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
   static async #onEditCurrency(_event, target) {
     this.#syncAll();
     const current = getCurrencies().find(c => c.id === target.dataset.id);
+    if (!current) return;   // deleted on another client between render and click
     const result = await SettingsApp.#currencyDialog(current);
     if (!result?.name) return;
     await upsertCurrency({ id: current.id, ...result });

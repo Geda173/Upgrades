@@ -48,7 +48,10 @@ export function emit(msg) {
 /** True if this client is the active GM with the lowest user id (dedupe when several GMs are logged in). */
 export function isActiveGM() {
   if (!game.user.isGM) return false;
-  const activeGMs = game.users.filter(u => u.isGM && u.active).sort((a, b) => a.id.compare?.(b.id) ?? (a.id < b.id ? -1 : 1));
+  // Plain code-point order, not localeCompare: every GM client must sort the same way, and
+  // locale-aware collation is exactly the thing that can differ between them.
+  const activeGMs = game.users.filter(u => u.isGM && u.active)
+    .sort((a, b) => (a.id > b.id) - (a.id < b.id));
   return activeGMs[0]?.id === game.user.id;
 }
 

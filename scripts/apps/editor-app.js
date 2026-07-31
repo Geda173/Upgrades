@@ -44,6 +44,10 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     }
   };
 
+  // The console re-renders after every mutation, so it must name its scrolling element or the
+  // GM is thrown back to the top of the table on each edit.
+  static SCROLL_SELECTOR = ".upg-editor-body";
+
   static PARTS = {
     main: { template: `modules/${MODULE_ID}/templates/editor.hbs` }
   };
@@ -58,6 +62,7 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
   async _prepareContext(_options) {
     const vocab = getVocabulary();
     const upgrades = getUpgrades();
+    const history = getHistory();
     return {
       vocab,
       balance: getBalance(),
@@ -86,20 +91,22 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
             ownedNames: (u.purchases ?? []).map(p => p.actorName).filter(Boolean).join(", ")
           }))
       ),
-      history: getHistory().slice(-25).reverse().map(h => ({
+      history: history.slice(-25).reverse().map(h => ({
         ...h,
         when: new Date(h.ts).toLocaleString(),
         isPurchase: h.type === "purchase",
         // Each line names the resource it actually moved. Falling back to the vocabulary setting
         // labelled every adjustment with the *first* resource's name, whichever one had moved.
         currencyName: getCurrency(h.currencyId)?.name ?? getVocabulary().currencyName,
-        // Only an adjustment carries a reason; a purchase line is a statement of what happened.
-        canReword: h.type !== "purchase",
+        // Only a manual adjustment can be reworded; purchase and spend lines are statements of
+        // what happened. (Spend lines written before the type existed read as "adjust" and stay
+        // editable — indistinguishable, and harmless.)
+        canReword: h.type !== "purchase" && h.type !== "spend",
         deltaStr: (h.delta > 0 ? "+" : "") + h.delta
       })),
-      hasHistory: getHistory().length > 0,
+      hasHistory: history.length > 0,
       // The list is capped at 25, so a Clear button has to say what it is really about to remove.
-      historyTotal: getHistory().length
+      historyTotal: history.length
     };
   }
 
@@ -181,7 +188,9 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     });
     if (!ok) return;
 
-    for (const cost of getCosts(u)) await adjustBalance(cost.currencyId, cost.amount, `Refund: ${u.name}`);
+    for (const cost of getCosts(u)) {
+      await adjustBalance(cost.currencyId, cost.amount, `Refund: ${u.name}`, { type: "spend" });
+    }
     await removePurchase(u.id, last.id);
     // Repeatable grants carry a purchase id, so only this one is removed.
     await removeUpgradeEffect(u.id, u.repeatable ? last.id : null);
@@ -303,8 +312,9 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
    */
   static async #onClearHistory() {
     const entries = getHistory();
-    const adjusts = entries.filter(e => e.type !== "purchase").length;
-    const purchases = entries.length - adjusts;
+    // Spend lines belong to their purchases, so they count — and clear — with them.
+    const purchases = entries.filter(e => e.type === "purchase" || e.type === "spend").length;
+    const adjusts = entries.length - purchases;
 
     const result = await DialogV2.prompt({
       window: { title: "Clear history" },
@@ -355,7 +365,7 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
         <input type="text" name="name" value="${foundry.utils.escapeHTML(initial ?? "")}"
                placeholder="Lighthouse" autofocus></div>`,
       ok: { label: "Save", callback: (_e, button) => button.form.elements.name.value.trim() }
-    });
+    }).catch(() => null);   // dismissing the dialog rejects; that is a cancel, not an error
     return result || null;
   }
 
