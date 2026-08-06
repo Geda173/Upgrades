@@ -9,6 +9,8 @@
  * Data layer: upgrade catalog, currency balance, purchase history.
  * Everything lives in world-scoped settings (GM-writable only).
  */
+import { t, localizeFields } from "./i18n.js";
+
 export const MODULE_ID = "upgrades";
 
 export const SETTINGS = {
@@ -38,27 +40,34 @@ export const SETTINGS = {
  * Visual themes. Each id maps to a `.upg-theme-<id>` block in styles/shop.css that
  * redefines the palette custom properties — no structural CSS is theme-specific.
  */
-export const THEMES = [
+const RAW_THEMES = [
   // Fantasy
-  { id: "abyss",      group: "Fantasy", label: "Abyss",       blurb: "deep sea, gold and pearl" },
-  { id: "grove",      group: "Fantasy", label: "Grove",       blurb: "moss, bark and bloom" },
-  { id: "ember",      group: "Fantasy", label: "Ember",       blurb: "forge-light on dark iron" },
-  { id: "arcane",     group: "Fantasy", label: "Arcane",      blurb: "violet astral haze" },
-  { id: "frost",      group: "Fantasy", label: "Frost",       blurb: "pale ice and winter blue" },
-  { id: "ossuary",    group: "Fantasy", label: "Ossuary",     blurb: "bone, grave-earth and witchlight" },
-  { id: "bloodmoon",  group: "Fantasy", label: "Bloodmoon",   blurb: "crimson gothic, nightshade and rose" },
-  { id: "goldenhall", group: "Fantasy", label: "Golden Hall", blurb: "oak, amber and hearth-light" },
-  { id: "mycelium",   group: "Fantasy", label: "Mycelium",    blurb: "spore violet and pale cap" },
-  { id: "tempest",    group: "Fantasy", label: "Tempest",     blurb: "wet slate and lightning" },
-  { id: "parchment",  group: "Fantasy", label: "Parchment",   blurb: "light, inked and bookish" },
+  { id: "abyss", group: "Fantasy" },
+  { id: "grove", group: "Fantasy" },
+  { id: "ember", group: "Fantasy" },
+  { id: "arcane", group: "Fantasy" },
+  { id: "frost", group: "Fantasy" },
+  { id: "ossuary", group: "Fantasy" },
+  { id: "bloodmoon", group: "Fantasy" },
+  { id: "goldenhall", group: "Fantasy" },
+  { id: "mycelium", group: "Fantasy" },
+  { id: "tempest", group: "Fantasy" },
+  { id: "parchment", group: "Fantasy" },
 
   // Sci-fi
-  { id: "holo",     group: "Sci-fi", label: "Holo",     blurb: "cyan HUD on deep navy" },
-  { id: "neon",     group: "Sci-fi", label: "Neon",     blurb: "magenta and cyan, rain-slick" },
-  { id: "starship", group: "Sci-fi", label: "Starship", blurb: "light, sterile, azure trim" },
-  { id: "rust",     group: "Sci-fi", label: "Rust",     blurb: "hazard amber and oxidised copper" },
-  { id: "phosphor", group: "Sci-fi", label: "Phosphor", blurb: "CRT green with amber alerts" }
+  { id: "holo", group: "SciFi" },
+  { id: "neon", group: "SciFi" },
+  { id: "starship", group: "SciFi" },
+  { id: "rust", group: "SciFi" },
+  { id: "phosphor", group: "SciFi" }
 ];
+
+/** Names and one-line blurbs come from the translation on read; ids are the CSS contract. */
+export const THEMES = localizeFields(RAW_THEMES, {
+  group: x => `UPGRADES.ThemeGroup.${x.group}`,
+  label: x => `UPGRADES.Theme.${x.id}`,
+  blurb: x => `UPGRADES.Theme.${x.id}Blurb`
+});
 
 export function getTheme() {
   const id = game.settings.get(MODULE_ID, SETTINGS.THEME);
@@ -91,43 +100,41 @@ export function registerSettings() {
 
   // Behaviour
   S.register(MODULE_ID, SETTINGS.REQUIRE_APPROVAL, {
-    name: "Purchases require GM approval",
-    hint: "If enabled, player purchase requests must be approved by the GM before the cost is deducted.",
+    name: "UPGRADES.Setting.RequireApproval",
+    hint: "UPGRADES.SettingHint.RequireApproval",
     scope: "world", config: false, type: Boolean, default: true,
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.PLAYERS_CAN_OPEN, {
-    name: "Players can open the window freely",
-    hint: "If disabled, players only see it when the GM shows it to them.",
+    name: "UPGRADES.Setting.PlayersCanOpen",
+    hint: "UPGRADES.SettingHint.PlayersCanOpen",
     scope: "world", config: false, type: Boolean, default: true,
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.PARTY_ACTOR, {
-    name: "Party actor",
-    hint: "The Group (dnd5e) or Party (PF2e) actor whose members count as “the party” for party-wide upgrades. "
-        + "Strongly recommended: without it the module falls back to every player-owned character, which in a world "
-        + "full of loot, summon and wildshape actors is rarely what you want.",
+    name: "UPGRADES.Setting.PartyActor",
+    hint: "UPGRADES.SettingHint.PartyActor",
     // No choices here: the dropdown lives in the setup window, which builds its own.
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
 
   S.register(MODULE_ID, SETTINGS.CURRENCY_ITEM, {
-    name: "Currency item",
-    hint: "An Item representing one unit, so the currency can be looted from a chest or a body.",
+    name: "UPGRADES.Setting.CurrencyItem",
+    hint: "UPGRADES.SettingHint.CurrencyItem",
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.AUTO_DEPOSIT, {
-    name: "Credit currency automatically when picked up",
+    name: "UPGRADES.Setting.AutoDeposit",
     scope: "world", config: false, type: Boolean, default: false,
     onChange: () => refreshWindows()
   });
 
   // Presentation
   S.register(MODULE_ID, SETTINGS.THEME, {
-    name: "Theme",
-    hint: "Colour and texture of the player-facing window.",
+    name: "UPGRADES.Setting.Theme",
+    hint: "UPGRADES.SettingHint.Theme",
     scope: "world", config: false, type: String, default: "abyss",
     // Foundry's choices dropdown is flat, so the group rides along in the label.
     choices: Object.fromEntries(THEMES.map(t => [t.id, `${t.group} · ${t.label} — ${t.blurb}`])),
@@ -136,49 +143,49 @@ export function registerSettings() {
 
   // Vocabulary — everything the players read
   S.register(MODULE_ID, SETTINGS.WINDOW_TITLE, {
-    name: "Window title",
-    hint: "Shown in the window title bar. E.g. “The Memorial Garden”.",
+    name: "UPGRADES.Setting.WindowTitle",
+    hint: "UPGRADES.SettingHint.WindowTitle",
     scope: "world", config: false, type: String, default: "Upgrades",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.CURRENCY_NAME, {
-    name: "Currency name",
-    hint: "The resource that is spent. E.g. “Sprigs”.",
+    name: "UPGRADES.Setting.CurrencyName",
+    hint: "UPGRADES.SettingHint.CurrencyName",
     scope: "world", config: false, type: String, default: "Points",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.CURRENCY_ICON, {
-    name: "Currency icon",
-    hint: "A Font Awesome class (e.g. “fa-solid fa-seedling”) or a path to an image in your Foundry data folder.",
+    name: "UPGRADES.Setting.CurrencyIcon",
+    hint: "UPGRADES.SettingHint.CurrencyIcon",
     scope: "world", config: false, type: String, default: "fa-solid fa-gem",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.ACTION_VERB, {
-    name: "Action verb",
-    hint: "The label on the purchase button. E.g. “Plant”, “Request”, “Buy”.",
+    name: "UPGRADES.Setting.ActionVerb",
+    hint: "UPGRADES.SettingHint.ActionVerb",
     scope: "world", config: false, type: String, default: "Request",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_ACTOR, {
-    name: "Merchant actor",
-    hint: "Double-clicking this actor's token opens the window, so the party has somewhere to go.",
+    name: "UPGRADES.Setting.HostActor",
+    hint: "UPGRADES.SettingHint.HostActor",
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_NAME, {
-    name: "Host name",
-    hint: "The NPC or place presenting the upgrades. E.g. “Elara’s Respite”.",
-    scope: "world", config: false, type: String, default: "The Merchant",
+    name: "UPGRADES.Setting.HostName",
+    hint: "UPGRADES.SettingHint.HostName",
+    scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_IMG, {
-    name: "Host portrait (image path)",
-    hint: "Path to an image in your Foundry data folder. Leave empty for a default icon.",
+    name: "UPGRADES.Setting.HostImg",
+    hint: "UPGRADES.SettingHint.HostImg",
     scope: "world", config: false, type: String, default: "", filePicker: "image",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.GREETING, {
-    name: "Greeting",
+    name: "UPGRADES.Setting.Greeting",
     scope: "world", config: false, type: String,
     default: "Well met. Shall we see what can be made of this?",
     onChange: () => refreshWindows()
@@ -218,13 +225,13 @@ export function getVocabulary() {
   const hostActor = getHostActor();
   const hostImg = game.settings.get(MODULE_ID, SETTINGS.HOST_IMG) || hostActor?.img || "";
   return {
-    windowTitle: game.settings.get(MODULE_ID, SETTINGS.WINDOW_TITLE) || "Upgrades",
-    currencyName: game.settings.get(MODULE_ID, SETTINGS.CURRENCY_NAME) || "Points",
+    windowTitle: game.settings.get(MODULE_ID, SETTINGS.WINDOW_TITLE) || t("UPGRADES.Default.WindowTitle"),
+    currencyName: game.settings.get(MODULE_ID, SETTINGS.CURRENCY_NAME) || t("UPGRADES.Default.CurrencyName"),
     currencyIcon: icon,
     // Treat the icon as an image if it looks like a path; otherwise it's Font Awesome classes.
     currencyIconIsImg: isImagePath(icon),
-    actionVerb: game.settings.get(MODULE_ID, SETTINGS.ACTION_VERB) || "Request",
-    hostName: game.settings.get(MODULE_ID, SETTINGS.HOST_NAME) || hostActor?.name || "",
+    actionVerb: game.settings.get(MODULE_ID, SETTINGS.ACTION_VERB) || t("UPGRADES.Default.ActionVerb"),
+    hostName: game.settings.get(MODULE_ID, SETTINGS.HOST_NAME) || hostActor?.name || t("UPGRADES.Default.HostName"),
     hostImg: hostImg,
     // The portrait may be artwork or a Font Awesome class; the template branches on this.
     hostIsImage: !!hostImg && isImagePath(hostImg),

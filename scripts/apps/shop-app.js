@@ -10,6 +10,7 @@ import { emit } from "../sockets.js";
 import { describeTarget } from "../systems/adapter.js";
 import { describeUpgradeEffect } from "../effects.js";
 import { UpgradesWindow } from "./ui.js";
+import { t } from "../i18n.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -83,7 +84,7 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
           ...u,
           mystery,
           displayName: mystery ? "???" : u.name,
-          displayFlavor: mystery ? "“Prove yourselves further, and I may show you more…”" : u.flavor,
+          displayFlavor: mystery ? t("UPGRADES.Shop.MysteryFlavor") : u.flavor,
           displayImg: mystery ? "" : u.img,
           available: isAvailable(u),
           soldOut: !isAvailable(u),
@@ -95,7 +96,7 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
           // The rival may itself be a "???" teaser, and a card that closes off must not be the
           // thing that names it. Players are told the choice is spent, not what spent it.
           excludedBy: (!mystery && claim)
-            ? ((claim.hidden && !isGM) ? "a choice already made" : claim.name)
+            ? ((claim.hidden && !isGM) ? t("UPGRADES.Shop.AChoiceMade") : claim.name)
             : "",
           // Shown while the choice is still open, so the cost of taking one is visible up front.
           exclusiveLabel: (!mystery && rivals.length && !claim)
@@ -183,7 +184,7 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
     if (game.user.isGM) {
       const { depositFrom } = await import("../currency.js");
       const amount = await depositFrom(game.actors.get(actorId));
-      ui.notifications.info(amount ? `Handed in ${amount}.` : "Nothing to hand in.");
+      ui.notifications.info(amount ? t("UPGRADES.Notify.HandedIn", { amount }) : t("UPGRADES.Notify.NothingToHandIn"));
       emit({ type: "refresh" });
       ShopApp.instance?.render();
       return;
@@ -205,7 +206,7 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
 
   static #onShowToPlayers() {
     emit({ type: "openShop" });
-    ui.notifications.info("The shop has been shown to all players.");
+    ui.notifications.info(t("UPGRADES.Notify.ShownToPlayers"));
   }
 
   static async #onOpenEditor() {

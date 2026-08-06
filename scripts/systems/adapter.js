@@ -9,6 +9,7 @@
 import { TARGET } from "../catalog.js";
 import { MODULE_ID, SETTINGS } from "../settings.js";
 import { EFFECT_MODE, buildChanges, buildRules, isPf2e } from "../effects.js";
+import { t } from "../i18n.js";
 
 /**
  * The party: members of the configured Group/Party actor.
@@ -75,10 +76,10 @@ export function getTargetActors(upgrade, { buyerActor = null } = {}) {
 
 /** Human-readable description of who an upgrade applies to. */
 export function describeTarget(upgrade) {
-  if (upgrade.target === TARGET.BUYER) return "Whoever buys it";
-  if (upgrade.target !== TARGET.ACTOR) return "The party";
+  if (upgrade.target === TARGET.BUYER) return t("UPGRADES.Target.Buyer");
+  if (upgrade.target !== TARGET.ACTOR) return t("UPGRADES.Target.Party");
   const actor = upgrade.targetActorId ? game.actors.get(upgrade.targetActorId) : null;
-  return actor?.name ?? "Unknown actor";
+  return actor?.name ?? t("UPGRADES.Target.Unknown");
 }
 
 /**
@@ -229,14 +230,14 @@ export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseI
   if (!payload) {
     // A cosmetic upgrade is a normal, silent case; a broken link is not.
     if (upgrade.effectMode === EFFECT_MODE.LINK && upgrade.effectUuid) {
-      ui.notifications.warn(`Upgrades: could not resolve the linked effect for “${upgrade.name}”.`);
+      ui.notifications.warn(t("UPGRADES.Notify.LinkUnresolved", { name: upgrade.name }));
     }
     return { count: 0, names: [] };
   }
 
   const targets = getTargetActors(upgrade, { buyerActor });
   if (!targets.length) {
-    ui.notifications.warn(`Upgrades: “${upgrade.name}” has no valid target to apply its effect to.`);
+    ui.notifications.warn(t("UPGRADES.Notify.NoTarget", { name: upgrade.name }));
     return { count: 0, names: [] };
   }
 
@@ -248,7 +249,7 @@ export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseI
       names.push(actor.name);
     } catch (err) {
       console.error(`${MODULE_ID} | Could not apply effect to ${actor.name}`, err);
-      ui.notifications.error(`Upgrades: failed to apply “${upgrade.name}” to ${actor.name} — see the console.`);
+      ui.notifications.error(t("UPGRADES.Notify.ApplyFailed", { name: upgrade.name, actor: actor.name }));
     }
   }
   return { count: names.length, names };

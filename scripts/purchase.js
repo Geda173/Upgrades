@@ -7,6 +7,7 @@ import { addHistory, adjustBalance, canAfford, describeCosts, getBalance, getCos
 import { MODULE_ID, SETTINGS, getVocabulary } from "./settings.js";
 import { anyGMOnline, emit, refreshOpenApps } from "./sockets.js";
 import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/adapter.js";
+import { t } from "./i18n.js";
 
 /**
  * Why this purchase cannot go ahead right now, or null when it can.
@@ -17,22 +18,22 @@ import { applyUpgradeEffect, describeTarget, getPartyActors } from "./systems/ad
  */
 function refusalReason(upgrade) {
   if (!upgrade || upgrade.hidden || !isAvailable(upgrade)) {
-    return "That upgrade is no longer available.";
+    return t("UPGRADES.Refuse.Unavailable");
   }
   const unmet = unmetRequirements(upgrade);
   if (unmet.length) {
-    return `“${upgrade.name}” needs ${unmet.map(u => u.name).join(" and ")} first.`;
+    return t("UPGRADES.Refuse.NeedsFirst", { name: upgrade.name, needs: unmet.map(u => u.name).join(t("UPGRADES.Refuse.And")) });
   }
   const claim = exclusiveClaim(upgrade);
   if (claim) {
-    return `“${upgrade.name}” is ruled out — “${claim.name}” was chosen instead.`;
+    return t("UPGRADES.Refuse.RuledOut", { name: upgrade.name, rival: claim.name });
   }
   if (!canAfford(upgrade)) {
     const short = describeCosts(upgrade)
       .filter(c => getBalance(c.currencyId) < c.amount)
       .map(c => `${getBalance(c.currencyId)}/${c.amount} ${c.currency.name}`)
       .join(", ");
-    return `Not enough for that (${short}).`;
+    return t("UPGRADES.Refuse.TooCostly", { short });
   }
   return null;
 }
@@ -51,16 +52,20 @@ export async function handlePurchaseRequest({ upgradeId, userId, choice = null }
 
   if (requireApproval && !isGMDirect) {
     const approved = await foundry.applications.api.DialogV2.confirm({
-      window: { title: `${vocab.windowTitle} — Request` },
-      content: `<p><strong>${foundry.utils.escapeHTML(user?.name ?? "A player")}</strong> requests
-        <strong>${foundry.utils.escapeHTML(upgrade.name)}</strong>
-        for <strong>${foundry.utils.escapeHTML(priceLabel(upgrade))}</strong>.</p>
-        <p>Applies to: <strong>${foundry.utils.escapeHTML(describeTarget(upgrade))}</strong>.</p>
-        <p>Approve?</p>`,
+      window: { title: t("UPGRADES.Approve.Title", { title: vocab.windowTitle }) },
+      content: `<p>${t("UPGRADES.Approve.Body", {
+          who: `<strong>${foundry.utils.escapeHTML(user?.name ?? t("UPGRADES.Approve.APlayer"))}</strong>`,
+          what: `<strong>${foundry.utils.escapeHTML(upgrade.name)}</strong>`,
+          price: `<strong>${foundry.utils.escapeHTML(priceLabel(upgrade))}</strong>`
+        })}</p>
+        <p>${t("UPGRADES.Approve.AppliesTo", {
+          target: `<strong>${foundry.utils.escapeHTML(describeTarget(upgrade))}</strong>`
+        })}</p>
+        <p>${t("UPGRADES.Approve.Question")}</p>`,
       modal: false
     });
     if (!approved) {
-      await notifyUser(userId, `Your request for “${upgrade.name}” was declined.`);
+      await notifyUser(userId, t("UPGRADES.Refuse.Declined", { name: upgrade.name }));
       return;
     }
   }
@@ -70,9 +75,9 @@ export async function handlePurchaseRequest({ upgradeId, userId, choice = null }
   if (upgrade.target === TARGET.BUYER) {
     buyerActor = await resolveBuyer(user);
     if (!buyerActor) {
-      return notifyUser(userId, user?.isGM
-        ? "No character chosen — nothing was purchased."
-        : "You have no assigned character, so this cannot be granted. Ask your GM.");
+      return notifyUser(userId, t(user?.isGM
+        ? "UPGRADES.Refuse.NoCharacterChosen"
+        : "UPGRADES.Refuse.NoAssignedCharacter"));
     }
   }
 
@@ -99,16 +104,16 @@ async function resolveBuyer(user) {
 
   const candidates = getPartyActors();
   if (!candidates.length) {
-    ui.notifications.warn("Upgrades: no party members to grant this to — set a Party actor in Setup.");
+    ui.notifications.warn(t("UPGRADES.Notify.NoPartyMembers"));
     return null;
   }
   const options = candidates
     .map(a => `<option value="${a.id}">${foundry.utils.escapeHTML(a.name)}</option>`).join("");
   const chosen = await foundry.applications.api.DialogV2.prompt({
-    window: { title: "Who is this for?" },
-    content: `<div class="form-group"><label>Character</label>
+    window: { title: t("UPGRADES.Buyer.Title") },
+    content: `<div class="form-group"><label>${t("UPGRADES.UpgradeEditor.Character")}</label>
       <select name="actorId" autofocus>${options}</select></div>`,
-    ok: { label: "Grant", callback: (_e, button) => button.form.elements.actorId.value }
+    ok: { label: t("UPGRADES.Buyer.Grant"), callback: (_e, button) => button.form.elements.actorId.value }
   }).catch(() => null);
   return chosen ? game.actors.get(chosen) : null;
 }
@@ -124,7 +129,7 @@ async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
   // Typed "spend", not "adjust": these lines belong to their purchase, so sweeping the GM's
   // manual adjustments out of the ledger leaves them standing next to it.
   for (const cost of getCosts(upgrade)) {
-    await adjustBalance(cost.currencyId, -cost.amount, `Acquired: ${upgrade.name}`, { type: "spend" });
+    await adjustBalance(cost.currencyId, -cost.amount, t("UPGRADES.Ledger.Acquired", { name: upgrade.name }), { type: "spend" });
   }
 
   const purchase = await addPurchase(upgrade.id, {
@@ -144,11 +149,11 @@ async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
   try {
     const applied = await applyUpgradeEffect(upgrade, { buyerActor, purchaseId: purchase?.id, choice });
     if (applied?.count) {
-      effectNote = `<p class="upg-effect-note">✦ Effect applied to ${foundry.utils.escapeHTML(applied.names.join(", "))}.</p>`;
+      effectNote = `<p class="upg-effect-note">✦ ${t("UPGRADES.Chat.EffectApplied", { names: foundry.utils.escapeHTML(applied.names.join(", ")) })}</p>`;
     }
   } catch (err) {
     console.error(`${MODULE_ID} | Failed to apply effect`, err);
-    ui.notifications.warn("Upgrades: acquired, but the effect could not be applied automatically.");
+    ui.notifications.warn(t("UPGRADES.Notify.EffectFailed"));
   }
 
   await ChatMessage.create({
@@ -157,8 +162,7 @@ async function commitPurchase(upgrade, user, buyerActor = null, choice = null) {
         ${upgrade.img ? `<img src="${foundry.utils.escapeHTML(upgrade.img)}" alt="">` : ""}
         <h3>${foundry.utils.escapeHTML(upgrade.name)}${choice ? ` (${foundry.utils.escapeHTML(choice.name)})` : ""}</h3>
         <p class="upg-flavor"><em>${foundry.utils.escapeHTML(upgrade.flavor ?? "")}</em></p>
-        <p>Acquired for <strong>${foundry.utils.escapeHTML(priceLabel(upgrade))}</strong>.
-           </p>
+        <p>${t("UPGRADES.Chat.AcquiredFor", { price: `<strong>${foundry.utils.escapeHTML(priceLabel(upgrade))}</strong>` })}</p>
         ${effectNote}
       </div>`
   });
@@ -177,7 +181,7 @@ export async function requestPurchase(upgradeId) {
   // Without a GM client there is nothing to receive the request — it would vanish into the
   // socket while the player is told it was sent. Better to say so before asking anything.
   if (!game.user.isGM && !anyGMOnline()) {
-    return ui.notifications.warn("Upgrades: no GM is connected right now — try again when one is.");
+    return ui.notifications.warn(t("UPGRADES.Notify.NoGM"));
   }
 
   const upgrade = getUpgrade(upgradeId);
@@ -188,7 +192,7 @@ export async function requestPurchase(upgradeId) {
   if (upgrade?.choice?.enabled) {
     const { promptForDocument } = await import("./apps/choice-dialog.js");
     choice = await promptForDocument({
-      label: upgrade.choice.label || "Choose",
+      label: upgrade.choice.label || t("UPGRADES.Buyer.Choose"),
       hint: upgrade.choice.hint || ""
     });
     if (!choice) return;   // cancelled: nothing spent, nothing sent
@@ -196,5 +200,5 @@ export async function requestPurchase(upgradeId) {
 
   if (game.user.isGM) return handlePurchaseRequest({ upgradeId, userId: game.user.id, choice });
   emit({ type: "requestPurchase", upgradeId, userId: game.user.id, choice });
-  ui.notifications.info("Your request has been sent…");
+  ui.notifications.info(t("UPGRADES.Notify.RequestSent"));
 }

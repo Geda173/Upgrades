@@ -12,6 +12,7 @@ import { resyncUpgrades, removeUpgradeEffect, reapplyUpgradeEffect, describeTarg
 import { describeBuild, EFFECT_MODE } from "../effects.js";
 import { UpgradeEditor } from "./upgrade-editor.js";
 import { UpgradesWindow } from "./ui.js";
+import { t } from "../i18n.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -21,7 +22,7 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
   static DEFAULT_OPTIONS = {
     id: "upgrades-editor",
     classes: ["upgrades", "upg-editor"],
-    window: { title: "Upgrades — GM Console", icon: "fa-solid fa-scale-balanced", resizable: true },
+    window: { title: "UPGRADES.Editor.Title", icon: "fa-solid fa-scale-balanced", resizable: true },
     position: { width: 760, height: 640 },
     actions: {
       addUpgrade: EditorApp.#onAddUpgrade,
@@ -113,9 +114,9 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
   /** Short "what does it do" cell for the upgrade table. */
   static #effectLabel(upgrade) {
     let label = "";
-    if (upgrade.effectMode === EFFECT_MODE.BUILD) label = describeBuild(upgrade.effectBuild?.rows) || "empty bonus";
-    else if (upgrade.effectMode === EFFECT_MODE.LINK) label = upgrade.effectUuid ? "linked effect" : "link not set";
-    if (label && upgrade.hideEffect && !upgrade.purchased) label += " · hidden from players";
+    if (upgrade.effectMode === EFFECT_MODE.BUILD) label = describeBuild(upgrade.effectBuild?.rows) || t("UPGRADES.Editor.EmptyBonus");
+    else if (upgrade.effectMode === EFFECT_MODE.LINK) label = upgrade.effectUuid ? t("UPGRADES.Editor.LinkedEffect") : t("UPGRADES.Editor.LinkNotSet");
+    if (label && upgrade.hideEffect && !upgrade.purchased) label += ` · ${t("UPGRADES.Editor.HiddenFromPlayers")}`;
     return label;
   }
 
@@ -149,16 +150,16 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     const u = getUpgrade(target.dataset.id);
     if (!u) return;
     const ok = await DialogV2.confirm({
-      window: { title: "Delete upgrade" },
-      content: `<p>Delete <strong>${foundry.utils.escapeHTML(u.name)}</strong>?</p>`
-        + (u.purchased ? `<p>It is currently owned — its effect will also be removed from every character that has it.</p>` : "")
-        + `<p>This cannot be undone.</p>`
+      window: { title: t("UPGRADES.Dialog.DeleteUpgrade") },
+      content: `<p>${t("UPGRADES.Dialog.DeleteUpgradeBody", { name: `<strong>${foundry.utils.escapeHTML(u.name)}</strong>` })}</p>`
+        + (u.purchased ? `<p>${t("UPGRADES.Dialog.DeleteUpgradeOwned")}</p>` : "")
+        + `<p>${t("UPGRADES.Dialog.CannotBeUndone")}</p>`
     });
     if (!ok) return;
     // Delete the catalog entry *and* whatever it put on the sheets, or the bonus is orphaned forever.
     const { count } = await removeUpgradeEffect(u.id);
     await deleteUpgrade(u.id);
-    if (count) ui.notifications.info(`Upgrades: removed ${count} granted document(s) from character sheets.`);
+    if (count) ui.notifications.info(t("UPGRADES.Notify.RemovedGrants", { count }));
     EditorApp.#afterMutation();
   }
 
@@ -179,17 +180,19 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     const remaining = u.purchases.length - 1;
 
     const ok = await DialogV2.confirm({
-      window: { title: "Refund upgrade" },
-      content: `<p>Refund <strong>${foundry.utils.escapeHTML(u.name)}</strong> — 
-        ${foundry.utils.escapeHTML(describeCosts(u).map(c => `${c.amount} ${c.currency.name}`).join(", ") || "nothing")}
-        back, and its effect removed from
-        ${foundry.utils.escapeHTML(who)}?</p>`
-        + (remaining ? `<p>${remaining} other acquisition(s) of this upgrade are left untouched.</p>` : "")
+      window: { title: t("UPGRADES.Dialog.RefundUpgrade") },
+      content: `<p>${t("UPGRADES.Dialog.RefundBody", {
+          name: `<strong>${foundry.utils.escapeHTML(u.name)}</strong>`,
+          price: foundry.utils.escapeHTML(describeCosts(u).map(c => `${c.amount} ${c.currency.name}`).join(", ")
+            || t("UPGRADES.Dialog.Nothing")),
+          who: foundry.utils.escapeHTML(who)
+        })}</p>`
+        + (remaining ? `<p>${t("UPGRADES.Dialog.RefundRemaining", { count: remaining })}</p>` : "")
     });
     if (!ok) return;
 
     for (const cost of getCosts(u)) {
-      await adjustBalance(cost.currencyId, cost.amount, `Refund: ${u.name}`, { type: "spend" });
+      await adjustBalance(cost.currencyId, cost.amount, t("UPGRADES.Ledger.Refund", { name: u.name }), { type: "spend" });
     }
     await removePurchase(u.id, last.id);
     // Repeatable grants carry a purchase id, so only this one is removed.
@@ -202,20 +205,20 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     // The picker only appears once there is a choice to make.
     const preset = target?.dataset?.currencyId;
     const picker = (currencies.length > 1 && !preset)
-      ? `<div class="form-group"><label>Resource</label><select name="currencyId">`
+      ? `<div class="form-group"><label>${t("UPGRADES.Settings.Resource")}</label><select name="currencyId">`
         + currencies.map(c => `<option value="${c.id}">${foundry.utils.escapeHTML(c.name)}</option>`).join("")
         + `</select></div>`
       : "";
 
     const result = await DialogV2.prompt({
-      window: { title: preset ? `Adjust ${getCurrency(preset)?.name ?? ""}` : "Adjust" },
+      window: { title: preset ? t("UPGRADES.Editor.Adjust", { name: getCurrency(preset)?.name ?? "" }) : t("UPGRADES.Dialog.Adjust") },
       content: `${picker}
-        <div class="form-group"><label>Amount (use negatives to remove)</label>
+        <div class="form-group"><label>${t("UPGRADES.Dialog.AmountLabel")}</label>
           <input type="number" name="delta" value="1" step="1" autofocus></div>
-        <div class="form-group"><label>Reason (shown in history)</label>
-          <input type="text" name="reason" placeholder="Cleared the blighted grove"></div>`,
+        <div class="form-group"><label>${t("UPGRADES.Dialog.ReasonLabel")}</label>
+          <input type="text" name="reason" placeholder="${t('UPGRADES.Dialog.ReasonEg')}"></div>`,
       ok: {
-        label: "Apply",
+        label: t("UPGRADES.Dialog.Apply"),
         callback: (_event, button) => {
           const form = button.form;
           return {
@@ -241,18 +244,18 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     const { getCurrencyItem, placeCurrency } = await import("../currency.js");
     const source = await getCurrencyItem();
     if (!source) {
-      return ui.notifications.warn("Upgrades: choose a currency item in Setup first.");
+      return ui.notifications.warn(t("UPGRADES.Notify.NoCurrencyItemSetup"));
     }
     const actors = game.actors.filter(a => a.isOwner).sort((a, b) => a.name.localeCompare(b.name));
     const options = actors
       .map(a => `<option value="${a.id}">${foundry.utils.escapeHTML(a.name)} (${a.type})</option>`).join("");
     const result = await DialogV2.prompt({
-      window: { title: `Place ${source.name}` },
-      content: `<div class="form-group"><label>Into</label><select name="actorId">${options}</select></div>
-        <div class="form-group"><label>How many</label>
+      window: { title: t("UPGRADES.Editor.Place", { currency: source.name }) },
+      content: `<div class="form-group"><label>${t("UPGRADES.Dialog.Into")}</label><select name="actorId">${options}</select></div>
+        <div class="form-group"><label>${t("UPGRADES.Dialog.HowMany")}</label>
           <input type="number" name="amount" value="1" min="1" step="1" autofocus></div>`,
       ok: {
-        label: "Place",
+        label: t("UPGRADES.Dialog.Place"),
         callback: (_e, button) => ({
           actorId: button.form.elements.actorId.value,
           amount: Math.max(1, Number(button.form.elements.amount.value) || 0)
@@ -262,11 +265,11 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     if (!result) return;
     const actor = game.actors.get(result.actorId);
     const placed = await placeCurrency(actor, result.amount);
-    if (placed) ui.notifications.info(`Upgrades: placed ${placed} × ${source.name} on ${actor.name}.`);
+    if (placed) ui.notifications.info(t("UPGRADES.Notify.Placed", { count: placed, currency: source.name, actor: actor.name }));
   }
 
   static async #onAddCategory() {
-    const name = await EditorApp.#promptName("New section", "");
+    const name = await EditorApp.#promptName(t("UPGRADES.Editor.NewSection"), "");
     if (!name) return;
     await upsertCategory({ name });
     EditorApp.#afterMutation();
@@ -275,7 +278,7 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
   static async #onEditCategory(_event, target) {
     const category = getCategories().find(c => c.id === target.dataset.id);
     if (!category) return;
-    const name = await EditorApp.#promptName("Rename section", category.name);
+    const name = await EditorApp.#promptName(t("UPGRADES.Dialog.RenameSection"), category.name);
     if (!name) return;
     await upsertCategory({ id: category.id, name });
     EditorApp.#afterMutation();
@@ -286,9 +289,9 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     if (!category) return;
     const inside = getUpgrades().filter(u => u.categoryId === category.id).length;
     const ok = await DialogV2.confirm({
-      window: { title: "Delete section" },
-      content: `<p>Delete the section <strong>${foundry.utils.escapeHTML(category.name)}</strong>?</p>`
-        + (inside ? `<p>Its ${inside} upgrade(s) are kept — they simply become uncategorised.</p>` : "")
+      window: { title: t("UPGRADES.Dialog.DeleteSection") },
+      content: `<p>${t("UPGRADES.Dialog.DeleteSectionBody", { name: `<strong>${foundry.utils.escapeHTML(category.name)}</strong>` })}</p>`
+        + (inside ? `<p>${t("UPGRADES.Dialog.DeleteSectionKeeps", { count: inside })}</p>` : "")
     });
     if (!ok) return;
     await deleteCategory(category.id);
@@ -317,22 +320,20 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     const adjusts = entries.length - purchases;
 
     const result = await DialogV2.prompt({
-      window: { title: "Clear history" },
-      content: `<p>The history is a record of what happened — it is not what the balances or the
-          owned upgrades are read from. Clearing it moves no ${foundry.utils.escapeHTML(getVocabulary().currencyName)},
-          and un-buys nothing.</p>
-        <div class="form-group"><label>Remove</label>
+      window: { title: t("UPGRADES.Dialog.ClearHistory") },
+      content: `<p>${t("UPGRADES.Dialog.ClearHistoryBody", { currency: foundry.utils.escapeHTML(getVocabulary().currencyName) })}</p>
+        <div class="form-group"><label>${t("UPGRADES.Dialog.Remove")}</label>
           <select name="kind" autofocus>
-            <option value="adjust">Balance adjustments only (${adjusts})</option>
-            <option value="purchase">Purchase records only (${purchases})</option>
-            <option value="all">Everything (${entries.length})</option>
+            <option value="adjust">${t("UPGRADES.Dialog.ClearAdjustments", { count: adjusts })}</option>
+            <option value="purchase">${t("UPGRADES.Dialog.ClearPurchases", { count: purchases })}</option>
+            <option value="all">${t("UPGRADES.Dialog.ClearEverything", { count: entries.length })}</option>
           </select></div>`,
-      ok: { label: "Clear", callback: (_e, button) => button.form.elements.kind.value }
+      ok: { label: t("UPGRADES.Common.ClearAction"), callback: (_e, button) => button.form.elements.kind.value }
     }).catch(() => null);
     if (!result) return;
 
     const removed = await clearHistory(result);
-    ui.notifications.info(removed ? `Upgrades: cleared ${removed} history line(s).` : "Nothing to clear.");
+    ui.notifications.info(removed ? t("UPGRADES.Notify.ClearedHistory", { count: removed }) : t("UPGRADES.Notify.NothingToClear"));
     EditorApp.#afterMutation();
   }
 
@@ -345,13 +346,12 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
     const entry = getHistory().find(e => e.id === target.dataset.id);
     if (!entry) return;
     const reason = await DialogV2.prompt({
-      window: { title: "Edit reason" },
-      content: `<p class="notes">The amount stays as it is — a ledger that can be made to disagree
-          with the balance it describes is worse than none.</p>
-        <div class="form-group"><label>Reason</label>
+      window: { title: t("UPGRADES.Editor.EditReason") },
+      content: `<p class="notes">${t("UPGRADES.Dialog.EditReasonNote")}</p>
+        <div class="form-group"><label>${t("UPGRADES.Dialog.Reason")}</label>
           <input type="text" name="reason" value="${foundry.utils.escapeHTML(entry.reason ?? "")}"
-                 placeholder="Cleared the blighted grove" autofocus></div>`,
-      ok: { label: "Save", callback: (_e, button) => button.form.elements.reason.value }
+                 placeholder="${t('UPGRADES.Dialog.ReasonEg')}" autofocus></div>`,
+      ok: { label: t("UPGRADES.Common.Save"), callback: (_e, button) => button.form.elements.reason.value }
     }).catch(() => null);
     if (reason === null) return;   // cancelled; an emptied reason is a real edit
     await editHistoryReason(entry.id, reason.trim());
@@ -363,15 +363,15 @@ export class EditorApp extends UpgradesWindow(HandlebarsApplicationMixin(Applica
       window: { title },
       content: `<div class="form-group"><label>Name</label>
         <input type="text" name="name" value="${foundry.utils.escapeHTML(initial ?? "")}"
-               placeholder="Lighthouse" autofocus></div>`,
-      ok: { label: "Save", callback: (_e, button) => button.form.elements.name.value.trim() }
+               placeholder="${t('UPGRADES.Dialog.SectionEg')}" autofocus></div>`,
+      ok: { label: t("UPGRADES.Common.Save"), callback: (_e, button) => button.form.elements.name.value.trim() }
     }).catch(() => null);   // dismissing the dialog rejects; that is a cancel, not an error
     return result || null;
   }
 
   static async #onResync() {
     const { created } = await resyncUpgrades();
-    ui.notifications.info(`Upgrades: re-sync complete (${created} document(s) created).`);
+    ui.notifications.info(t("UPGRADES.Notify.Resynced", { count: created }));
     EditorApp.#afterMutation();
   }
 

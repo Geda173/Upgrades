@@ -3,6 +3,7 @@
  * All world mutations run on the active GM's client; players only send requests.
  */
 import { MODULE_ID } from "./settings.js";
+import { t } from "./i18n.js";
 
 const CHANNEL = `module.${MODULE_ID}`;
 
@@ -23,7 +24,7 @@ export function initSockets() {
           const actor = game.actors.get(msg.actorId);
           const amount = await depositFrom(actor);
           emit({ type: "notify", userId: msg.userId,
-                 message: amount ? `Handed in ${amount}.` : "Nothing to hand in." });
+                 message: amount ? t("UPGRADES.Notify.HandedIn", { amount }) : t("UPGRADES.Notify.NothingToHandIn") });
           refreshOpenApps();
           emit({ type: "refresh" });
         }

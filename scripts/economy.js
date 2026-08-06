@@ -6,6 +6,7 @@
  */
 import { MODULE_ID, SETTINGS } from "./settings.js";
 import { getUpgrades, setUpgrades } from "./catalog.js";
+import { t } from "./i18n.js";
 
 /**
  * The resources upgrades are bought with.
@@ -61,7 +62,7 @@ export async function upsertCurrency(data) {
   if (idx >= 0) currencies[idx] = { ...currencies[idx], ...data };
   else currencies.push({
     id: data.id ?? foundry.utils.randomID(),
-    name: "New resource", icon: "fa-solid fa-circle", item: "", sort: currencies.length,
+    name: t("UPGRADES.New.Resource"), icon: "fa-solid fa-circle", item: "", sort: currencies.length,
     ...data
   });
   return setCurrencies(currencies);

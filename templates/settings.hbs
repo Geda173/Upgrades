@@ -4,10 +4,10 @@
 
     <section class="upg-settings-form">
 
-      <h3>Appearance</h3>
+      <h3>{{localize "UPGRADES.Settings.Appearance"}}</h3>
 
       <div class="form-group">
-        <label>Theme</label>
+        <label>{{localize "UPGRADES.Settings.Theme"}}</label>
         <div class="upg-theme-picker">
           {{#each themeGroups}}
           <div class="upg-theme-group">
@@ -29,35 +29,35 @@
       </div>
 
       <div class="form-group">
-        <label>Window title</label>
-        <input type="text" name="windowTitle" value="{{draft.windowTitle}}" placeholder="The Memorial Garden">
+        <label>{{localize "UPGRADES.Settings.WindowTitle"}}</label>
+        <input type="text" name="windowTitle" value="{{draft.windowTitle}}" placeholder="{{localize "UPGRADES.Settings.WindowTitleEg"}}">
       </div>
 
       <div class="form-group">
-        <label>Host name</label>
-        <input type="text" name="hostName" value="{{draft.hostName}}" placeholder="Elara’s Respite">
+        <label>{{localize "UPGRADES.Settings.HostName"}}</label>
+        <input type="text" name="hostName" value="{{draft.hostName}}" placeholder="{{localize "UPGRADES.Settings.HostNameEg"}}">
       </div>
 
       <div class="form-group">
-        <label>Greeting</label>
-        <input type="text" name="greeting" value="{{draft.greeting}}" placeholder="The soil remembers.">
+        <label>{{localize "UPGRADES.Settings.Greeting"}}</label>
+        <input type="text" name="greeting" value="{{draft.greeting}}" placeholder="{{localize "UPGRADES.Settings.GreetingEg"}}">
       </div>
 
       <div class="form-group stacked">
-        <label>Merchant actor (optional)</label>
+        <label>{{localize "UPGRADES.Settings.MerchantActor"}}</label>
         <div class="upg-drop {{#if hostActorName}}filled{{/if}}" data-drop="host-actor">
           {{#if hostActorName}}
             <i class="fa-solid fa-user-tie"></i>
             <div class="upg-drop-text">
               <strong>{{hostActorName}}</strong>
-              <span>double-clicking their token opens this window</span>
+              <span>{{localize "UPGRADES.Settings.MerchantBound"}}</span>
             </div>
-            <button type="button" data-action="clearHostActor" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" data-action="clearHostActor" title="{{localize "UPGRADES.Common.Clear"}}"><i class="fa-solid fa-xmark"></i></button>
           {{else}}
             <i class="fa-solid fa-hand-pointer"></i>
             <div class="upg-drop-text">
-              <strong>Drag an Actor here</strong>
-              <span>gives the party somewhere to go to trade</span>
+              <strong>{{localize "UPGRADES.Settings.DragActor"}}</strong>
+              <span>{{localize "UPGRADES.Settings.DragActorHint"}}</span>
             </div>
           {{/if}}
         </div>
@@ -65,21 +65,19 @@
         {{#if merchantNeedsAccess}}
         <p class="upg-warn">
           <i class="fa-solid fa-triangle-exclamation"></i>
-          Players have no access to this actor, so Foundry will not deliver their double-clicks to
-          the token — it simply will not respond, and only for them.
+          {{localize "UPGRADES.Settings.MerchantNoAccess"}}
         </p>
         <button type="button" class="upg-add-row" data-action="grantMerchantAccess">
-          <i class="fa-solid fa-key"></i> Give players access
+          <i class="fa-solid fa-key"></i> {{localize "UPGRADES.Settings.GrantAccess"}}
         </button>
         {{/if}}
         <p class="upg-hint">
-          Their name and portrait are used below unless you override them. Pair this with turning
-          off “players can open the window themselves” and the only way in is to visit them.
+          {{localize "UPGRADES.Settings.MerchantHint"}}
         </p>
       </div>
 
       <div class="form-group stacked">
-        <label>Host portrait</label>
+        <label>{{localize "UPGRADES.Settings.HostPortrait"}}</label>
         <div class="upg-icon-picker">
           {{#each hostIconGroups}}
           <div class="upg-icon-group">
@@ -96,45 +94,44 @@
           {{/each}}
         </div>
         <div class="upg-file upg-icon-custom">
-          <input type="text" name="hostImg" value="{{draft.hostImg}}" placeholder="an icon above, or browse for artwork">
-          <button type="button" data-action="pickHostImg" title="Browse for an image"><i class="fa-solid fa-folder-open"></i></button>
+          <input type="text" name="hostImg" value="{{draft.hostImg}}" placeholder="{{localize "UPGRADES.Settings.HostImgEg"}}">
+          <button type="button" data-action="pickHostImg" title="{{localize "UPGRADES.Settings.BrowseImage"}}"><i class="fa-solid fa-folder-open"></i></button>
           {{#if draft.hostImg}}
-          <button type="button" data-action="clearHostImg" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" data-action="clearHostImg" title="{{localize "UPGRADES.Common.Clear"}}"><i class="fa-solid fa-xmark"></i></button>
           {{/if}}
         </div>
-        <p class="upg-hint">Pick an icon, or browse for your own portrait art.</p>
+        <p class="upg-hint">{{localize "UPGRADES.Settings.HostIconHint"}}</p>
       </div>
 
-      <h3>Resources</h3>
+      <h3>{{localize "UPGRADES.Settings.Resources"}}</h3>
 
       <ul class="upg-currency-list">
         {{#each currencies}}
         <li>
           {{#if isImage}}<img class="upg-currency-img" src="{{icon}}" alt="">{{else}}<i class="{{icon}}"></i>{{/if}}
           <span class="upg-currency-name">{{name}}</span>
-          <a data-action="editCurrency" data-id="{{id}}" title="Edit"><i class="fa-solid fa-pen"></i></a>
-          <a data-action="removeCurrency" data-id="{{id}}" title="Remove"><i class="fa-solid fa-trash"></i></a>
+          <a data-action="editCurrency" data-id="{{id}}" title="{{localize "UPGRADES.Editor.Edit"}}"><i class="fa-solid fa-pen"></i></a>
+          <a data-action="removeCurrency" data-id="{{id}}" title="{{localize "UPGRADES.Settings.Remove"}}"><i class="fa-solid fa-trash"></i></a>
         </li>
         {{/each}}
       </ul>
-      <button type="button" class="upg-add-row" data-action="addCurrency"><i class="fa-solid fa-plus"></i> Add a resource</button>
+      <button type="button" class="upg-add-row" data-action="addCurrency"><i class="fa-solid fa-plus"></i> {{localize "UPGRADES.Settings.AddResource"}}</button>
       <p class="upg-hint">
-        One is plenty for most tables. Add more and every upgrade can be priced in any combination
-        of them — an upgrade might cost 3 Sprigs and 1 Pearl of Power.
+        {{localize "UPGRADES.Settings.ResourcesHint"}}
       </p>
 
       <div class="form-group">
-        <label>Primary name</label>
-        <input type="text" name="currencyName" value="{{draft.currencyName}}" placeholder="Sprigs">
+        <label>{{localize "UPGRADES.Settings.PrimaryName"}}</label>
+        <input type="text" name="currencyName" value="{{draft.currencyName}}" placeholder="{{localize "UPGRADES.Settings.PrimaryNameEg"}}">
       </div>
 
       <div class="form-group">
-        <label>Action button</label>
-        <input type="text" name="actionVerb" value="{{draft.actionVerb}}" placeholder="Plant">
+        <label>{{localize "UPGRADES.Settings.ActionButton"}}</label>
+        <input type="text" name="actionVerb" value="{{draft.actionVerb}}" placeholder="{{localize "UPGRADES.Settings.ActionButtonEg"}}">
       </div>
 
       <div class="form-group stacked">
-        <label>Icon</label>
+        <label>{{localize "UPGRADES.Settings.Icon"}}</label>
         <div class="upg-icon-picker">
           {{#each iconGroups}}
           <div class="upg-icon-group">
@@ -152,44 +149,43 @@
         </div>
         <div class="upg-file upg-icon-custom">
           <input type="text" name="currencyIcon" value="{{draft.currencyIcon}}" placeholder="fa-solid fa-seedling">
-          <button type="button" data-action="pickIconImage" title="Use your own image instead"><i class="fa-solid fa-folder-open"></i></button>
+          <button type="button" data-action="pickIconImage" title="{{localize "UPGRADES.Settings.UseOwnImage"}}"><i class="fa-solid fa-folder-open"></i></button>
         </div>
-        <p class="upg-hint">Pick one above, or browse for your own image.</p>
+        <p class="upg-hint">{{localize "UPGRADES.Settings.IconHint"}}</p>
       </div>
 
       <div class="form-group stacked">
-        <label>Physical currency (optional)</label>
+        <label>{{localize "UPGRADES.Settings.PhysicalCurrency"}}</label>
         <div class="upg-drop {{#if currencyItemName}}filled{{/if}}" data-drop="currency-item">
           {{#if currencyItemName}}
             <i class="fa-solid fa-coins"></i>
             <div class="upg-drop-text">
               <strong>{{currencyItemName}}</strong>
-              <span>one of these is worth one {{draft.currencyName}}</span>
+              <span>{{localize "UPGRADES.Settings.WorthOne" currency=draft.currencyName}}</span>
             </div>
-            <button type="button" data-action="clearCurrencyItem" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" data-action="clearCurrencyItem" title="{{localize "UPGRADES.Common.Clear"}}"><i class="fa-solid fa-xmark"></i></button>
           {{else}}
             <i class="fa-solid fa-hand-pointer"></i>
             <div class="upg-drop-text">
-              <strong>Drag an Item here</strong>
-              <span>lets you hide payment in a chest for the party to loot</span>
+              <strong>{{localize "UPGRADES.Settings.DragItem"}}</strong>
+              <span>{{localize "UPGRADES.Settings.DragItemHint"}}</span>
             </div>
           {{/if}}
         </div>
         <input type="hidden" name="currencyItem" value="{{draft.currencyItem}}">
         <label class="checkbox">
           <input type="checkbox" name="autoDeposit" {{#if draft.autoDeposit}}checked{{/if}}>
-          Credit it the moment a player picks it up
+          {{localize "UPGRADES.Settings.AutoDeposit"}}
         </label>
         <p class="upg-hint">
-          Leave that unticked and players hand it in with a button in this window instead — an item
-          vanishing out of the inventory you just looted it into is startling if you did not ask for it.
+          {{localize "UPGRADES.Settings.AutoDepositHint"}}
         </p>
       </div>
 
-      <h3>Behaviour</h3>
+      <h3>{{localize "UPGRADES.Settings.Behaviour"}}</h3>
 
       <div class="form-group">
-        <label>Party actor</label>
+        <label>{{localize "UPGRADES.Settings.PartyActor"}}</label>
         <select name="partyActor">
           {{#each partyActorChoices}}
           <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{name}}</option>
@@ -206,20 +202,20 @@
       <div class="form-group">
         <label class="checkbox">
           <input type="checkbox" name="requireApproval" {{#if draft.requireApproval}}checked{{/if}}>
-          Purchases need my approval
+          {{localize "UPGRADES.Settings.RequireApproval"}}
         </label>
       </div>
 
       <div class="form-group">
         <label class="checkbox">
           <input type="checkbox" name="playersCanOpen" {{#if draft.playersCanOpen}}checked{{/if}}>
-          Players can open the window themselves
+          {{localize "UPGRADES.Settings.PlayersCanOpen"}}
         </label>
       </div>
     </section>
 
     <aside class="upg-settings-preview">
-      <span class="upg-preview-label">Live preview</span>
+      <span class="upg-preview-label">{{localize "UPGRADES.Settings.LivePreview"}}</span>
 
       <div class="upgrades upg-theme-{{draft.theme}} upg-preview" data-preview>
         <div class="upg-preview-bar"><span data-bind="windowTitle">{{draft.windowTitle}}</span></div>
@@ -248,9 +244,9 @@
             <div class="upg-card active">
               <div class="upg-art"><i class="fa-solid fa-wand-sparkles"></i></div>
               <div class="upg-body">
-                <h3>Nightbloom Sapling</h3>
-                <div class="upg-for"><i class="fa-solid fa-user"></i> Galadon</div>
-                <div class="upg-flavor"><em>Opens only for those who kept watch.</em></div>
+                <h3>{{localize "UPGRADES.Settings.SampleName1"}}</h3>
+                <div class="upg-for"><i class="fa-solid fa-user"></i> {{localize "UPGRADES.Settings.SampleTarget"}}</div>
+                <div class="upg-flavor"><em>{{localize "UPGRADES.Settings.SampleFlavor1"}}</em></div>
                 <div class="upg-cost">
                   <span data-bind="currency-icon">
                     {{#if currencyIconIsImg}}<img class="upg-currency-img" src="{{draft.currencyIcon}}" alt="">
@@ -263,11 +259,11 @@
             </div>
 
             <div class="upg-card owned">
-              <div class="upg-stamp">Owned</div>
+              <div class="upg-stamp">{{localize "UPGRADES.Common.Owned"}}</div>
               <div class="upg-art"><i class="fa-solid fa-wand-sparkles"></i></div>
               <div class="upg-body">
-                <h3>Ashen Fern</h3>
-                <div class="upg-flavor"><em>Grown from the ruin of the eastern hold.</em></div>
+                <h3>{{localize "UPGRADES.Settings.SampleName2"}}</h3>
+                <div class="upg-flavor"><em>{{localize "UPGRADES.Settings.SampleFlavor2"}}</em></div>
                 <div class="upg-cost">
                   <span data-bind="currency-icon">
                     {{#if currencyIconIsImg}}<img class="upg-currency-img" src="{{draft.currencyIcon}}" alt="">
@@ -281,12 +277,12 @@
         </div>
       </div>
 
-      <p class="upg-hint">Sample content — your own upgrades and art replace it.</p>
+      <p class="upg-hint">{{localize "UPGRADES.Settings.SampleHint"}}</p>
     </aside>
   </div>
 
   <footer class="upg-form-footer">
-    <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-    <button type="button" data-action="cancel"><i class="fa-solid fa-ban"></i> Cancel</button>
+    <button type="submit"><i class="fa-solid fa-floppy-disk"></i> {{localize "UPGRADES.Common.Save"}}</button>
+    <button type="button" data-action="cancel"><i class="fa-solid fa-ban"></i> {{localize "UPGRADES.Common.Cancel"}}</button>
   </footer>
 </div>

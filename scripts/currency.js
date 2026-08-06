@@ -11,6 +11,7 @@
  */
 import { adjustBalance } from "./economy.js";
 import { MODULE_ID, SETTINGS, getVocabulary } from "./settings.js";
+import { t } from "./i18n.js";
 
 /** The configured Item that represents one unit, or null when the feature is unused. */
 export async function getCurrencyItem() {
@@ -43,7 +44,7 @@ export function countCurrencyOn(actor, currencyName) {
 export async function placeCurrency(actor, amount) {
   const source = await getCurrencyItem();
   if (!source) {
-    ui.notifications.warn("Upgrades: no currency item is configured — set one in Setup.");
+    ui.notifications.warn(t("UPGRADES.Notify.NoCurrencyItem"));
     return 0;
   }
   if (!actor || amount <= 0) return 0;
@@ -69,7 +70,7 @@ export async function depositFrom(actor) {
 
   const amount = countCurrencyOn(actor, source.name);
   await actor.deleteEmbeddedDocuments("Item", held.map(i => i.id));
-  await adjustBalance(amount, `Handed in by ${actor.name}`);
+  await adjustBalance(amount, t("UPGRADES.Ledger.HandedInBy", { actor: actor.name }));
   return amount;
 }
 
@@ -88,11 +89,14 @@ export async function autoDepositOnPickup(item) {
 
   const amount = Math.max(1, Number(item.system?.quantity ?? 1));
   await item.delete();
-  await adjustBalance(amount, `Collected by ${actor.name}`);
+  await adjustBalance(amount, t("UPGRADES.Ledger.CollectedBy", { actor: actor.name }));
 
   const vocab = getVocabulary();
   ChatMessage.create({
-    content: `<div class="upgrades-chat-card"><p><strong>${foundry.utils.escapeHTML(actor.name)}</strong> `
-      + `collected <strong>${amount}</strong> ${foundry.utils.escapeHTML(vocab.currencyName)}.</p></div>`
+    content: `<div class="upgrades-chat-card"><p>${t("UPGRADES.Chat.Collected", {
+      who: `<strong>${foundry.utils.escapeHTML(actor.name)}</strong>`,
+      amount: `<strong>${amount}</strong>`,
+      currency: foundry.utils.escapeHTML(vocab.currencyName)
+    })}</p></div>`
   });
 }

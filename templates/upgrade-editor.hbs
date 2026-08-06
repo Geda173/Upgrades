@@ -3,12 +3,12 @@
 
   <section class="upg-fieldset">
     <div class="form-group">
-      <label>Name</label>
-      <input type="text" name="name" value="{{upgrade.name}}" placeholder="Nightbloom Sapling" autofocus>
+      <label>{{localize "UPGRADES.UpgradeEditor.Name"}}</label>
+      <input type="text" name="name" value="{{upgrade.name}}" placeholder="{{localize "UPGRADES.UpgradeEditor.NameEg"}}" autofocus>
     </div>
 
     <div class="form-group stacked">
-      <label>Cost</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Cost"}}</label>
       <div class="upg-cost-rows">
         {{#each costRows}}
         <div class="upg-cost-row">
@@ -24,28 +24,28 @@
     </div>
 
     <div class="form-group">
-      <label>Art</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Art"}}</label>
       <div class="upg-file">
         <input type="text" name="img" value="{{upgrade.img}}" placeholder="worlds/mycampaign/art/plant.webp">
-        <button type="button" data-action="pickImage" title="Browse"><i class="fa-solid fa-file-image"></i></button>
+        <button type="button" data-action="pickImage" title="{{localize "UPGRADES.UpgradeEditor.Browse"}}"><i class="fa-solid fa-file-image"></i></button>
       </div>
     </div>
 
     <div class="form-group">
-      <label>Flavor line</label>
-      <input type="text" name="flavor" value="{{upgrade.flavor}}" placeholder="Planted in memory of those who fell.">
+      <label>{{localize "UPGRADES.UpgradeEditor.FlavorLine"}}</label>
+      <input type="text" name="flavor" value="{{upgrade.flavor}}" placeholder="{{localize "UPGRADES.UpgradeEditor.FlavorEg"}}">
     </div>
 
     <div class="form-group stacked">
-      <label>Description (HTML allowed)</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Description"}}</label>
       <textarea name="description" rows="4">{{upgrade.description}}</textarea>
     </div>
 
     {{#if hasCategories}}
     <div class="form-group">
-      <label>Section</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Section"}}</label>
       <select name="categoryId">
-        <option value="">— none —</option>
+        <option value="">{{localize "UPGRADES.UpgradeEditor.OptNone"}}</option>
         {{#each categories}}
         <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{name}}</option>
         {{/each}}
@@ -55,22 +55,21 @@
 
     <div class="form-group">
       <label class="checkbox">
-        <input type="checkbox" name="hidden" {{#if upgrade.hidden}}checked{{/if}}> Hidden — shows as a “???” teaser
+        <input type="checkbox" name="hidden" {{#if upgrade.hidden}}checked{{/if}}> {{localize "UPGRADES.UpgradeEditor.HiddenTeaser"}}
       </label>
     </div>
   </section>
 
   {{#if hasPrerequisiteCandidates}}
   <section class="upg-fieldset">
-    <h3>Comes after{{#if requiresCount}} <span class="upg-picker-count">{{requiresCount}} ticked</span>{{/if}}</h3>
+    <h3>{{localize "UPGRADES.UpgradeEditor.ComesAfter"}}{{#if requiresCount}} <span class="upg-picker-count">{{localize "UPGRADES.UpgradeEditor.Ticked" count=requiresCount}}</span>{{/if}}</h3>
     <p class="upg-hint">
-      Tick anything that must be owned before this can be bought. It stays visible but locked
-      until then, and the two are shown as linked.
+      {{localize "UPGRADES.UpgradeEditor.ComesAfterHint"}}
     </p>
     <div class="upg-picker upg-prereqs" data-picker="requires">
       {{#if showRequiresFilter}}
       <input type="search" class="upg-picker-filter" name="requiresFilter" value="{{requiresFilter}}"
-             placeholder="Filter by name or section…" autocomplete="off">
+             placeholder="{{localize "UPGRADES.UpgradeEditor.FilterPicker"}}" autocomplete="off">
       {{/if}}
       <div class="upg-picker-list">
         {{#each prerequisites}}
@@ -79,7 +78,7 @@
           {{name}}{{#if section}} <span class="upg-picker-section">{{section}}</span>{{/if}}
         </label>
         {{/each}}
-        <p class="upg-picker-empty upg-hint filtered-out">Nothing matches that.</p>
+        <p class="upg-picker-empty upg-hint filtered-out">{{localize "UPGRADES.UpgradeEditor.NoMatches"}}</p>
       </div>
     </div>
   </section>
@@ -87,16 +86,14 @@
 
   {{#if hasExclusionCandidates}}
   <section class="upg-fieldset">
-    <h3>Cannot be taken with{{#if excludesCount}} <span class="upg-picker-count">{{excludesCount}} ticked</span>{{/if}}</h3>
+    <h3>{{localize "UPGRADES.UpgradeEditor.CannotTakeWith"}}{{#if excludesCount}} <span class="upg-picker-count">{{localize "UPGRADES.UpgradeEditor.Ticked" count=excludesCount}}</span>{{/if}}</h3>
     <p class="upg-hint">
-      Tick anything the party must choose between. Buying either one rules out the other —
-      refunding it opens the choice again. Ticking here says the same thing as ticking this
-      upgrade over there, so it only needs doing once.
+      {{localize "UPGRADES.UpgradeEditor.CannotTakeWithHint"}}
     </p>
     <div class="upg-picker upg-prereqs" data-picker="excludes">
       {{#if showExcludesFilter}}
       <input type="search" class="upg-picker-filter" name="excludesFilter" value="{{excludesFilter}}"
-             placeholder="Filter by name or section…" autocomplete="off">
+             placeholder="{{localize "UPGRADES.UpgradeEditor.FilterPicker"}}" autocomplete="off">
       {{/if}}
       <div class="upg-picker-list">
         {{#each exclusions}}
@@ -105,7 +102,7 @@
           {{name}}{{#if section}} <span class="upg-picker-section">{{section}}</span>{{/if}}
         </label>
         {{/each}}
-        <p class="upg-picker-empty upg-hint filtered-out">Nothing matches that.</p>
+        <p class="upg-picker-empty upg-hint filtered-out">{{localize "UPGRADES.UpgradeEditor.NoMatches"}}</p>
       </div>
     </div>
     {{#if exclusiveNote}}<p class="upg-hint">{{exclusiveNote}}</p>{{/if}}
@@ -113,10 +110,10 @@
   {{/if}}
 
   <section class="upg-fieldset">
-    <h3>Who does this apply to?</h3>
+    <h3>{{localize "UPGRADES.UpgradeEditor.WhoApplies"}}</h3>
 
     <div class="form-group">
-      <label>Target</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Target"}}</label>
       <select name="target" data-action="rerender">
         {{#each targetOptions}}
         <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
@@ -127,23 +124,21 @@
     <div class="form-group">
       <label class="checkbox">
         <input type="checkbox" name="repeatable" {{#if upgrade.repeatable}}checked{{/if}}>
-        Can be bought more than once
+        {{localize "UPGRADES.UpgradeEditor.Repeatable"}}
       </label>
     </div>
 
     {{#if isBuyerTarget}}
     <p class="upg-hint">
-      Resolved when it is bought: a player's assigned character, or — if a GM buys it — whoever
-      the GM picks. Combine with “can be bought more than once” for something each character
-      acquires separately, like a tangible item.
+      {{localize "UPGRADES.UpgradeEditor.BuyerHint"}}
     </p>
     {{/if}}
 
     {{#if isActorTarget}}
     <div class="form-group">
-      <label>Character</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Character"}}</label>
       <select name="targetActorId">
-        <option value="">— choose a character —</option>
+        <option value="">{{localize "UPGRADES.UpgradeEditor.OptChooseCharacter"}}</option>
         {{#each actorGroups}}
         <optgroup label="{{label}}">
           {{#each actors}}
@@ -154,7 +149,7 @@
       </select>
     </div>
     {{#unless hasTargetActor}}
-    <p class="upg-warn"><i class="fa-solid fa-triangle-exclamation"></i> Pick a character, or the effect will have nowhere to land.</p>
+    <p class="upg-warn"><i class="fa-solid fa-triangle-exclamation"></i> {{localize "UPGRADES.UpgradeEditor.NoTargetWarn"}}</p>
     {{/unless}}
     {{else}}
     <p class="upg-hint">{{partyNote}}</p>
@@ -162,7 +157,7 @@
   </section>
 
   <section class="upg-fieldset">
-    <h3>What does it do?</h3>
+    <h3>{{localize "UPGRADES.UpgradeEditor.WhatDoes"}}</h3>
 
     <div class="upg-modes">
       {{#each effectModeOptions}}
@@ -176,8 +171,7 @@
       {{#unless builderSupported}}
       <p class="upg-warn">
         <i class="fa-solid fa-triangle-exclamation"></i>
-        The bonus builder ships presets for dnd5e and PF2e. In {{systemId}} you can still add custom
-        targets below, or link an existing effect instead.
+        {{localize "UPGRADES.UpgradeEditor.BuilderUnsupported" system=systemId}}
       </p>
       {{/unless}}
 
@@ -190,11 +184,11 @@
           <div class="upg-preset-picker">
             <input type="hidden" name="rowPreset" value="{{preset}}">
             <button type="button" class="upg-preset-current" data-preset-toggle
-                    title="Choose what this bonus applies to">
+                    title="{{localize "UPGRADES.UpgradeEditor.PresetTitle"}}">
               <span>{{presetLabel}}</span><i class="fa-solid fa-chevron-down"></i>
             </button>
             <div class="upg-preset-menu" hidden>
-              <input type="search" class="upg-preset-filter" placeholder="Filter targets…" autocomplete="off">
+              <input type="search" class="upg-preset-filter" placeholder="{{localize "UPGRADES.UpgradeEditor.FilterTargets"}}" autocomplete="off">
               <div class="upg-preset-list">
                 {{#each presetGroups}}
                 <div class="upg-preset-group">{{label}}</div>
@@ -203,7 +197,7 @@
                         data-preset-pick="{{id}}" data-search="{{search}}">{{label}}</button>
                 {{/each}}
                 {{/each}}
-                <p class="upg-preset-empty filtered-out">Nothing matches that.</p>
+                <p class="upg-preset-empty filtered-out">{{localize "UPGRADES.UpgradeEditor.NoMatches"}}</p>
               </div>
             </div>
           </div>
@@ -223,7 +217,7 @@
           {{#if valueIsType}}
           {{! the type is the whole payload — an immunity, or any dnd5e trait set }}
           <select name="rowValue" class="upg-resist-type">
-            <option value="">— choose a type —</option>
+            <option value="">{{localize "UPGRADES.UpgradeEditor.OptChooseType"}}</option>
             {{#each kinds}}
             <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
@@ -234,7 +228,7 @@
 
           {{#if isPf2e}}{{#unless isIwr}}
           {{! a resistance is not a modifier, so it has no bonus type and no stacking rule }}
-          <select name="rowBonusType" class="upg-bonus-type" title="PF2e counts only the highest bonus of each type">
+          <select name="rowBonusType" class="upg-bonus-type" title="{{localize "UPGRADES.UpgradeEditor.BonusTypeTitle"}}">
             {{#each bonusTypes}}
             <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
@@ -243,7 +237,7 @@
 
           {{#if isDamage}}
           <select name="rowDamageType" class="upg-damage-type">
-            <option value="">untyped</option>
+            <option value="">{{localize "UPGRADES.UpgradeEditor.OptUntyped"}}</option>
             {{#each damageTypes}}
             <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
@@ -252,41 +246,35 @@
 
           {{#if isIwr}}{{#unless valueIsType}}
           <select name="rowDamageType" class="upg-resist-type">
-            <option value="">— choose a type —</option>
+            <option value="">{{localize "UPGRADES.UpgradeEditor.OptChooseType"}}</option>
             {{#each kinds}}
             <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
             {{/each}}
           </select>
           {{/unless}}{{/if}}
-          <button type="button" data-action="removeRow" data-index="{{index}}" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" data-action="removeRow" data-index="{{index}}" title="{{localize "UPGRADES.Settings.Remove"}}"><i class="fa-solid fa-xmark"></i></button>
         </div>
         {{else}}
-        <p class="upg-empty">No bonuses yet.</p>
+        <p class="upg-empty">{{localize "UPGRADES.UpgradeEditor.NoBonuses"}}</p>
         {{/each}}
       </div>
 
-      <button type="button" class="upg-add-row" data-action="addRow"><i class="fa-solid fa-plus"></i> Add a bonus</button>
+      <button type="button" class="upg-add-row" data-action="addRow"><i class="fa-solid fa-plus"></i> {{localize "UPGRADES.UpgradeEditor.AddBonus"}}</button>
 
       {{#if isPf2e}}
       <div class="upg-hint upg-legend">
-        <p>Enter a flat number like <code>1</code>, or dice like <code>1d6</code>. Extra dice have no
-          bonus type, so that dropdown disappears when you type dice.</p>
-        <p><strong>Why the type matters:</strong> PF2e adds only the <em>largest</em> bonus of each type.
-          Two item bonuses to AC do not become +2 — the bigger one simply wins.</p>
+        <p>{{{localize "UPGRADES.UpgradeEditor.Pf2eDice"}}}</p>
+        <p>{{{localize "UPGRADES.UpgradeEditor.Pf2eWhyType"}}}</p>
         <dl>
           {{#each bonusTypeLegend}}
           <dt>{{label}}</dt><dd>{{hint}}</dd>
           {{/each}}
         </dl>
-        <p>If you only want it to work and do not care about the maths, pick <strong>Untyped</strong>.</p>
+        <p>{{{localize "UPGRADES.UpgradeEditor.Pf2eUntyped"}}}</p>
       </div>
       {{else}}
       <p class="upg-hint">
-        Values are dnd5e roll formulas, and they should carry a sign: <code>+2</code> for a flat bonus,
-        <code>+1d8[cold]</code> for typed dice — that is how “every weapon swing deals an extra 1d8 cold”
-        is written. The sign is added for you if you leave it off; it matters because two upgrades
-        touching the same bonus are joined end to end, and <code>+2+3</code> works where <code>23</code> does not.
-        Ability scores and darkvision are plain numbers, so those take <code>2</code> and <code>60</code>.
+        {{{localize "UPGRADES.UpgradeEditor.Dnd5eFormula"}}}
       </p>
       {{/if}}
     {{/if}}
@@ -299,21 +287,21 @@
             <strong>{{linkedName}}</strong>
             <span>{{linkedType}}</span>
           </div>
-          <button type="button" data-action="clearLink" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" data-action="clearLink" title="{{localize "UPGRADES.Common.Clear"}}"><i class="fa-solid fa-xmark"></i></button>
         {{else}}
           <i class="fa-solid fa-hand-pointer"></i>
           <div class="upg-drop-text">
-            <strong>Drag an Effect or Item here</strong>
-            <span>from a character sheet, the Items sidebar, or a compendium</span>
+            <strong>{{localize "UPGRADES.UpgradeEditor.DragEffect"}}</strong>
+            <span>{{localize "UPGRADES.UpgradeEditor.DragEffectHint"}}</span>
           </div>
         {{/if}}
       </div>
       <div class="form-group">
-        <label>UUID</label>
-        <input type="text" name="effectUuid" value="{{upgrade.effectUuid}}" placeholder="filled in by dragging, or paste one">
+        <label>{{localize "UPGRADES.UpgradeEditor.Uuid"}}</label>
+        <input type="text" name="effectUuid" value="{{upgrade.effectUuid}}" placeholder="{{localize "UPGRADES.UpgradeEditor.UuidEg"}}">
       </div>
       {{#if linkMissing}}
-      <p class="upg-warn"><i class="fa-solid fa-triangle-exclamation"></i> That UUID does not resolve to a document in this world.</p>
+      <p class="upg-warn"><i class="fa-solid fa-triangle-exclamation"></i> {{localize "UPGRADES.UpgradeEditor.UuidUnresolved"}}</p>
       {{/if}}
     {{/if}}
 
@@ -321,13 +309,13 @@
     <div class="form-group">
       <label class="checkbox">
         <input type="checkbox" name="showInEffectsBar" data-action="rerender" {{#if upgrade.showInEffectsBar}}checked{{/if}}>
-        Show it in the effects bar
+        {{localize "UPGRADES.UpgradeEditor.ShowInEffectsBar"}}
       </label>
     </div>
     <div class="form-group">
       <label class="checkbox">
         <input type="checkbox" name="hideEffect" {{#if upgrade.hideEffect}}checked{{/if}}>
-        Keep what it does secret until it is owned
+        {{localize "UPGRADES.UpgradeEditor.KeepSecret"}}
       </label>
     </div>
     <p class="upg-hint">{{grantNote}}</p>
@@ -337,33 +325,31 @@
   </div>
 
   <section class="upg-fieldset">
-    <h3>Ask the buyer to choose</h3>
+    <h3>{{localize "UPGRADES.UpgradeEditor.AskBuyer"}}</h3>
     <div class="form-group">
       <label class="checkbox">
         <input type="checkbox" name="choiceEnabled" data-action="rerender" {{#if upgrade.choiceEnabled}}checked{{/if}}>
-        Have them nominate something when they buy this
+        {{localize "UPGRADES.UpgradeEditor.Nominate"}}
       </label>
     </div>
     {{#if choiceEnabled}}
     <div class="form-group">
-      <label>Question</label>
-      <input type="text" name="choiceLabel" value="{{upgrade.choiceLabel}}" placeholder="Which spell?">
+      <label>{{localize "UPGRADES.UpgradeEditor.Question"}}</label>
+      <input type="text" name="choiceLabel" value="{{upgrade.choiceLabel}}" placeholder="{{localize "UPGRADES.UpgradeEditor.QuestionEg"}}">
     </div>
     <div class="form-group stacked">
-      <label>Guidance</label>
+      <label>{{localize "UPGRADES.UpgradeEditor.Guidance"}}</label>
       <input type="text" name="choiceHint" value="{{upgrade.choiceHint}}"
-             placeholder="Drag a spell from your spellbook.">
+             placeholder="{{localize "UPGRADES.UpgradeEditor.GuidanceEg"}}">
     </div>
     <p class="upg-hint">
-      A window opens before the cost is paid; cancelling it buys nothing. What they pick names the
-      granted item — “Temporary Scroll (Fireball)” — and is linked inside its description. Their
-      answer is remembered, so re-syncing rebuilds the same personalised grant.
+      {{localize "UPGRADES.UpgradeEditor.ChoiceHint"}}
     </p>
     {{/if}}
   </section>
 
   <footer class="upg-form-footer">
     <button type="submit"><i class="fa-solid fa-floppy-disk"></i> {{saveLabel}}</button>
-    <button type="button" data-action="cancel"><i class="fa-solid fa-ban"></i> Cancel</button>
+    <button type="button" data-action="cancel"><i class="fa-solid fa-ban"></i> {{localize "UPGRADES.Common.Cancel"}}</button>
   </footer>
 </div>

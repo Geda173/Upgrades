@@ -131,7 +131,7 @@ t('a ruled-out card says which rival closed it',
   /\{\{#if excludedBy\}\}/.test(read('templates/shop.hbs')));
 // A "???" teaser that wins the choice must not be named by the card it closed.
 t('a hidden rival is not named to players',
-  /claim\.hidden && !isGM\) \? "a choice already made"/.test(read('scripts/apps/shop-app.js')));
+  /claim\.hidden && !isGM\) \? t\("UPGRADES\.Shop\.AChoiceMade"\)/.test(read('scripts/apps/shop-app.js')));
 t('an open choice announces itself before anyone commits',
   /\{\{#if exclusiveLabel\}\}/.test(read('templates/shop.hbs'))
   && /exclusiveLabel: \(!mystery && rivals\.length && !claim\)/.test(read('scripts/apps/shop-app.js')));

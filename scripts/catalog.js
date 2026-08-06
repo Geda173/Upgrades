@@ -7,6 +7,7 @@
  * the logic probably belongs on the other side of the boundary.
  */
 import { MODULE_ID, SETTINGS } from "./settings.js";
+import { t } from "./i18n.js";
 
 /** Upgrade target modes. */
 export const TARGET = {
@@ -100,7 +101,7 @@ export async function upsertUpgrade(data) {
   if (idx >= 0) upgrades[idx] = foundry.utils.mergeObject(upgrades[idx], data);
   else upgrades.push({
     id: data.id ?? foundry.utils.randomID(),
-    name: "New Upgrade", cost: 1, img: "", flavor: "", description: "",
+    name: t("UPGRADES.New.Upgrade"), cost: 1, img: "", flavor: "", description: "",
     hidden: false, purchased: false, purchasedBy: null, purchasedAt: null,
     effectMode: "none", effectUuid: null, effectBuild: { rows: [] }, hideEffect: false,
     categoryId: null, repeatable: false, purchases: [], showInEffectsBar: false, requires: [],
@@ -292,7 +293,7 @@ export async function upsertCategory(data) {
   if (idx >= 0) categories[idx] = { ...categories[idx], ...data };
   else categories.push({
     id: data.id ?? foundry.utils.randomID(),
-    name: "New section", icon: "fa-solid fa-folder", sort: categories.length,
+    name: t("UPGRADES.New.Section"), icon: "fa-solid fa-folder", sort: categories.length,
     ...data
   });
   return setCategories(categories);

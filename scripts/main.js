@@ -13,9 +13,9 @@ Hooks.once("init", () => {
   // Every individual setting is config:false, so Foundry's list shows one button that opens
   // the setup window instead — where the choices have pickers and a live preview.
   game.settings.registerMenu(MODULE_ID, "setup", {
-    name: "Upgrades setup",
-    label: "Open setup",
-    hint: "Theme, wording, currency icon, party actor and purchase rules — with a live preview.",
+    name: "UPGRADES.Menu.Name",
+    label: "UPGRADES.Menu.Label",
+    hint: "UPGRADES.Menu.Hint",
     icon: "fa-solid fa-sliders",
     type: SettingsApp,
     restricted: true

@@ -9,6 +9,7 @@
  * and therefore the Save button — below the bottom of the display.
  */
 import { THEMES, getTheme } from "../settings.js";
+import { t } from "../i18n.js";
 
 const THEME_CLASSES = THEMES.map(t => `upg-theme-${t.id}`);
 
@@ -108,10 +109,10 @@ export function wireDropZone(el, { accept = [], onDrop } = {}) {
     }
 
     const doc = data?.uuid ? await fromUuid(data.uuid).catch(() => null) : null;
-    if (!doc) return ui.notifications.warn("Upgrades: that drop had nothing in it.");
+    if (!doc) return ui.notifications.warn(t("UPGRADES.Notify.EmptyDrop"));
     if (accept.length && !accept.includes(doc.documentName)) {
-      const wanted = accept.map(a => (a === "Actor" ? "an Actor" : `a ${a}`)).join(" or ");
-      return ui.notifications.warn(`Upgrades: drop ${wanted} here — that was ${doc.documentName}.`);
+      const wanted = accept.map(a => t(`UPGRADES.DropKind.${a}`)).join(t("UPGRADES.DropKind.Or"));
+      return ui.notifications.warn(t("UPGRADES.Notify.WrongDrop", { wanted, got: doc.documentName }));
     }
     await onDrop(doc, data.uuid);
   });

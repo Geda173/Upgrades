@@ -1,6 +1,7 @@
+import { i18n } from './i18n-stub.mjs';
 import fs from 'node:fs';
 globalThis.CONST = { ACTIVE_EFFECT_MODES:{CUSTOM:0,MULTIPLY:1,ADD:2,DOWNGRADE:3,UPGRADE:4,OVERRIDE:5} };
-globalThis.game = { system:{id:'dnd5e'} };
+globalThis.game = { system:{id:'dnd5e'}, i18n };
 const { THEMES } = await import(new URL('../scripts/settings.js', import.meta.url));
 const css = fs.readFileSync(new URL('../styles/shop.css', import.meta.url),'utf8');
 

@@ -8,6 +8,7 @@
  *   "build" — effectBuild.rows are preset bonuses assembled here into ActiveEffect changes
  */
 import { MODULE_ID } from "./settings.js";
+import { t, localizeFields } from "./i18n.js";
 
 export const EFFECT_MODE = {
   NONE: "none",
@@ -30,101 +31,97 @@ const MODES = CONST.ACTIVE_EFFECT_MODES;
  * normalised to carry an explicit sign ("+1d8[cold]"), which makes concatenation compose correctly:
  * "" + "+2" + "+3" evaluates as 5. Only genuinely numeric fields use type "number".
  */
-const PRESETS_DND5E = [
-  { group: "Attack & damage", id: "weapon.attack", label: "All weapon attack rolls", placeholder: "+1",
+const RAW_DND5E = [
+  { group: "AttackDamage", id: "weapon.attack", placeholder: "+1",
     keys: ["system.bonuses.mwak.attack", "system.bonuses.rwak.attack"] },
-  { group: "Attack & damage", id: "weapon.damage", damage: true, label: "All weapon damage", placeholder: "+1d8",
+  { group: "AttackDamage", id: "weapon.damage", damage: true, placeholder: "+1d8",
     keys: ["system.bonuses.mwak.damage", "system.bonuses.rwak.damage"] },
-  { group: "Attack & damage", id: "melee.attack", label: "Melee weapon attack rolls", placeholder: "+1",
+  { group: "AttackDamage", id: "melee.attack", placeholder: "+1",
     keys: ["system.bonuses.mwak.attack"] },
-  { group: "Attack & damage", id: "melee.damage", damage: true, label: "Melee weapon damage", placeholder: "+1d8",
+  { group: "AttackDamage", id: "melee.damage", damage: true, placeholder: "+1d8",
     keys: ["system.bonuses.mwak.damage"] },
-  { group: "Attack & damage", id: "ranged.attack", label: "Ranged weapon attack rolls", placeholder: "+1",
+  { group: "AttackDamage", id: "ranged.attack", placeholder: "+1",
     keys: ["system.bonuses.rwak.attack"] },
-  { group: "Attack & damage", id: "ranged.damage", damage: true, label: "Ranged weapon damage", placeholder: "+1d6",
+  { group: "AttackDamage", id: "ranged.damage", damage: true, placeholder: "+1d6",
     keys: ["system.bonuses.rwak.damage"] },
 
   // dnd5e has no `bonuses.spell.attack`; spell attacks are the melee/ranged spell-attack pair.
-  { group: "Spellcasting", id: "spell.attack", label: "Spell attack rolls", placeholder: "+2",
+  { group: "Spellcasting", id: "spell.attack", placeholder: "+2",
     keys: ["system.bonuses.msak.attack", "system.bonuses.rsak.attack"] },
-  { group: "Spellcasting", id: "spell.dc", label: "Spell save DC", placeholder: "+1",
+  { group: "Spellcasting", id: "spell.dc", placeholder: "+1",
     keys: ["system.bonuses.spell.dc"] },
-  { group: "Spellcasting", id: "spell.damage", damage: true, label: "Spell damage", placeholder: "+1d4",
+  { group: "Spellcasting", id: "spell.damage", damage: true, placeholder: "+1d4",
     keys: ["system.bonuses.msak.damage", "system.bonuses.rsak.damage"] },
 
-  { group: "Defence", id: "ac", label: "Armor Class", placeholder: "+1",
+  { group: "Defence", id: "ac", placeholder: "+1",
     keys: ["system.attributes.ac.bonus"] },
-  { group: "Defence", id: "hp.max", label: "Maximum hit points", placeholder: "+10",
+  { group: "Defence", id: "hp.max", placeholder: "+10",
     keys: ["system.attributes.hp.bonuses.overall"] },
-  { group: "Defence", id: "save.all", label: "All saving throws", placeholder: "+1",
+  { group: "Defence", id: "save.all", placeholder: "+1",
     keys: ["system.bonuses.abilities.save"] },
 
   // dnd5e keeps these as *sets of damage types*, not numbers: `system.traits.dr` is a
   // DamageTraitField whose `value` is a SetField, so the change adds the type itself and there
   // is no amount to give. Verified against release-5.3.3 module/data/actor/templates/traits.mjs.
-  { group: "Defence", id: "resistance", label: "Resistance to a damage type", iwr: true,
+  { group: "Defence", id: "resistance", iwr: true,
     valueIsType: true, type: "set", keys: ["system.traits.dr.value"] },
-  { group: "Defence", id: "immunity", label: "Immunity to a damage type", iwr: true,
+  { group: "Defence", id: "immunity", iwr: true,
     valueIsType: true, type: "set", keys: ["system.traits.di.value"] },
-  { group: "Defence", id: "vulnerability", label: "Vulnerability to a damage type", iwr: true,
+  { group: "Defence", id: "vulnerability", iwr: true,
     valueIsType: true, type: "set", keys: ["system.traits.dv.value"] },
 
   // Per-ability saves. PF2e has had Fortitude/Reflex/Will separately since the builder shipped;
   // dnd5e could only ever say "all saves". Verified against actor/templates/common.mjs
   // (release-5.3.3): each ability carries bonuses.{check,save}, both FormulaFields — so they are
   // signed like every other formula target, not treated as numbers.
-  ...[["str", "Strength"], ["dex", "Dexterity"], ["con", "Constitution"],
-      ["int", "Intelligence"], ["wis", "Wisdom"], ["cha", "Charisma"]]
-    .map(([key, label]) => ({
-      group: "Defence", id: `save.${key}`, label: `${label} saving throws`, placeholder: "+1",
+  ...["str", "dex", "con", "int", "wis", "cha"]
+    .map(key => ({
+      group: "Defence", id: `save.${key}`, placeholder: "+1",
       keys: [`system.abilities.${key}.bonuses.save`]
     })),
 
-  { group: "Checks", id: "check.all", label: "All ability checks", placeholder: "+1",
+  { group: "Checks", id: "check.all", placeholder: "+1",
     keys: ["system.bonuses.abilities.check"] },
-  { group: "Checks", id: "skill.all", label: "All skill checks", placeholder: "+1",
+  { group: "Checks", id: "skill.all", placeholder: "+1",
     keys: ["system.bonuses.abilities.skill"] },
-  { group: "Checks", id: "init", label: "Initiative", placeholder: "+2",
+  { group: "Checks", id: "init", placeholder: "+2",
     keys: ["system.attributes.init.bonus"] },
 
   // Ability scores are real NumberFields, so these add arithmetically.
-  { group: "Ability scores", id: "ability.str", label: "Strength score", placeholder: "2", type: "number",
+  { group: "AbilityScores", id: "ability.str", placeholder: "2", type: "number",
     keys: ["system.abilities.str.value"] },
-  { group: "Ability scores", id: "ability.dex", label: "Dexterity score", placeholder: "2", type: "number",
+  { group: "AbilityScores", id: "ability.dex", placeholder: "2", type: "number",
     keys: ["system.abilities.dex.value"] },
-  { group: "Ability scores", id: "ability.con", label: "Constitution score", placeholder: "2", type: "number",
+  { group: "AbilityScores", id: "ability.con", placeholder: "2", type: "number",
     keys: ["system.abilities.con.value"] },
-  { group: "Ability scores", id: "ability.int", label: "Intelligence score", placeholder: "2", type: "number",
+  { group: "AbilityScores", id: "ability.int", placeholder: "2", type: "number",
     keys: ["system.abilities.int.value"] },
-  { group: "Ability scores", id: "ability.wis", label: "Wisdom score", placeholder: "2", type: "number",
+  { group: "AbilityScores", id: "ability.wis", placeholder: "2", type: "number",
     keys: ["system.abilities.wis.value"] },
-  { group: "Ability scores", id: "ability.cha", label: "Charisma score", placeholder: "2", type: "number",
+  { group: "AbilityScores", id: "ability.cha", placeholder: "2", type: "number",
     keys: ["system.abilities.cha.value"] },
 
   // The individual skills, to match what PF2e has always offered. Keys are the system's own
   // three-letter ids from CONFIG.DND5E.skills; the bonus path is skills.<key>.bonuses.check,
   // a FormulaField, verified against actor/templates/creature.mjs at release-5.3.3.
-  ...[["acr", "Acrobatics"], ["ani", "Animal Handling"], ["arc", "Arcana"], ["ath", "Athletics"],
-      ["dec", "Deception"], ["his", "History"], ["ins", "Insight"], ["itm", "Intimidation"],
-      ["inv", "Investigation"], ["med", "Medicine"], ["nat", "Nature"], ["prc", "Perception"],
-      ["prf", "Performance"], ["per", "Persuasion"], ["rel", "Religion"], ["slt", "Sleight of Hand"],
-      ["ste", "Stealth"], ["sur", "Survival"]]
-    .map(([key, label]) => ({
-      group: "Skills", id: `skill.${key}`, label, placeholder: "+2",
+  ...["acr", "ani", "arc", "ath", "dec", "his", "ins", "itm", "inv",
+      "med", "nat", "prc", "prf", "per", "rel", "slt", "ste", "sur"]
+    .map(key => ({
+      group: "Skills", id: `skill.${key}`, placeholder: "+2",
       keys: [`system.skills.${key}.bonuses.check`]
     })),
 
-  { group: "Movement & senses", id: "speed.walk", label: "Walking speed", placeholder: "+10",
+  { group: "MovementSenses", id: "speed.walk", placeholder: "+10",
     keys: ["system.attributes.movement.walk"] },
   // Also a FormulaField — on a creature with no fly speed, "+30" simply yields 30.
-  { group: "Movement & senses", id: "speed.fly", label: "Flying speed", placeholder: "+30",
+  { group: "MovementSenses", id: "speed.fly", placeholder: "+30",
     keys: ["system.attributes.movement.fly"] },
   // Moved under `ranges` in dnd5e 5.3; the old senses.darkvision is a deprecated getter.
-  { group: "Movement & senses", id: "darkvision", label: "Darkvision (raise to, in feet)", placeholder: "60",
+  { group: "MovementSenses", id: "darkvision", placeholder: "60",
     type: "number", mode: MODES.UPGRADE,
     keys: ["system.attributes.senses.ranges.darkvision"] },
 
-  { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
+  { group: "Advanced", id: "custom", placeholder: "+1", custom: true, keys: [] }
 ];
 
 /**
@@ -139,82 +136,102 @@ const PRESETS_DND5E = [
  * each type counts — so a +1 item bonus from an upgrade correctly refuses to stack with a
  * magic weapon's, which dnd5e cannot express at all.
  */
-const PRESETS_PF2E = [
-  { group: "Attack & damage", id: "attack", label: "Attack rolls", selectors: ["attack"], placeholder: "1" },
-  { group: "Attack & damage", id: "damage", label: "Damage", selectors: ["damage"], damage: true, placeholder: "1d6" },
-  { group: "Attack & damage", id: "melee.damage", label: "Melee damage", selectors: ["melee-damage"], damage: true, placeholder: "1d6" },
-  { group: "Attack & damage", id: "ranged.damage", label: "Ranged damage", selectors: ["ranged-damage"], damage: true, placeholder: "1d6" },
+const RAW_PF2E = [
+  { group: "AttackDamage", id: "attack", selectors: ["attack"], placeholder: "1" },
+  { group: "AttackDamage", id: "damage", selectors: ["damage"], damage: true, placeholder: "1d6" },
+  { group: "AttackDamage", id: "melee.damage", selectors: ["melee-damage"], damage: true, placeholder: "1d6" },
+  { group: "AttackDamage", id: "ranged.damage", selectors: ["ranged-damage"], damage: true, placeholder: "1d6" },
 
-  { group: "Defence", id: "ac", label: "Armor Class", selectors: ["ac"], placeholder: "1" },
-  { group: "Defence", id: "save.all", label: "All saving throws", selectors: ["saving-throw"], placeholder: "1" },
-  { group: "Defence", id: "save.fortitude", label: "Fortitude saves", selectors: ["fortitude"], placeholder: "1" },
-  { group: "Defence", id: "save.reflex", label: "Reflex saves", selectors: ["reflex"], placeholder: "1" },
-  { group: "Defence", id: "save.will", label: "Will saves", selectors: ["will"], placeholder: "1" },
+  { group: "Defence", id: "ac", selectors: ["ac"], placeholder: "1" },
+  { group: "Defence", id: "save.all", selectors: ["saving-throw"], placeholder: "1" },
+  { group: "Defence", id: "save.fortitude", selectors: ["fortitude"], placeholder: "1" },
+  { group: "Defence", id: "save.reflex", selectors: ["reflex"], placeholder: "1" },
+  { group: "Defence", id: "save.will", selectors: ["will"], placeholder: "1" },
 
   // Not modifiers at all: PF2e expresses these as their own rule elements, whose `type` is an
   // *array* of resistance types even when it names one. Resistance and Weakness carry an amount;
   // Immunity declares `readonly value = null` and takes none, so its row asks only for the type.
   // Verified against src/module/rules/rule-element/iwr/{resistance,immunity}.ts and the
   // RuleElements registry in src/module/rules/index.ts at pf2e-8.3.0.
-  { group: "Defence", id: "resistance", label: "Resistance to a damage type", iwr: true,
+  { group: "Defence", id: "resistance", iwr: true,
     ruleKey: "Resistance", placeholder: "5" },
-  { group: "Defence", id: "weakness", label: "Weakness to a damage type", iwr: true,
+  { group: "Defence", id: "weakness", iwr: true,
     ruleKey: "Weakness", placeholder: "5" },
-  { group: "Defence", id: "immunity", label: "Immunity to a damage type", iwr: true,
+  { group: "Defence", id: "immunity", iwr: true,
     valueIsType: true, ruleKey: "Immunity" },
 
-  { group: "Checks", id: "perception", label: "Perception", selectors: ["perception"], placeholder: "1" },
-  { group: "Checks", id: "skill.all", label: "All skill checks", selectors: ["skill-check"], placeholder: "1" },
+  { group: "Checks", id: "perception", selectors: ["perception"], placeholder: "1" },
+  { group: "Checks", id: "skill.all", selectors: ["skill-check"], placeholder: "1" },
   ...["acrobatics","arcana","athletics","crafting","deception","diplomacy","intimidation","medicine",
       "nature","occultism","performance","religion","society","stealth","survival","thievery"]
     .map(slug => ({
-      group: "Skills", id: `skill.${slug}`,
-      label: slug.charAt(0).toUpperCase() + slug.slice(1),
-      selectors: [slug], placeholder: "1"
+      group: "Skills", id: `skill.${slug}`, selectors: [slug], placeholder: "1"
     })),
 
-  { group: "Spellcasting", id: "spell.attack", label: "Spell attack rolls", selectors: ["spell-attack"], placeholder: "1" },
-  { group: "Spellcasting", id: "spell.dc", label: "Spell DC", selectors: ["spell-dc"], placeholder: "1" },
-  { group: "Spellcasting", id: "class.dc", label: "Class DC", selectors: ["class-dc"], placeholder: "1" },
+  { group: "Spellcasting", id: "spell.attack", selectors: ["spell-attack"], placeholder: "1" },
+  { group: "Spellcasting", id: "spell.dc", selectors: ["spell-dc"], placeholder: "1" },
+  { group: "Spellcasting", id: "class.dc", selectors: ["class-dc"], placeholder: "1" },
 
   // Max HP is a real modifier domain here, extracted in the *character* document rather than the
   // creature one — extractModifiers(synthetics, ["hp"]) — which is why it is easy to conclude it
   // does not exist. Initiative and the per-type speeds are ordinary statistic domains.
-  { group: "Defence", id: "hp.max", label: "Maximum hit points", selectors: ["hp"], placeholder: "10" },
-  { group: "Checks", id: "init", label: "Initiative", selectors: ["initiative"], placeholder: "2" },
+  { group: "Defence", id: "hp.max", selectors: ["hp"], placeholder: "10" },
+  { group: "Checks", id: "init", selectors: ["initiative"], placeholder: "2" },
 
-  { group: "Movement", id: "speed", label: "All speeds", selectors: ["all-speeds"], placeholder: "5" },
+  { group: "Movement", id: "speed", selectors: ["all-speeds"], placeholder: "5" },
   // Speeds are filtered on ["all-speeds", `${type}-speed`], so a per-type selector is the type's
   // own name with -speed appended.
-  { group: "Movement", id: "speed.walk", label: "Walking speed", selectors: ["land-speed"], placeholder: "5" },
-  { group: "Movement", id: "speed.fly", label: "Flying speed", selectors: ["fly-speed"], placeholder: "5" },
+  { group: "Movement", id: "speed.walk", selectors: ["land-speed"], placeholder: "5" },
+  { group: "Movement", id: "speed.fly", selectors: ["fly-speed"], placeholder: "5" },
 
-  { group: "Advanced", id: "custom", label: "Custom selector…", placeholder: "1", custom: true, selectors: [] }
+  { group: "Advanced", id: "custom", placeholder: "1", custom: true, selectors: [] }
 ];
 
 /** Systems we have no catalog for get the custom row only. */
-const PRESETS_GENERIC = [
-  { group: "Advanced", id: "custom", label: "Custom data path…", placeholder: "+1", custom: true, keys: [] }
+const RAW_GENERIC = [
+  { group: "Advanced", id: "custom", placeholder: "+1", custom: true, keys: [] }
 ];
 
 /**
  * PF2e modifier types, from MODIFIER_TYPES in src/module/actor/modifiers.ts.
  * The type is what drives stacking, so it is a first-class choice rather than a hidden default.
  */
-export const PF2E_BONUS_TYPES = [
-  { id: "circumstance", label: "Circumstance — from where you are or what you did",
-    hint: "Terrain, cover, a lit beacon, a clever plan. The usual choice for something the world provides." },
-  { id: "item", label: "Item — from gear, a rune, an installed upgrade",
-    hint: "Will not stack with a magic weapon or armour giving the same kind of bonus — the larger one wins." },
-  { id: "status", label: "Status — from a spell, condition or blessing",
-    hint: "Will not stack with spell buffs like Bless that grant the same kind of bonus." },
-  { id: "untyped", label: "Untyped — always stacks with everything",
-    hint: "Nothing suppresses it. Use it when you just want the bonus to apply, at the cost of breaking PF2e's stacking maths." },
-  { id: "proficiency", label: "Proficiency (rarely right for an upgrade)",
-    hint: "Reserved for training rank. Almost never what an upgrade should grant." },
-  { id: "ability", label: "Ability (rarely right for an upgrade)",
-    hint: "Reserved for an attribute modifier. Almost never what an upgrade should grant." }
+const RAW_BONUS_TYPES = [
+  { id: "circumstance" },
+  { id: "item" },
+  { id: "status" },
+  { id: "untyped" },
+  // Flagged rather than detected from the wording: the legend used to filter on the
+  // English "rarely", which any translation silently empties.
+  { id: "proficiency", rare: true },
+  { id: "ability", rare: true }
 ];
+
+/**
+ * The catalogues, with their wording resolved through `game.i18n` on read.
+ *
+ * A preset's label and its group heading are derived from its id, so adding one means adding a
+ * key rather than touching this. IWR presets also carry a `noun` ("Resistance") — the player-
+ * facing description used to produce it by stripping " to a damage type" off the end of the
+ * label, which is English grammar hard-coded into the composition and the first thing that
+ * breaks in German. `short` does the same job for the one preset whose label carries a
+ * parenthetical that reads badly on a card.
+ */
+const presetFields = catalogue => ({
+  group: p => `UPGRADES.PresetGroup.${p.group}`,
+  label: p => `UPGRADES.Preset.${catalogue}.${p.id.replaceAll(".", "_")}`,
+  noun: p => (p.iwr ? `UPGRADES.PresetNoun.${p.id}` : null),
+  short: p => (p.mode === MODES.UPGRADE ? `UPGRADES.PresetShort.${p.id.replaceAll(".", "_")}` : null)
+});
+
+const PRESETS_DND5E = localizeFields(RAW_DND5E, presetFields("Dnd5e"));
+const PRESETS_PF2E = localizeFields(RAW_PF2E, presetFields("Pf2e"));
+const PRESETS_GENERIC = localizeFields(RAW_GENERIC, presetFields("Generic"));
+
+export const PF2E_BONUS_TYPES = localizeFields(RAW_BONUS_TYPES, {
+  label: b => `UPGRADES.BonusType.${b.id}`,
+  hint: b => `UPGRADES.BonusType.${b.id}Hint`
+});
 
 /** Dice sizes PF2e accepts for a DamageDice rule element. */
 export const PF2E_DIE_SIZES = ["d4", "d6", "d8", "d10", "d12"];
@@ -478,11 +495,14 @@ export function describeRows(rows = []) {
     const preset = getPreset(row.preset);
     if (!preset) continue;
 
-    // Resistance and its relatives read as a statement, not as a bonus to something.
+    // Resistance and its relatives read as a statement, not as a bonus to something. The noun is
+    // its own key rather than the label with " to a damage type" chopped off the end, because
+    // that chop is English grammar and there is no reason the German label ends the same way.
     if (preset.iwr) {
       const kind = preset.valueIsType ? raw : (row.damageType || "");
-      const noun = preset.label.replace(/ to a damage type$/, "");
-      out.push(preset.valueIsType ? `${noun} to ${kind}` : `${noun} ${raw} to ${kind}`);
+      out.push(preset.valueIsType
+        ? t("UPGRADES.Describe.IwrPlain", { noun: preset.noun, type: kind })
+        : t("UPGRADES.Describe.IwrAmount", { noun: preset.noun, amount: raw, type: kind }));
       continue;
     }
 
@@ -491,8 +511,9 @@ export function describeRows(rows = []) {
       const parsed = splitDamageValue(raw);
       const type = preset.damage ? (row.damageType || parsed.damageType || "") : "";
       const amount = /^[+-]/.test(parsed.amount) ? parsed.amount : `+${parsed.amount}`;
-      const kind = parseDice(parsed.amount) ? "" : ` ${row.bonusType || "circumstance"}`;
-      out.push(`${preset.label} ${amount}${type ? ` ${type}` : ""}${kind}`);
+      const kind = parseDice(parsed.amount) ? "" : (row.bonusType || "circumstance");
+      out.push(t(kind ? "UPGRADES.Describe.BonusPf2e" : "UPGRADES.Describe.BonusTyped",
+        { label: preset.label, amount, type, kind }).replace(/\s{2,}/g, " ").trim());
       continue;
     }
 
@@ -501,11 +522,12 @@ export function describeRows(rows = []) {
     const type = preset.damage ? (row.damageType ?? parsed.damageType ?? "").trim() : "";
 
     if ((preset.mode ?? MODES.ADD) === MODES.UPGRADE) {
-      // "Darkvision (raise to, in feet)" reads badly on a card; drop the parenthetical.
-      out.push(`${preset.label.replace(/\s*\(.*\)$/, "")} raised to ${amount}`);
+      // "Darkvision (raise to, in feet)" reads badly on a card, so these carry a short label.
+      out.push(t("UPGRADES.Describe.RaisedTo", { label: preset.short ?? preset.label, amount }));
     } else {
       const signed = /^[+-]/.test(amount) ? amount : `+${amount}`;
-      out.push(`${preset.label} ${signed}${type ? ` ${type}` : ""}`);
+      out.push(t("UPGRADES.Describe.BonusTyped", { label: preset.label, amount: signed, type })
+        .replace(/\s{2,}/g, " ").trim());
     }
   }
   return out;
@@ -535,13 +557,16 @@ export function describeBuild(rows = []) {
     const label = row.preset === "custom" ? (row.key || "custom") : (preset?.label ?? row.preset);
     if (preset?.iwr) {
       const kind = preset.valueIsType ? raw : (row.damageType || "");
-      const noun = preset.label.replace(/ to a damage type$/, "").toLowerCase();
-      parts.push(preset.valueIsType ? `${noun} to ${kind}` : `${noun} ${raw} to ${kind}`);
+      const noun = String(preset.noun).toLowerCase();
+      parts.push(preset.valueIsType
+        ? t("UPGRADES.Describe.IwrPlain", { noun, type: kind })
+        : t("UPGRADES.Describe.IwrAmount", { noun, amount: raw, type: kind }));
       continue;
     }
     const parsed = splitDamageValue(raw);
     const type = preset?.damage ? ((row.damageType ?? parsed.damageType ?? "").trim()) : "";
-    parts.push(`${parsed.amount || raw}${type ? `[${type}]` : ""} ${label.toLowerCase()}`);
+    parts.push(t("UPGRADES.Describe.Summary",
+      { amount: `${parsed.amount || raw}${type ? `[${type}]` : ""}`, label: label.toLowerCase() }));
   }
   return parts.join(", ");
 }

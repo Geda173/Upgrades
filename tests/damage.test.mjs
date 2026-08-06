@@ -1,5 +1,6 @@
+import { i18n } from './i18n-stub.mjs';
 globalThis.CONST = { ACTIVE_EFFECT_MODES:{CUSTOM:0,MULTIPLY:1,ADD:2,DOWNGRADE:3,UPGRADE:4,OVERRIDE:5} };
-globalThis.game = { system: { id: "dnd5e" } };
+globalThis.game = { system: { id: "dnd5e" }, i18n };
 globalThis.CONFIG = {};
 const { buildChanges, splitDamageValue, getDamageTypes, describeBuild } =
   await import(new URL('../scripts/effects.js', import.meta.url));

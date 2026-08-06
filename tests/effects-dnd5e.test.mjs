@@ -1,5 +1,6 @@
+import { i18n, missed } from './i18n-stub.mjs';
 globalThis.CONST = { ACTIVE_EFFECT_MODES:{CUSTOM:0,MULTIPLY:1,ADD:2,DOWNGRADE:3,UPGRADE:4,OVERRIDE:5} };
-globalThis.game = { system: { id: "dnd5e" } };
+globalThis.game = { system: { id: "dnd5e" }, i18n };
 const { buildChanges, describeBuild, getPreset, getPresetGroups, signFormula } =
   await import(new URL('../scripts/effects.js', import.meta.url));
 
@@ -133,4 +134,14 @@ t('pf2e now has its own catalogue', getPresetGroups().flatMap(g => g.presets).le
 globalThis.game.system.id = 'wfrp4e';
 t('an unsupported system gets only the custom row',
   getPresetGroups().flatMap(g => g.presets).length === 1);
+/* ---------- every preset's wording actually resolves ----------
+ * The labels are derived keys (`UPGRADES.Preset.Dnd5e.${id}`), so no static scan of the source
+ * can confirm they exist — only walking the real catalogue can. A miss renders the raw key in
+ * the editor's target picker, which is exactly the silent-ish failure this file exists to catch. */
+for (const g of getPresetGroups()) {
+  for (const p of g.presets) { void p.label; void p.group; void p.noun; void p.short; }
+}
+t(`every dnd5e preset label and group resolves${missed.size ? ` — missing: ${[...missed].join(', ')}` : ''}`,
+  missed.size === 0);
+
 process.exit(bad);

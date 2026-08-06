@@ -12,6 +12,7 @@ import { deleteCurrency, getCurrencies, upsertCurrency } from "../economy.js";
 import { MODULE_ID, SETTINGS, THEMES, grantMerchantAccess, isImagePath, merchantNeedsAccess } from "../settings.js";
 import { emit, refreshOpenApps } from "../sockets.js";
 import { UpgradesWindow, wireDropZone } from "./ui.js";
+import { t } from "../i18n.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -20,11 +21,11 @@ function iconPickerHtml(groups, selected) {
   const esc = foundry.utils.escapeHTML;
   return `<div class="upg-icon-picker">` + groups.map(g => `
     <div class="upg-icon-group">
-      <span class="upg-icon-group-label">${esc(g.label)}</span>
+      <span class="upg-icon-group-label">${esc(t(g.label))}</span>
       <div class="upg-icon-row">
-        ${g.icons.map(([cls, name]) => `
+        ${g.icons.map(([cls, key]) => `
           <button type="button" class="upg-icon-choice${cls === selected ? " active" : ""}"
-                  data-pick-icon="${esc(cls)}" title="${esc(name)}"><i class="${esc(cls)}"></i></button>`).join("")}
+                  data-pick-icon="${esc(cls)}" title="${esc(t(key))}"><i class="${esc(cls)}"></i></button>`).join("")}
       </div>
     </div>`).join("") + `</div>`;
 }
@@ -65,54 +66,54 @@ function wireIconPicker(root, inputName) {
 
 /** Curated icons, so nobody has to know the Font Awesome catalogue. */
 const ICON_GROUPS = [
-  { label: "Nature", icons: [
-    ["fa-solid fa-seedling", "Seedling"], ["fa-solid fa-leaf", "Leaf"], ["fa-solid fa-tree", "Tree"],
-    ["fa-solid fa-clover", "Clover"], ["fa-solid fa-spa", "Blossom"], ["fa-solid fa-feather", "Feather"],
-    ["fa-solid fa-droplet", "Droplet"], ["fa-solid fa-fire", "Flame"]
+  { label: "UPGRADES.IconGroup.Nature", icons: [
+    ["fa-solid fa-seedling", "UPGRADES.IconName.seedling"], ["fa-solid fa-leaf", "UPGRADES.IconName.leaf"], ["fa-solid fa-tree", "UPGRADES.IconName.tree"],
+    ["fa-solid fa-clover", "UPGRADES.IconName.clover"], ["fa-solid fa-spa", "UPGRADES.IconName.spa"], ["fa-solid fa-feather", "UPGRADES.IconName.feather"],
+    ["fa-solid fa-droplet", "UPGRADES.IconName.droplet"], ["fa-solid fa-fire", "UPGRADES.IconName.fire"]
   ]},
   // Verified present in FA6 free solid — fa-crystal-ball and fa-orb do not exist and render blank.
-  { label: "Orbs & pearls", icons: [
-    ["fa-solid fa-circle", "Pearl"], ["fa-solid fa-circle-dot", "Orb"],
-    ["fa-solid fa-egg", "Pearl (oval)"], ["fa-solid fa-hurricane", "Swirling orb"],
-    ["fa-solid fa-globe", "Sphere"], ["fa-solid fa-compact-disc", "Disc"]
+  { label: "UPGRADES.IconGroup.OrbsPearls", icons: [
+    ["fa-solid fa-circle", "UPGRADES.IconName.circle"], ["fa-solid fa-circle-dot", "UPGRADES.IconName.circle-dot"],
+    ["fa-solid fa-egg", "UPGRADES.IconName.egg"], ["fa-solid fa-hurricane", "UPGRADES.IconName.hurricane"],
+    ["fa-solid fa-globe", "UPGRADES.IconName.globe"], ["fa-solid fa-compact-disc", "UPGRADES.IconName.compact-disc"]
   ]},
-  { label: "Treasure", icons: [
-    ["fa-solid fa-gem", "Gem"], ["fa-solid fa-coins", "Coins"], ["fa-solid fa-crown", "Crown"],
-    ["fa-solid fa-ring", "Ring"], ["fa-solid fa-key", "Key"], ["fa-solid fa-sack-dollar", "Purse"],
-    ["fa-solid fa-star", "Star"], ["fa-solid fa-heart", "Heart"]
+  { label: "UPGRADES.IconGroup.Treasure", icons: [
+    ["fa-solid fa-gem", "UPGRADES.IconName.gem"], ["fa-solid fa-coins", "UPGRADES.IconName.coins"], ["fa-solid fa-crown", "UPGRADES.IconName.crown"],
+    ["fa-solid fa-ring", "UPGRADES.IconName.ring"], ["fa-solid fa-key", "UPGRADES.IconName.key"], ["fa-solid fa-sack-dollar", "UPGRADES.IconName.sack-dollar"],
+    ["fa-solid fa-star", "UPGRADES.IconName.star"], ["fa-solid fa-heart", "UPGRADES.IconName.heart"]
   ]},
-  { label: "Arcane", icons: [
-    ["fa-solid fa-wand-sparkles", "Wand"], ["fa-solid fa-hat-wizard", "Wizard hat"], ["fa-solid fa-scroll", "Scroll"],
-    ["fa-solid fa-book", "Book"], ["fa-solid fa-dice-d20", "d20"], ["fa-solid fa-eye", "Eye"],
-    ["fa-solid fa-moon", "Moon"], ["fa-solid fa-sun", "Sun"]
+  { label: "UPGRADES.IconGroup.Arcane", icons: [
+    ["fa-solid fa-wand-sparkles", "UPGRADES.IconName.wand-sparkles"], ["fa-solid fa-hat-wizard", "UPGRADES.IconName.hat-wizard"], ["fa-solid fa-scroll", "UPGRADES.IconName.scroll"],
+    ["fa-solid fa-book", "UPGRADES.IconName.book"], ["fa-solid fa-dice-d20", "UPGRADES.IconName.dice-d20"], ["fa-solid fa-eye", "UPGRADES.IconName.eye"],
+    ["fa-solid fa-moon", "UPGRADES.IconName.moon"], ["fa-solid fa-sun", "UPGRADES.IconName.sun"]
   ]},
-  { label: "Grim", icons: [
-    ["fa-solid fa-skull", "Skull"], ["fa-solid fa-bone", "Bone"], ["fa-solid fa-ghost", "Ghost"],
-    ["fa-solid fa-shield-halved", "Shield"], ["fa-solid fa-dragon", "Dragon"], ["fa-solid fa-anchor", "Anchor"]
+  { label: "UPGRADES.IconGroup.Grim", icons: [
+    ["fa-solid fa-skull", "UPGRADES.IconName.skull"], ["fa-solid fa-bone", "UPGRADES.IconName.bone"], ["fa-solid fa-ghost", "UPGRADES.IconName.ghost"],
+    ["fa-solid fa-shield-halved", "UPGRADES.IconName.shield-halved"], ["fa-solid fa-dragon", "UPGRADES.IconName.dragon"], ["fa-solid fa-anchor", "UPGRADES.IconName.anchor"]
   ]},
-  { label: "Sci-fi", icons: [
-    ["fa-solid fa-microchip", "Chip"], ["fa-solid fa-atom", "Atom"], ["fa-solid fa-robot", "Robot"],
-    ["fa-solid fa-rocket", "Rocket"], ["fa-solid fa-satellite", "Satellite"], ["fa-solid fa-radiation", "Radiation"],
-    ["fa-solid fa-bolt", "Bolt"], ["fa-solid fa-circle-nodes", "Network"]
+  { label: "UPGRADES.IconGroup.SciFi", icons: [
+    ["fa-solid fa-microchip", "UPGRADES.IconName.microchip"], ["fa-solid fa-atom", "UPGRADES.IconName.atom"], ["fa-solid fa-robot", "UPGRADES.IconName.robot"],
+    ["fa-solid fa-rocket", "UPGRADES.IconName.rocket"], ["fa-solid fa-satellite", "UPGRADES.IconName.satellite"], ["fa-solid fa-radiation", "UPGRADES.IconName.radiation"],
+    ["fa-solid fa-bolt", "UPGRADES.IconName.bolt"], ["fa-solid fa-circle-nodes", "UPGRADES.IconName.circle-nodes"]
   ]}
 ];
 
 /** Portrait icons — people, places and creatures rather than currency symbols. */
 const HOST_ICON_GROUPS = [
-  { label: "People", icons: [
-    ["fa-solid fa-user", "Figure"], ["fa-solid fa-user-tie", "Merchant"], ["fa-solid fa-hat-wizard", "Wizard"],
-    ["fa-solid fa-crown", "Monarch"], ["fa-solid fa-mask", "Masked"], ["fa-solid fa-skull", "Skull"],
-    ["fa-solid fa-ghost", "Ghost"], ["fa-solid fa-robot", "Android"]
+  { label: "UPGRADES.IconGroup.People", icons: [
+    ["fa-solid fa-user", "UPGRADES.IconName.user"], ["fa-solid fa-user-tie", "UPGRADES.IconName.user-tie"], ["fa-solid fa-hat-wizard", "UPGRADES.IconName.hat-wizard"],
+    ["fa-solid fa-crown", "UPGRADES.IconName.crown"], ["fa-solid fa-mask", "UPGRADES.IconName.mask"], ["fa-solid fa-skull", "UPGRADES.IconName.skull"],
+    ["fa-solid fa-ghost", "UPGRADES.IconName.ghost"], ["fa-solid fa-robot", "UPGRADES.IconName.robot"]
   ]},
-  { label: "Places", icons: [
-    ["fa-solid fa-tree", "Grove"], ["fa-solid fa-seedling", "Garden"], ["fa-solid fa-mountain", "Mountain"],
-    ["fa-solid fa-tent", "Camp"], ["fa-solid fa-dungeon", "Dungeon"], ["fa-solid fa-torii-gate", "Gate"],
-    ["fa-solid fa-anchor", "Harbour"], ["fa-solid fa-satellite-dish", "Station"]
+  { label: "UPGRADES.IconGroup.Places", icons: [
+    ["fa-solid fa-tree", "UPGRADES.IconName.tree"], ["fa-solid fa-seedling", "UPGRADES.IconName.seedling"], ["fa-solid fa-mountain", "UPGRADES.IconName.mountain"],
+    ["fa-solid fa-tent", "UPGRADES.IconName.tent"], ["fa-solid fa-dungeon", "UPGRADES.IconName.dungeon"], ["fa-solid fa-torii-gate", "UPGRADES.IconName.torii-gate"],
+    ["fa-solid fa-anchor", "UPGRADES.IconName.anchor"], ["fa-solid fa-satellite-dish", "UPGRADES.IconName.satellite-dish"]
   ]},
-  { label: "Signs", icons: [
-    ["fa-solid fa-gem", "Gem"], ["fa-solid fa-scroll", "Scroll"], ["fa-solid fa-book", "Tome"],
-    ["fa-solid fa-fire", "Flame"], ["fa-solid fa-moon", "Moon"], ["fa-solid fa-sun", "Sun"],
-    ["fa-solid fa-dragon", "Dragon"], ["fa-solid fa-atom", "Atom"]
+  { label: "UPGRADES.IconGroup.Signs", icons: [
+    ["fa-solid fa-gem", "UPGRADES.IconName.gem"], ["fa-solid fa-scroll", "UPGRADES.IconName.scroll"], ["fa-solid fa-book", "UPGRADES.IconName.book"],
+    ["fa-solid fa-fire", "UPGRADES.IconName.fire"], ["fa-solid fa-moon", "UPGRADES.IconName.moon"], ["fa-solid fa-sun", "UPGRADES.IconName.sun"],
+    ["fa-solid fa-dragon", "UPGRADES.IconName.dragon"], ["fa-solid fa-atom", "UPGRADES.IconName.atom"]
   ]}
 ];
 
@@ -213,20 +214,20 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
       })),
 
       iconGroups: ICON_GROUPS.map(g => ({
-        label: g.label,
-        icons: g.icons.map(([cls, name]) => ({ cls, name, isSelected: cls === d.currencyIcon }))
+        label: t(g.label),
+        icons: g.icons.map(([cls, key]) => ({ cls, name: t(key), isSelected: cls === d.currencyIcon }))
       })),
 
       currencyItemName: this.currencyItemName ?? null,
       currencies: getCurrencies().map(c => ({ ...c, isImage: isImagePath(c.icon ?? "") })),
       hasMultipleCurrencies: getCurrencies().length > 1,
-      hostActorName: d.hostActor ? (game.actors.get(d.hostActor)?.name ?? "missing actor") : null,
+      hostActorName: d.hostActor ? (game.actors.get(d.hostActor)?.name ?? t("UPGRADES.Settings.MissingActor")) : null,
       // Checked against the saved actor, since the warning is about world state, not the draft.
       merchantNeedsAccess: merchantNeedsAccess(),
 
       hostIconGroups: HOST_ICON_GROUPS.map(g => ({
-        label: g.label,
-        icons: g.icons.map(([cls, name]) => ({ cls, name, isSelected: cls === d.hostImg }))
+        label: t(g.label),
+        icons: g.icons.map(([cls, key]) => ({ cls, name: t(key), isSelected: cls === d.hostImg }))
       })),
 
       partyActorChoices: SettingsApp.#partyActorChoices(d.partyActor),
@@ -248,12 +249,9 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
     const groups = game.actors.filter(a => a.type === "group" || a.type === "party").length;
     const loose = game.actors.filter(a => a.type === "character" && a.hasPlayerOwner).length;
     if (!groups) {
-      return `No Group actor exists in this world yet, so party-wide upgrades would apply to all `
-           + `${loose} player-owned characters — including chests, item piles and wildshape copies. `
-           + `Create a Group actor with just your PCs, then pick it here.`;
+      return t("UPGRADES.Settings.NoGroupActor", { count: loose });
     }
-    return `Without a party actor, party-wide upgrades apply to all ${loose} player-owned characters, `
-         + `which usually includes actors you did not mean.`;
+    return t("UPGRADES.Settings.NoPartyActor", { count: loose });
   }
 
   /* ---------- live preview ---------- */
@@ -409,23 +407,23 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
     const { DialogV2 } = foundry.applications.api;
     const c = existing ?? { name: "", icon: "fa-solid fa-circle" };
     return DialogV2.prompt({
-      window: { title: existing ? `Edit ${c.name}` : "New resource" },
+      window: { title: existing ? t("UPGRADES.Dialog.EditResource", { name: c.name }) : t("UPGRADES.New.Resource") },
       content: `
-        <div class="form-group"><label>Name</label>
-          <input type="text" name="name" value="${foundry.utils.escapeHTML(c.name)}" placeholder="Sprigs" autofocus></div>
+        <div class="form-group"><label>${t("UPGRADES.UpgradeEditor.Name")}</label>
+          <input type="text" name="name" value="${foundry.utils.escapeHTML(c.name)}" placeholder="${t('UPGRADES.Settings.PrimaryNameEg')}" autofocus></div>
         <div class="form-group">
-          <label>Icon</label>
+          <label>${t("UPGRADES.Settings.Icon")}</label>
           <span class="upg-icon-preview" data-icon-preview></span>
         </div>
         ${iconPickerHtml(ICON_GROUPS, c.icon)}
         <div class="upg-file upg-icon-custom">
           <input type="text" name="icon" value="${foundry.utils.escapeHTML(c.icon ?? "")}" placeholder="fa-solid fa-seedling">
-          <button type="button" data-browse-icon title="Use your own image"><i class="fa-solid fa-folder-open"></i></button>
+          <button type="button" data-browse-icon title="${t('UPGRADES.Settings.UseOwnImage')}"><i class="fa-solid fa-folder-open"></i></button>
         </div>
-        <p class="upg-hint">Pick one above, or browse for your own image.</p>`,
+        <p class="upg-hint">${t("UPGRADES.Settings.IconHint")}</p>`,
       render: (_event, dialog) => wireIconPicker(dialog.element ?? dialog, "icon"),
       ok: {
-        label: existing ? "Save" : "Create",
+        label: existing ? t("UPGRADES.Common.Save") : t("UPGRADES.Dialog.Create"),
         callback: (_e, button) => ({
           name: button.form.elements.name.value.trim(),
           icon: button.form.elements.icon.value.trim() || "fa-solid fa-circle"
@@ -457,13 +455,13 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
     const { DialogV2 } = foundry.applications.api;
     const currencies = getCurrencies();
     if (currencies.length <= 1) {
-      return ui.notifications.warn("Upgrades: there has to be at least one resource.");
+      return ui.notifications.warn(t("UPGRADES.Notify.NeedOneResource"));
     }
     const current = currencies.find(c => c.id === target.dataset.id);
     const ok = await DialogV2.confirm({
-      window: { title: "Remove resource" },
-      content: `<p>Remove <strong>${foundry.utils.escapeHTML(current.name)}</strong>?</p>
-        <p>Its balance is discarded, and any upgrade priced in it stops costing it.</p>`
+      window: { title: t("UPGRADES.Dialog.RemoveResource") },
+      content: `<p>${t("UPGRADES.Dialog.RemoveResourceBody", { name: `<strong>${foundry.utils.escapeHTML(current.name)}</strong>` })}</p>
+        <p>${t("UPGRADES.Dialog.RemoveResourceNote")}</p>`
     });
     if (!ok) return;
     await deleteCurrency(current.id);
@@ -473,7 +471,7 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
   static async #onGrantMerchantAccess() {
     this.#syncAll();
     const ok = await grantMerchantAccess();
-    if (ok) ui.notifications.info("Upgrades: players can now interact with the merchant's token.");
+    if (ok) ui.notifications.info(t("UPGRADES.Notify.MerchantAccessGranted"));
     this.render();
   }
 
@@ -528,7 +526,7 @@ export class SettingsApp extends UpgradesWindow(HandlebarsApplicationMixin(Appli
       changed++;
     }
 
-    ui.notifications.info(changed ? `Upgrades: ${changed} setting(s) saved.` : "Upgrades: nothing to save.");
+    ui.notifications.info(changed ? t("UPGRADES.Notify.SettingsSaved", { count: changed }) : t("UPGRADES.Notify.NothingToSave"));
     refreshOpenApps();
     emit({ type: "refresh" });
     this.close();

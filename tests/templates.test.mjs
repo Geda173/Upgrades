@@ -1,9 +1,12 @@
 /**
  * Handlebars templates: they must compile, and they must render the values the apps pass in.
  *
- * No helpers are registered on purpose. The project rule is that templates use only core
- * Handlebars and precompute display values in _prepareContext. Stubbing Foundry's `checked`
- * and `selected` here once hid a "Missing helper" crash that only appeared at runtime.
+ * `localize` is the only helper registered, because it is the only Foundry helper the templates
+ * are allowed to use — everything else is precomputed in _prepareContext. It is backed by the
+ * real `lang/en.json` rather than stubbed to echo its key, which is what keeps the assertions
+ * below about English wording honest *and* makes a mistyped key fail here instead of rendering
+ * as "UPGRADES.Shop.Lokced" in Foundry. Stubbing Foundry's `checked` and `selected` here once
+ * hid a "Missing helper" crash that only appeared at runtime; nothing else gets registered.
  */
 import fs from 'node:fs';
 
@@ -18,6 +21,18 @@ try {
 let bad = 0;
 const t = (n, c) => { if (!c) bad = 1; console.log((c ? 'PASS ' : 'FAIL ') + n); };
 const tpl = name => fs.readFileSync(new URL(`../templates/${name}`, import.meta.url), 'utf8');
+
+/* ---------- Foundry's `localize`, as documented: hash args go to Localization#format ---------- */
+const lang = JSON.parse(fs.readFileSync(new URL('../lang/en.json', import.meta.url), 'utf8'));
+const missingKeys = new Set();
+const lookup = key => key.split('.').reduce((o, k) => (o ?? {})[k], lang);
+
+Handlebars.registerHelper('localize', function (key, options) {
+  const raw = lookup(key);
+  if (typeof raw !== 'string') { missingKeys.add(key); return key; }
+  const data = options?.hash ?? {};
+  return raw.replace(/\{(\w+)\}/g, (m, name) => (name in data ? data[name] : m));
+});
 
 /* ---------- every template compiles without a helper ---------- */
 for (const name of fs.readdirSync(new URL('../templates', import.meta.url))) {
@@ -359,5 +374,51 @@ t('upgrade-editor: repeatable checkbox is checked when set',
   /name="repeatable"[^>]*checked/.test(upgradeEditor));
 t('upgrade-editor: hide-mechanics checkbox is checked when set',
   /name="hideEffect"[^>]*checked/.test(upgradeEditor));
+
+/* ---------- localization ----------
+ * A key that is not in en.json renders as the key itself in Foundry — visible, but only to
+ * whoever opens that window. Both directions are checked: nothing referenced may be missing,
+ * and nothing in the file may be dead, or the German translator works on strings no one sees. */
+t(`every localize key used above resolves in en.json${missingKeys.size ? ` — missing: ${[...missingKeys].join(', ')}` : ''}`,
+  missingKeys.size === 0);
+
+/* The check above only sees keys on branches the fixtures happen to render. This one reads every
+ * key out of the source, so a typo inside an `{{#if}}` no fixture enters is still caught. */
+const referenced = new Set();
+for (const name of fs.readdirSync(new URL('../templates', import.meta.url))) {
+  for (const m of tpl(name).matchAll(/\{\{\{?localize\s+"([^"]+)"/g)) referenced.add(m[1]);
+}
+const undeclared = [...referenced].filter(k => typeof lookup(k) !== 'string');
+t(`every localize key in the templates exists in en.json${undeclared.length ? ` — missing: ${undeclared.join(', ')}` : ''}`,
+  undeclared.length === 0);
+
+const flatten = (obj, prefix = '') => Object.entries(obj).flatMap(([k, v]) =>
+  typeof v === 'string' ? [`${prefix}${k}`] : flatten(v, `${prefix}${k}.`));
+/* Scripts reference keys too — some literally, some built from an id (`UPGRADES.Preset.${cat}`).
+ * A derived key cannot be found by reading the source, so a static prefix counts as a reference
+ * for everything beneath it; the effects suites check those individually against the real
+ * catalogues, which is where the objects actually exist. */
+const prefixes = [];
+const scriptDir = new URL('../scripts/', import.meta.url);
+const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+  e.isDirectory() ? walk(new URL(`${e.name}/`, dir)) : [new URL(e.name, dir)]);
+for (const file of walk(scriptDir)) {
+  const src = fs.readFileSync(file, 'utf8');
+  for (const m of src.matchAll(/["'`](UPGRADES\.[\w.-]*)/g)) {
+    if (src.slice(m.index).startsWith(`\`${m[1]}\${`) || /\$\{/.test(src.slice(m.index, m.index + m[0].length + 2))) {
+      prefixes.push(m[1]);
+    }
+    referenced.add(m[1]);
+  }
+  for (const m of src.matchAll(/`(UPGRADES\.[\w.-]*)\$\{/g)) prefixes.push(m[1]);
+}
+
+const declared = flatten(lang);
+const used = k => referenced.has(k) || prefixes.some(p => k.startsWith(p));
+const unused = declared.filter(k => !used(k));
+
+t(`every key in en.json is used by a template or a script${unused.length ? ` — unused: ${unused.join(', ')}` : ''}`,
+  unused.length === 0);
+t('the templates reference at least one localized string', referenced.size > 0);
 
 process.exit(bad);

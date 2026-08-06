@@ -12,6 +12,7 @@ import { EFFECT_MODE, getPresetGroups, getPreset, systemSupportsBuilder,
          getDamageTypes, getResistanceTypes, splitDamageValue, isPf2e, PF2E_BONUS_TYPES } from "../effects.js";
 import { getPartyActors } from "../systems/adapter.js";
 import { UpgradesWindow, wireDropZone } from "./ui.js";
+import { t } from "../i18n.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -19,11 +20,11 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const FILTER_FROM = 8;
 
 const MODE_CHOICES = [
-  { value: CONST.ACTIVE_EFFECT_MODES.ADD, label: "Add" },
-  { value: CONST.ACTIVE_EFFECT_MODES.OVERRIDE, label: "Override" },
-  { value: CONST.ACTIVE_EFFECT_MODES.UPGRADE, label: "Upgrade (raise to)" },
-  { value: CONST.ACTIVE_EFFECT_MODES.DOWNGRADE, label: "Downgrade (lower to)" },
-  { value: CONST.ACTIVE_EFFECT_MODES.MULTIPLY, label: "Multiply" }
+  { value: CONST.ACTIVE_EFFECT_MODES.ADD, key: "Add" },
+  { value: CONST.ACTIVE_EFFECT_MODES.OVERRIDE, key: "Override" },
+  { value: CONST.ACTIVE_EFFECT_MODES.UPGRADE, key: "UpgradeTo" },
+  { value: CONST.ACTIVE_EFFECT_MODES.DOWNGRADE, key: "DowngradeTo" },
+  { value: CONST.ACTIVE_EFFECT_MODES.MULTIPLY, key: "Multiply" }
 ];
 
 export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(ApplicationV2)) {
@@ -31,7 +32,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     id: "upgrades-upgrade-editor",
     classes: ["upgrades", "upg-upgrade-editor"],
     tag: "form",
-    window: { title: "Edit upgrade", icon: "fa-solid fa-wand-sparkles", resizable: true },
+    window: { title: "UPGRADES.Dialog.EditUpgrade", icon: "fa-solid fa-wand-sparkles", resizable: true },
     position: { width: 560, height: "auto" },
     // Closed by hand in the submit handler, so validation failures can keep the window open.
     form: { handler: UpgradeEditor.#onSubmit, closeOnSubmit: false },
@@ -75,7 +76,9 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
   }
 
   get title() {
-    return this.isNew ? "New upgrade" : `Edit: ${this.draft.name || "upgrade"}`;
+    return this.isNew
+      ? t("UPGRADES.Editor.NewUpgrade")
+      : t("UPGRADES.Dialog.EditNamed", { name: this.draft.name || t("UPGRADES.Dialog.AnUpgrade") });
   }
 
   static #toDraft(upgrade) {
@@ -158,12 +161,12 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       systemId: game.system.id,
       builderSupported: systemSupportsBuilder(),
       isPf2e: isPf2e(),
-      bonusTypeLegend: isPf2e() ? PF2E_BONUS_TYPES.filter(b => !b.label.includes("rarely")) : [],
+      bonusTypeLegend: isPf2e() ? PF2E_BONUS_TYPES.filter(b => !b.rare) : [],
 
       targetOptions: [
-        { value: TARGET.PARTY, label: "The whole party", isSelected: draft.target === TARGET.PARTY },
-        { value: TARGET.BUYER, label: "Whoever buys it", isSelected: draft.target === TARGET.BUYER },
-        { value: TARGET.ACTOR, label: "One specific character", isSelected: draft.target === TARGET.ACTOR }
+        { value: TARGET.PARTY, label: t("UPGRADES.Target.WholeParty"), isSelected: draft.target === TARGET.PARTY },
+        { value: TARGET.BUYER, label: t("UPGRADES.Target.Buyer"), isSelected: draft.target === TARGET.BUYER },
+        { value: TARGET.ACTOR, label: t("UPGRADES.Target.OneCharacter"), isSelected: draft.target === TARGET.ACTOR }
       ],
       isBuyerTarget: draft.target === TARGET.BUYER,
       choiceEnabled: draft.choiceEnabled,
@@ -173,9 +176,9 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       partyNote: this.#partyNote(),
 
       effectModeOptions: [
-        { value: EFFECT_MODE.NONE, label: "Nothing mechanical (cosmetic)", isSelected: draft.effectMode === EFFECT_MODE.NONE },
-        { value: EFFECT_MODE.BUILD, label: "Build a bonus", isSelected: draft.effectMode === EFFECT_MODE.BUILD },
-        { value: EFFECT_MODE.LINK, label: "Use an existing effect or item", isSelected: draft.effectMode === EFFECT_MODE.LINK }
+        { value: EFFECT_MODE.NONE, label: t("UPGRADES.EffectMode.None"), isSelected: draft.effectMode === EFFECT_MODE.NONE },
+        { value: EFFECT_MODE.BUILD, label: t("UPGRADES.EffectMode.Build"), isSelected: draft.effectMode === EFFECT_MODE.BUILD },
+        { value: EFFECT_MODE.LINK, label: t("UPGRADES.EffectMode.Link"), isSelected: draft.effectMode === EFFECT_MODE.LINK }
       ],
       isBuild: draft.effectMode === EFFECT_MODE.BUILD,
       isLink: draft.effectMode === EFFECT_MODE.LINK,
@@ -207,7 +210,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     const sectionNames = new Map(sections.map(c => [c.id, c.name]));
     return upgrades
       .map(u => {
-        const name = u.name || "Unnamed upgrade";
+        const name = u.name || t("UPGRADES.Dialog.Unnamed");
         const section = sectionNames.get(u.categoryId) ?? "";
         return {
           id: u.id, name, section,
@@ -246,7 +249,7 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
       mode: Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD),
       isCustom: row.preset === "custom",
       isPf2e: isPf2e(),
-      bonusTypeLegend: isPf2e() ? PF2E_BONUS_TYPES.filter(b => !b.label.includes("rarely")) : [],
+      bonusTypeLegend: isPf2e() ? PF2E_BONUS_TYPES.filter(b => !b.rare) : [],
       bonusTypes: PF2E_BONUS_TYPES.map(b => ({
         ...b, isSelected: b.id === (row.bonusType ?? "circumstance")
       })),
@@ -262,7 +265,8 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
           search: `${p.label} ${group.label}`.toLowerCase()
         }))
       })),
-      modeChoices: MODE_CHOICES.map(m => ({ ...m, isSelected: m.value === Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD) }))
+      modeChoices: MODE_CHOICES.map(m => ({ value: m.value, label: t(`UPGRADES.EffectApplyMode.${m.key}`),
+        isSelected: m.value === Number(row.mode ?? CONST.ACTIVE_EFFECT_MODES.ADD) }))
     };
   }
 
@@ -276,8 +280,8 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
 
     const toEntry = a => ({ id: a.id, name: a.name, isSelected: a.id === this.draft.targetActorId });
     const groups = [];
-    if (party.length) groups.push({ label: "Party", actors: party.map(toEntry) });
-    if (others.length) groups.push({ label: "Other characters", actors: others.map(toEntry) });
+    if (party.length) groups.push({ label: t("UPGRADES.Target.Party"), actors: party.map(toEntry) });
+    if (others.length) groups.push({ label: t("UPGRADES.Target.OtherCharacters"), actors: others.map(toEntry) });
     return groups;
   }
 
@@ -290,29 +294,28 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     if (!rivals.length) return "";
     const ticked = new Set(this.draft.excludes);
     const pulled = rivals.filter(u => !ticked.has(u.id)).map(u => u.name);
-    const base = `Only one of this and ${rivals.map(u => u.name).join(", ")} can ever be taken.`;
+    const base = t("UPGRADES.Exclusive.OnlyOne", { names: rivals.map(u => u.name).join(", ") });
     if (!pulled.length) return base;
-    return `${base} ${pulled.join(", ")} ${pulled.length === 1 ? "joins" : "join"} the set because `
-         + `${pulled.length === 1 ? "it is" : "they are"} already exclusive with something ticked here.`;
+    // One key per plural form rather than a conditional word: "joins"/"join" is English
+    // agreement, and a translation may need to reshape the whole clause.
+    return `${base} ` + t(pulled.length === 1 ? "UPGRADES.Exclusive.PulledOne" : "UPGRADES.Exclusive.PulledMany",
+      { names: pulled.join(", ") });
   }
 
   #partyNote() {
     const configuredId = game.settings.get(MODULE_ID, SETTINGS.PARTY_ACTOR);
     const configured = configuredId ? game.actors.get(configuredId) : null;
     const count = getPartyActors().length;
-    if (configured) return `Party membership comes from “${configured.name}” (${count} member(s)), set in module settings.`;
-    return `No party actor is configured in module settings, so this falls back to all `
-         + `${count} player-owned character(s) — worth setting properly before using party-wide upgrades.`;
+    if (configured) return t("UPGRADES.PartyNote.Configured", { name: configured.name, count });
+    return t("UPGRADES.PartyNote.Fallback", { count });
   }
 
   #grantNote() {
-    const how = this.draft.showInEffectsBar
-      ? (game.system.id === "pf2e"
-          ? "Granted as an Effect, so it sits in the effects bar"
-          : "Granted as an Active Effect, so it sits on the Effects tab")
-      : "Granted as a quiet, permanent feature on the sheet";
-    const owned = this.draft.purchased ? " This upgrade is already owned — saving re-applies it to its targets." : "";
-    return `${how}; removing or refunding the upgrade deletes it again.${owned}`;
+    const how = t(this.draft.showInEffectsBar
+      ? (game.system.id === "pf2e" ? "UPGRADES.GrantNote.Pf2eEffect" : "UPGRADES.GrantNote.ActiveEffect")
+      : "UPGRADES.GrantNote.QuietFeature");
+    const owned = this.draft.purchased ? ` ${t("UPGRADES.GrantNote.AlreadyOwned")}` : "";
+    return t("UPGRADES.GrantNote.Sentence", { how }) + owned;
   }
 
   /* ---------- keeping the draft in step with the DOM ---------- */
@@ -571,13 +574,13 @@ export class UpgradeEditor extends UpgradesWindow(HandlebarsApplicationMixin(App
     const d = this.draft;
 
     if (d.target === TARGET.ACTOR && !d.targetActorId) {
-      ui.notifications.warn("Upgrades: pick a character for a single-character upgrade.");
+      ui.notifications.warn(t("UPGRADES.Notify.PickACharacter"));
       return;   // window stays open so the GM can fix it
     }
 
     await this.onSave({
       ...(d.id ? { id: d.id } : {}),
-      name: d.name || "Unnamed upgrade",
+      name: d.name || t("UPGRADES.Dialog.Unnamed"),
       costs: Object.entries(d.costs)
         .filter(([, amount]) => amount > 0)
         .map(([currencyId, amount]) => ({ currencyId, amount })),

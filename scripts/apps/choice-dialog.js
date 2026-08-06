@@ -6,6 +6,7 @@
  * first and sending the answer along with the request needs none.
  */
 import { wireDropZone } from "./ui.js";
+import { t } from "../i18n.js";
 
 const { DialogV2 } = foundry.applications.api;
 
@@ -21,18 +22,18 @@ export async function promptForDocument({ label, hint } = {}) {
     <div class="upg-drop" data-drop="choice">
       <i class="fa-solid fa-hand-pointer"></i>
       <div class="upg-drop-text">
-        <strong>Drag it here</strong>
-        <span>from your character sheet</span>
+        <strong>${t("UPGRADES.Choice.DragHere")}</strong>
+        <span>${t("UPGRADES.Choice.DragHint")}</span>
       </div>
     </div>`;
 
   const result = await DialogV2.wait({
-    window: { title: label || "Choose" },
+    window: { title: label || t("UPGRADES.Buyer.Choose") },
     classes: ["upgrades"],
     content,
     buttons: [
-      { action: "ok", label: "Confirm", default: true, callback: () => picked },
-      { action: "cancel", label: "Cancel", callback: () => null }
+      { action: "ok", label: t("UPGRADES.Choice.Confirm"), default: true, callback: () => picked },
+      { action: "cancel", label: t("UPGRADES.Common.Cancel"), callback: () => null }
     ],
     render: (_event, dialog) => {
       const root = dialog.element ?? dialog;

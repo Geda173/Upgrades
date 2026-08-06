@@ -1,5 +1,6 @@
+import { i18n, missed } from './i18n-stub.mjs';
 globalThis.CONST = { ACTIVE_EFFECT_MODES:{CUSTOM:0,MULTIPLY:1,ADD:2,DOWNGRADE:3,UPGRADE:4,OVERRIDE:5} };
-globalThis.game = { system: { id: "pf2e" } };
+globalThis.game = { system: { id: "pf2e" }, i18n };
 globalThis.CONFIG = {};
 const E = await import(new URL('../scripts/effects.js', import.meta.url));
 let bad=0; const t=(n,c)=>{if(!c)bad=1;console.log((c?'PASS ':'FAIL ')+n)};
@@ -137,5 +138,15 @@ t('the two rarely-right types say so',
   E.PF2E_BONUS_TYPES.filter(b => /rarely/.test(b.label)).map(b => b.id).sort().join() === 'ability,proficiency');
 t('untyped is offered as the just-make-it-work option',
   E.PF2E_BONUS_TYPES.find(b => b.id === 'untyped').label.includes('always stacks'));
+
+/* ---------- every preset's wording actually resolves ----------
+ * The labels are derived keys (`UPGRADES.Preset.Dnd5e.${id}`), so no static scan of the source
+ * can confirm they exist — only walking the real catalogue can. A miss renders the raw key in
+ * the editor's target picker, which is exactly the silent-ish failure this file exists to catch. */
+for (const g of E.getPresetGroups()) {
+  for (const p of g.presets) { void p.label; void p.group; void p.noun; void p.short; }
+}
+t(`every pf2e preset label and group resolves${missed.size ? ` — missing: ${[...missed].join(', ')}` : ''}`,
+  missed.size === 0);
 
 process.exit(bad);
