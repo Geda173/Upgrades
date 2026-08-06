@@ -11,7 +11,10 @@
  */
 import { t, localizeFields } from "./i18n.js";
 
-export const MODULE_ID = "upgrades";
+export const MODULE_ID = "upgrade-board";
+
+/** What the module was called before v0.22.0. Only migrate.js has any business with it. */
+export const LEGACY_MODULE_ID = "upgrades";
 
 export const SETTINGS = {
   UPGRADES: "upgrades",

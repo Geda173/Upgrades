@@ -7,7 +7,7 @@
  * Everything created is flagged with the upgrade id for clean refund/undo.
  */
 import { TARGET } from "../catalog.js";
-import { MODULE_ID, SETTINGS } from "../settings.js";
+import { MODULE_ID, LEGACY_MODULE_ID, SETTINGS } from "../settings.js";
 import { EFFECT_MODE, buildChanges, buildRules, isPf2e } from "../effects.js";
 import { t } from "../i18n.js";
 
@@ -217,10 +217,22 @@ async function createFromPayload(actor, payload, upgrade, purchaseId = null, cho
  * A repeatable upgrade is matched on the purchase id, not the upgrade id — buying the same
  * thing twice is meant to produce two copies, so matching on upgrade id would block the second.
  */
+/**
+ * Does this document belong to the given upgrade or purchase?
+ *
+ * Checked under both ids. Anything granted before v0.22.0 carries `flags.upgrades`, and the
+ * flag is the only reason a refund can find what it created — miss it and the effect stays on
+ * the sheet forever with nothing able to remove it. Grants made from now on carry the new one.
+ */
+function flagged(doc, upgradeId, purchaseId) {
+  const field = purchaseId ? "purchaseId" : "upgradeId";
+  const wanted = purchaseId ?? upgradeId;
+  return doc.getFlag(MODULE_ID, field) === wanted
+      || doc.getFlag(LEGACY_MODULE_ID, field) === wanted;
+}
+
 function hasUpgrade(actor, upgradeId, purchaseId = null) {
-  const matches = doc => purchaseId
-    ? doc.getFlag(MODULE_ID, "purchaseId") === purchaseId
-    : doc.getFlag(MODULE_ID, "upgradeId") === upgradeId;
+  const matches = doc => flagged(doc, upgradeId, purchaseId);
   return !!actor.items?.some(matches) || !!actor.effects?.some(matches);
 }
 
@@ -257,9 +269,7 @@ export async function applyUpgradeEffect(upgrade, { buyerActor = null, purchaseI
 
 /** Remove everything this module created for a given upgrade (refund/undo). GM-side only. */
 export async function removeUpgradeEffect(upgradeId, purchaseId = null) {
-  const matches = doc => purchaseId
-    ? doc.getFlag(MODULE_ID, "purchaseId") === purchaseId
-    : doc.getFlag(MODULE_ID, "upgradeId") === upgradeId;
+  const matches = doc => flagged(doc, upgradeId, purchaseId);
   let count = 0;
   for (const actor of game.actors) {
     const items = actor.items?.filter(matches) ?? [];

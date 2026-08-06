@@ -1,4 +1,4 @@
-# Upgrades
+# Upgrade Board
 
 A Foundry VTT module for running an upgrade board. The party banks a shared resource and spends it
 on upgrades you wrote yourself, each with its own art, flavour line, description, and optionally a
@@ -122,20 +122,38 @@ Paste this into Add-on Modules, Install Module, in the Manifest URL field undern
 results:
 
 ```
-https://github.com/Geda173/Upgrades/releases/latest/download/module.json
+https://github.com/Geda173/upgrade-board/releases/latest/download/module.json
 ```
 
 The module is not in Foundry's package registry, so searching for it by name will not find it.
 
-For development, clone into your Foundry data directory as `Data/modules/upgrades`.
+For development, clone into your Foundry data directory as `Data/modules/upgrade-board`.
 
 Open it from the gem button in the token scene controls, from the merchant's token, or from a macro:
 
 ```js
-game.modules.get("upgrades").api.openShop();     // the player window
-game.modules.get("upgrades").api.openEditor();   // the GM console
-game.modules.get("upgrades").api.openSettings(); // setup
+game.modules.get("upgrade-board").api.openShop();     // the player window
+game.modules.get("upgrade-board").api.openEditor();   // the GM console
+game.modules.get("upgrade-board").api.openSettings(); // setup
 ```
+
+## Upgrading from "Upgrades"
+
+This module used to be called `upgrades`. Foundry files world data under the module id, so a world
+set up with the old one would otherwise open with an empty board.
+
+Install it as a new module, using the manifest URL above. Foundry will not offer it as an update
+to the old one, because a renamed module is a different module as far as it is concerned.
+
+It carries itself across. The first time a GM loads a world that has an old board in it, the
+catalogue, sections, balances, currencies, history and all your settings are copied onto the new id
+and you get a notification saying so. Nothing is deleted, so the old data stays where it is and
+reinstalling the old module puts you back exactly as you were.
+
+Two things worth knowing. Effects granted by the old module are still recognised, so refunds and
+deletions clean up after them properly. And once the copy has happened you should disable the old
+module, because two copies both add a scene control button and both listen for a double click on
+the merchant.
 
 ## Setup
 

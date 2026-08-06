@@ -1,8 +1,9 @@
 /**
  * Upgrades — entry point.
  */
-import { MODULE_ID, SETTINGS, getVocabulary, isHostToken, registerSettings, warnIfNoPartyActor } from "./settings.js";
+import { MODULE_ID, LEGACY_MODULE_ID, SETTINGS, getVocabulary, isHostToken, registerSettings, warnIfNoPartyActor } from "./settings.js";
 import { t } from "./i18n.js";
+import { registerLegacySettings, migrateFromLegacy } from "./migrate.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
@@ -10,6 +11,8 @@ import { SettingsApp } from "./apps/settings-app.js";
 
 Hooks.once("init", () => {
   registerSettings();
+  // Makes the pre-v0.22.0 namespace readable so a renamed world can be carried across.
+  registerLegacySettings();
 
   // Every individual setting is config:false, so Foundry's list shows one button that opens
   // the setup window instead — where the choices have pickers and a live preview.
@@ -30,9 +33,10 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   initSockets();
+  carryOldWorldAcross();
   warnIfNoPartyActor();
 
-  // Public API: macros can call game.modules.get("upgrades").api.openShop()
+  // Public API: macros can call game.modules.get("upgrade-board").api.openShop()
   const mod = game.modules.get(MODULE_ID);
   mod.api = {
     openShop: () => ShopApp.show(),
@@ -52,6 +56,23 @@ Hooks.once("ready", () => {
 
   console.log(`${MODULE_ID} | Ready. Open via the token controls button or game.modules.get("${MODULE_ID}").api.openShop()`);
 });
+
+/**
+ * A world set up before the module was renamed keeps its board.
+ *
+ * Told out loud rather than done quietly: the GM has just installed what looks like a different
+ * module, and needs to know their catalogue came with it — and that the old one should now be
+ * disabled, since two copies would both draw a scene-control button and both bind the merchant.
+ */
+async function carryOldWorldAcross() {
+  const result = await migrateFromLegacy().catch(err => {
+    console.error(`${MODULE_ID} | Could not carry the old world across`, err);
+    return { ran: false };
+  });
+  if (!result?.ran) return;
+  ui.notifications.info(game.i18n.format("UPGRADES.Notify.Migrated", { count: result.upgrades }), { permanent: true });
+  console.log(`${MODULE_ID} | Carried ${result.copied} setting(s) over from "${LEGACY_MODULE_ID}".`);
+}
 
 /**
  * Double-clicking the merchant's token opens the window.
@@ -93,7 +114,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
 
   const vocab = getVocabulary();
   const tool = {
-    name: "upgrades",
+    name: "upgrade-board",
     title: `Open ${vocab.windowTitle}`,
     // Reuse the currency icon when it's a Font Awesome class; an image path can't go here.
     icon: vocab.currencyIconIsImg ? "fa-solid fa-gem" : (vocab.currencyIcon || "fa-solid fa-gem"),

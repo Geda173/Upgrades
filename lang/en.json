@@ -547,7 +547,8 @@
       "MerchantAccessGranted": "Upgrades: players can now interact with the merchant's token.",
       "SettingsSaved": "Upgrades: {count} setting(s) saved.",
       "NothingToSave": "Upgrades: nothing to save.",
-      "PickACharacter": "Upgrades: pick a character for a single-character upgrade."
+      "PickACharacter": "Upgrades: pick a character for a single-character upgrade.",
+      "Migrated": "Upgrade Board: your existing board came across from the older “Upgrades” module ({count} upgrades). You can safely disable that one now."
     },
     "IconName": {
       "anchor": "Anchor",
