@@ -10,6 +10,9 @@ campaign and a memorial garden in the next, without touching any code.
 
 Mechanical effects are supported in PF2e and dnd5e. Everything else works in any system.
 
+![The board, in the Grove theme](media/01-board.jpg)
+
+
 ## The board
 
 Upgrades show up as a grid of cards. A card knows whether you can afford it, whether you already own
@@ -37,6 +40,11 @@ There are sixteen themes. The fantasy ones are Abyss, Grove, Ember, Arcane, Fros
 Bloodmoon, Golden Hall, Mycelium, Tempest and Parchment. The sci-fi ones are Holo, Neon, Starship,
 Rust and Phosphor. Parchment and Starship are light, the rest are dark. A theme only swaps the
 palette, so they all get layout fixes for free.
+
+![The setup window, with every theme and a live preview](media/03-setup-themes.jpg)
+
+You pick a theme by looking at it rather than by name, and the preview beside the swatches updates
+as you type.
 
 ## Buying
 
@@ -82,6 +90,9 @@ In dnd5e it produces ActiveEffect changes. The melee and ranged fan-out is handl
 scores and darkvision are treated as the plain numbers they are, and there is a damage type dropdown
 so nobody has to type `[cold]` by hand.
 
+![Building a bonus without touching a data path](media/04-bonus-builder.jpg)
+
+
 Resistance, immunity and vulnerability are offered as ordinary choices in both systems instead of
 being left to the custom row. You pick the damage type from a dropdown, plus an amount where the
 system takes one. PF2e gets real Resistance, Weakness and Immunity rule elements. dnd5e adds the
@@ -115,6 +126,9 @@ Every purchase and adjustment is logged with a reason, and the log is editable. 
 one, or sweep the whole thing, either all of it or just the adjustments or just the purchases. It is
 a record and nothing is read back out of it, so clearing a run of trial and error moves no currency
 and un-buys nothing.
+
+![The GM console](media/02-gm-console.jpg)
+
 
 ## Install
 
