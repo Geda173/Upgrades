@@ -2,6 +2,7 @@
  * Upgrades — entry point.
  */
 import { MODULE_ID, SETTINGS, getVocabulary, isHostToken, registerSettings, warnIfNoPartyActor } from "./settings.js";
+import { t } from "./i18n.js";
 import { initSockets } from "./sockets.js";
 import { ShopApp } from "./apps/shop-app.js";
 import { EditorApp } from "./apps/editor-app.js";
@@ -12,10 +13,15 @@ Hooks.once("init", () => {
 
   // Every individual setting is config:false, so Foundry's list shows one button that opens
   // the setup window instead — where the choices have pickers and a live preview.
+  //
+  // Resolved here rather than handed to Foundry as keys: the API docs do not promise that
+  // register/registerMenu localize these, and an unresolved key would show as
+  // "UPGRADES.Menu.Name" in the module list. t() is safe either way — if Foundry does
+  // localize them, it is being handed English, and localizing English is a no-op.
   game.settings.registerMenu(MODULE_ID, "setup", {
-    name: "UPGRADES.Menu.Name",
-    label: "UPGRADES.Menu.Label",
-    hint: "UPGRADES.Menu.Hint",
+    name: t("UPGRADES.Menu.Name"),
+    label: t("UPGRADES.Menu.Label"),
+    hint: t("UPGRADES.Menu.Hint"),
     icon: "fa-solid fa-sliders",
     type: SettingsApp,
     restricted: true

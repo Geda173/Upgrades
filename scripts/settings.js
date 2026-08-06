@@ -100,41 +100,41 @@ export function registerSettings() {
 
   // Behaviour
   S.register(MODULE_ID, SETTINGS.REQUIRE_APPROVAL, {
-    name: "UPGRADES.Setting.RequireApproval",
-    hint: "UPGRADES.SettingHint.RequireApproval",
+    name: t("UPGRADES.Setting.RequireApproval"),
+    hint: t("UPGRADES.SettingHint.RequireApproval"),
     scope: "world", config: false, type: Boolean, default: true,
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.PLAYERS_CAN_OPEN, {
-    name: "UPGRADES.Setting.PlayersCanOpen",
-    hint: "UPGRADES.SettingHint.PlayersCanOpen",
+    name: t("UPGRADES.Setting.PlayersCanOpen"),
+    hint: t("UPGRADES.SettingHint.PlayersCanOpen"),
     scope: "world", config: false, type: Boolean, default: true,
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.PARTY_ACTOR, {
-    name: "UPGRADES.Setting.PartyActor",
-    hint: "UPGRADES.SettingHint.PartyActor",
+    name: t("UPGRADES.Setting.PartyActor"),
+    hint: t("UPGRADES.SettingHint.PartyActor"),
     // No choices here: the dropdown lives in the setup window, which builds its own.
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
 
   S.register(MODULE_ID, SETTINGS.CURRENCY_ITEM, {
-    name: "UPGRADES.Setting.CurrencyItem",
-    hint: "UPGRADES.SettingHint.CurrencyItem",
+    name: t("UPGRADES.Setting.CurrencyItem"),
+    hint: t("UPGRADES.SettingHint.CurrencyItem"),
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.AUTO_DEPOSIT, {
-    name: "UPGRADES.Setting.AutoDeposit",
+    name: t("UPGRADES.Setting.AutoDeposit"),
     scope: "world", config: false, type: Boolean, default: false,
     onChange: () => refreshWindows()
   });
 
   // Presentation
   S.register(MODULE_ID, SETTINGS.THEME, {
-    name: "UPGRADES.Setting.Theme",
-    hint: "UPGRADES.SettingHint.Theme",
+    name: t("UPGRADES.Setting.Theme"),
+    hint: t("UPGRADES.SettingHint.Theme"),
     scope: "world", config: false, type: String, default: "abyss",
     // Foundry's choices dropdown is flat, so the group rides along in the label.
     choices: Object.fromEntries(THEMES.map(t => [t.id, `${t.group} · ${t.label} — ${t.blurb}`])),
@@ -143,49 +143,49 @@ export function registerSettings() {
 
   // Vocabulary — everything the players read
   S.register(MODULE_ID, SETTINGS.WINDOW_TITLE, {
-    name: "UPGRADES.Setting.WindowTitle",
-    hint: "UPGRADES.SettingHint.WindowTitle",
+    name: t("UPGRADES.Setting.WindowTitle"),
+    hint: t("UPGRADES.SettingHint.WindowTitle"),
     scope: "world", config: false, type: String, default: "Upgrades",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.CURRENCY_NAME, {
-    name: "UPGRADES.Setting.CurrencyName",
-    hint: "UPGRADES.SettingHint.CurrencyName",
+    name: t("UPGRADES.Setting.CurrencyName"),
+    hint: t("UPGRADES.SettingHint.CurrencyName"),
     scope: "world", config: false, type: String, default: "Points",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.CURRENCY_ICON, {
-    name: "UPGRADES.Setting.CurrencyIcon",
-    hint: "UPGRADES.SettingHint.CurrencyIcon",
+    name: t("UPGRADES.Setting.CurrencyIcon"),
+    hint: t("UPGRADES.SettingHint.CurrencyIcon"),
     scope: "world", config: false, type: String, default: "fa-solid fa-gem",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.ACTION_VERB, {
-    name: "UPGRADES.Setting.ActionVerb",
-    hint: "UPGRADES.SettingHint.ActionVerb",
+    name: t("UPGRADES.Setting.ActionVerb"),
+    hint: t("UPGRADES.SettingHint.ActionVerb"),
     scope: "world", config: false, type: String, default: "Request",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_ACTOR, {
-    name: "UPGRADES.Setting.HostActor",
-    hint: "UPGRADES.SettingHint.HostActor",
+    name: t("UPGRADES.Setting.HostActor"),
+    hint: t("UPGRADES.SettingHint.HostActor"),
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_NAME, {
-    name: "UPGRADES.Setting.HostName",
-    hint: "UPGRADES.SettingHint.HostName",
+    name: t("UPGRADES.Setting.HostName"),
+    hint: t("UPGRADES.SettingHint.HostName"),
     scope: "world", config: false, type: String, default: "",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.HOST_IMG, {
-    name: "UPGRADES.Setting.HostImg",
-    hint: "UPGRADES.SettingHint.HostImg",
+    name: t("UPGRADES.Setting.HostImg"),
+    hint: t("UPGRADES.SettingHint.HostImg"),
     scope: "world", config: false, type: String, default: "", filePicker: "image",
     onChange: () => refreshWindows()
   });
   S.register(MODULE_ID, SETTINGS.GREETING, {
-    name: "UPGRADES.Setting.Greeting",
+    name: t("UPGRADES.Setting.Greeting"),
     scope: "world", config: false, type: String,
     default: "Well met. Shall we see what can be made of this?",
     onChange: () => refreshWindows()
