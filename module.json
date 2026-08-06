@@ -2,7 +2,7 @@
   "id": "upgrade-board",
   "title": "Upgrade Board",
   "description": "A themeable upgrade board: the party spends a shared resource on GM-authored upgrades with art, tooltips, and real mechanical effects — granted to the whole party or to one named character.",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "authors": [
     {
       "name": "Patrick"
@@ -21,7 +21,7 @@
   "socket": true,
   "url": "https://github.com/Geda173/upgrade-board",
   "manifest": "https://github.com/Geda173/upgrade-board/releases/latest/download/module.json",
-  "download": "https://github.com/Geda173/upgrade-board/releases/download/v0.22.0/upgrade-board.zip",
+  "download": "https://github.com/Geda173/upgrade-board/releases/download/v0.22.1/upgrade-board.zip",
   "license": "LICENSE",
   "readme": "README.md",
   "bugs": "https://github.com/Geda173/upgrade-board/issues",
@@ -31,6 +31,24 @@
       "lang": "en",
       "name": "English",
       "path": "lang/en.json"
+    }
+  ],
+  "media": [
+    {
+      "type": "cover",
+      "url": "https://raw.githubusercontent.com/Geda173/upgrade-board/main/media/01-board.jpg"
+    },
+    {
+      "type": "screenshot",
+      "url": "https://raw.githubusercontent.com/Geda173/upgrade-board/main/media/03-setup-themes.jpg"
+    },
+    {
+      "type": "screenshot",
+      "url": "https://raw.githubusercontent.com/Geda173/upgrade-board/main/media/02-gm-console.jpg"
+    },
+    {
+      "type": "screenshot",
+      "url": "https://raw.githubusercontent.com/Geda173/upgrade-board/main/media/04-bonus-builder.jpg"
     }
   ]
 }

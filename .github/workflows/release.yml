@@ -31,7 +31,7 @@ jobs:
         run: |
           zip -r upgrade-board.zip . \
             -x ".git/*" -x ".github/*" -x "upgrade-board.zip" \
-            -x "tests/*" -x "node_modules/*" -x "package.json" -x "package-lock.json"
+            -x "tests/*" -x "node_modules/*" -x "package.json" -x "package-lock.json" -x "media/*"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
