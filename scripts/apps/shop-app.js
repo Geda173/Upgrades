@@ -42,7 +42,7 @@ export class ShopApp extends UpgradesWindow(HandlebarsApplicationMixin(Applicati
 
   #selectedId = null;
 
-  /** The GM names the window ("The Memorial Garden"), so the title can't live in DEFAULT_OPTIONS. */
+  /** The GM names the window ("The Exchange"), so the title can't live in DEFAULT_OPTIONS. */
   get title() {
     return getVocabulary().windowTitle;
   }

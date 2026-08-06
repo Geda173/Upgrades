@@ -118,7 +118,7 @@ async function resolveBuyer(user) {
   return chosen ? game.actors.get(chosen) : null;
 }
 
-/** "3 Sprigs and 1 Pearl of Power" */
+/** "3 Marks and 1 Favour" */
 function priceLabel(upgrade) {
   const parts = describeCosts(upgrade).map(c => `${c.amount} ${c.currency.name}`);
   if (parts.length <= 1) return parts[0] ?? "nothing";

@@ -169,12 +169,20 @@ dropdown of names. The setup window shows a live preview that updates as you typ
 4. Theme. Pick it by looking at it.
 5. Optionally a merchant actor, a currency item, and whether pickups credit automatically.
 
-## Translation
+## Languages
 
-All the wording lives in `lang/en.json`. To add a language, copy that file, translate the values,
-and add one entry to the `languages` array in `module.json`. Nothing in the code needs touching, and
-a translation covers the player window, the GM console, the editor, setup, both bonus catalogues and
-every dialog and notification.
+Ships in English, German, French, Italian and Spanish. Everything is translated: the player window,
+the GM console, the editor, setup, both bonus catalogues, and every dialog and notification.
+
+The four translations beyond English were machine assisted and have not been checked by a native
+speaker, apart from German. If something reads badly in your language, the fix is one line in one
+file and a pull request is very welcome. Game terms like skill and save names follow each system's
+own wording, so they should line up with what your character sheet already says.
+
+To add a language, copy `lang/en.json`, translate the values, and add one entry to the `languages`
+array in `module.json`. Nothing in the code needs touching. A test checks that every language file
+has exactly the same keys as English and keeps every `{placeholder}`, so a missing line fails the
+build rather than showing up as raw text in somebody's game.
 
 ## Worth knowing
 
